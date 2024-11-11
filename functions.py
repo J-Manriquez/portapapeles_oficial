@@ -153,13 +153,14 @@ class Functions:
                     new_id = str(uuid.uuid4())
                     self.manager.clipboard_items[new_id] = {
                         'text': clipboard_content,
-                        'pinned': False
+                        'pinned': False,
+                        'with_format': self.manager.paste_with_format
                     }
                     if len(self.manager.clipboard_items) > 20:
                         unpinned_items = [k for k, v in self.manager.clipboard_items.items() if not v['pinned']]
                         if unpinned_items:
                             del self.manager.clipboard_items[unpinned_items[-1]]
-                    self.manager.root.after(0, self.refresh_cards)  # Ejecuta refresh_cards en el hilo principal
+                    self.manager.root.after(0, self.refresh_cards)
             time.sleep(1)
 
     def get_clipboard_text(self):
@@ -176,5 +177,8 @@ class Functions:
         self.manager.root.quit()
         sys.exit()
         
-        
+    def toggle_paste_format(self):
+        self.manager.paste_with_format = not self.manager.paste_with_format
+        new_text = "Con formato" if self.manager.paste_with_format else "Sin formato"
+        self.manager.button3.config(text=new_text)
         

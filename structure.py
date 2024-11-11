@@ -37,6 +37,8 @@ class ClipboardManager:
         self.current_selection = {'type': 'button', 'index': 0}  # type puede ser 'button', 'card' o 'icon'
         self.is_dark_mode = True
         
+        self.paste_with_format = True
+        
         self.previous_window = None
         self.last_active_window = None
         self.selected_button = None  # Para la navegación de botones
@@ -102,7 +104,7 @@ class ClipboardManager:
         self.button2 = tk.Button(main_buttons_frame, text="Botón 2", font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
         self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        self.button3 = tk.Button(main_buttons_frame, text="Botón 3", font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
+        self.button3 = tk.Button(main_buttons_frame, text="Con formato", command=self.functions.toggle_paste_format, font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
         self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)

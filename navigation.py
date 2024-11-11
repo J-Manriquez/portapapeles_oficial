@@ -102,7 +102,8 @@ class Navigation:
         current_index = self.manager.current_selection['index']
         
         if current_type == 'button':
-            pass
+            if current_index == 2:  # Botón 3
+                self.manager.functions.toggle_paste_format()
         elif current_type == 'card':
             items = list(self.manager.clipboard_items.items())
             if current_index < len(items):
@@ -115,7 +116,10 @@ class Navigation:
                     
                     win32clipboard.OpenClipboard()
                     win32clipboard.EmptyClipboard()
-                    win32clipboard.SetClipboardText(clipboard_data)
+                    if item_data['with_format']:
+                        win32clipboard.SetClipboardText(clipboard_data)
+                    else:
+                        win32clipboard.SetClipboardText(clipboard_data, win32clipboard.CF_UNICODETEXT)
                     win32clipboard.CloseClipboard()
                     
                     if self.manager.previous_window:
