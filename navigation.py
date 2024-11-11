@@ -1,8 +1,8 @@
 # navigation.py
-import win32clipboard
+import win32clipboard # type: ignore
 import tkinter as tk
-import win32gui
-import keyboard
+import win32gui # type: ignore
+import keyboard # type: ignore
 import time
 
 class Navigation:
@@ -119,21 +119,8 @@ class Navigation:
                     win32clipboard.CloseClipboard()
                     
                     if self.manager.previous_window:
-                        try:
-                            win32gui.SetForegroundWindow(self.manager.previous_window)
-                            keyboard.write(clipboard_data)
-                            time.sleep(0.01)  
-                            
-                            keyboard.write(clipboard_data)
-                            
-                        except Exception as e:
-                            print(f"Error al restaurar foco o pegar: {e}")
-                            try:
-                                time.sleep(0.01)
-                                keyboard.write(clipboard_data)
-                            except Exception as e2:
-                                print(f"Error en intento alternativo de pegado: {e2}")
-                    
+                        win32gui.SetForegroundWindow(self.manager.previous_window)
+                        keyboard.write(clipboard_data)
                 except Exception as e:
                     print(f"Error en el proceso de pegado: {e}")
                     
@@ -234,18 +221,19 @@ class Navigation:
             print(f"Error al alternar la ventana: {e}")
 
     def handle_global_key(self, key):
-        try:
-            if self.manager.is_visible:
-                if key in ['Up', 'Down']:
-                    self.navigate_vertical(type('Event', (), {'keysym': key})())
-                elif key in ['Left', 'Right']:
-                    self.navigate_horizontal(type('Event', (), {'keysym': key})())
-                elif key == 'Return':
-                    self.activate_selected()
-                self.manager.root.update_idletasks()
-        except Exception as e:
-            print(f"Error al manejar tecla global: {e}")
-
+        if self.manager.is_visible:
+            if key in ['Up', 'Down']:
+                self.navigate_vertical(type('Event', (), {'keysym': key})())
+            elif key in ['Left', 'Right']:
+                self.navigate_horizontal(type('Event', (), {'keysym': key})())
+            elif key == 'Return':
+                self.activate_selected()
+            # Actualizar la interfaz
+            self.manager.root.update_idletasks()
+            # Prevenir que la tecla se propague
+            return False
+        return True
+    
     def start_move(self, event):
         self.manager.x = event.x
         self.manager.y = event.y

@@ -5,9 +5,9 @@ from tkinter import ttk
 import time
 import threading
 from datetime import datetime
-import keyboard
+import keyboard # type: ignore
 import sys
-import win32gui
+import win32gui # type: ignore
 from functions import Functions
 from navigation import Navigation
 from theme_manager import ThemeManager
@@ -67,8 +67,8 @@ class ClipboardManager:
         keyboard.add_hotkey('down', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Down')))
         keyboard.add_hotkey('left', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Left')))
         keyboard.add_hotkey('right', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Right')))
-        keyboard.add_hotkey('enter', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Return')))
-             
+        keyboard.add_hotkey('enter', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Return')))    
+        
         self.root.after(1000, self.navigation.check_window_state)
 
     def create_gui(self):

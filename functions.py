@@ -2,8 +2,8 @@
 
 import tkinter as tk
 import uuid
-import win32clipboard
-import win32gui
+import win32clipboard # type: ignore
+import win32gui # type: ignore
 import time
 import sys
 
