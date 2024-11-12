@@ -12,6 +12,8 @@ class ThemeManager:
                 'button_fg': '#ffffff',
                 'listbox_bg': '#2d2d2d',
                 'listbox_fg': '#ffffff',
+                'active_bg': '#4E4E4E',  # Añadido
+                'active_fg': '#FFFFFF',  # Añadido
                 'card_bg': '#333333'
             },
             'light': {
@@ -21,6 +23,8 @@ class ThemeManager:
                 'button_fg': '#000000',
                 'listbox_bg': '#ffffff',
                 'listbox_fg': '#000000',
+                'active_bg': '#D0D0D0',  # Añadido
+                'active_fg': '#000000',  # Añadido
                 'card_bg': '#ffffff'
             }
         }

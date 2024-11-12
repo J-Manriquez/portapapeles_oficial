@@ -1,0 +1,24 @@
+{
+    "groups": {
+        "da10434c-d908-48b6-be87-38683591d38f": {
+            "name": "cumi",
+            "items": []
+        },
+        "bb824c3a-6e9a-4d36-9535-9f0ef1606ab5": {
+            "name": "hola",
+            "items": []
+        }
+    },
+    "pinned_items": {
+        "5c87249d-93fa-43d6-b75f-70c4e73d6d11": {
+            "text": "def on_arrow_click(self, item_id):\r\n    groups = list(self.manager.group_manager.groups.items())\r\n    if groups:\r\n        group_names = [group['name'] for group in [g[1] for g in groups]]\r\n        selected_group = tk.StringVar()\r\n        dialog = tk.Toplevel(self.manager.root)\r\n        dialog.title(\"Seleccionar Grupo\")\r\n        \r\n        def on_select():\r\n            if selected_group.get():\r\n                group_id = next(g[0] for g in groups if g[1]['name'] == selected_group.get())\r\n                self.manager.group_manager.add_item_to_group(item_id, group_id)\r\n                print(f\"Item {item_id} added to group {selected_group.get()}\")\r\n            dialog.destroy()\r\n        \r\n        tk.Label(dialog, text=\"Seleccione un grupo:\").pack()\r\n        for name in group_names:\r\n            tk.Radiobutton(dialog, text=name, variable=selected_group, value=name).pack()\r\n        \r\n        tk.Button(dialog, text=\"Agregar\", command=on_select).pack()\r\n        dialog.protocol(\"WM_DELETE_WINDOW\", dialog.destroy)\r\n        dialog.transient(self.manager.root)\r\n        dialog.grab_set()\r\n        self.manager.root.wait_window(dialog)\r\n    else:\r\n        tk.messagebox.showinfo(\"Sin Grupos\", \"No hay grupos disponibles. Cree un grupo primero.\")",
+            "pinned": true,
+            "with_format": true
+        },
+        "0f35f12b-023e-43fe-88a3-dbe7cd3d42d5": {
+            "text": "groups = data.get('groups', {})\r\n        for group in groups.values():\r\n            if 'items' in group:\r\n                group['items'] = [item if isinstance(item, dict) else {'id': item, 'text': 'Unknown'} for item in group['items']]\r\n        \r\n        return groups, data.get('pinned_items', {})",
+            "pinned": true,
+            "with_format": true
+        }
+    }
+}

@@ -11,6 +11,8 @@ import win32gui # type: ignore
 from functions import Functions
 from navigation import Navigation
 from theme_manager import ThemeManager
+from group_manager import GroupManager
+from data_manager import DataManager
 
 class ClipboardManager:
     def __init__(self, root):
@@ -44,14 +46,21 @@ class ClipboardManager:
         self.selected_button = None  # Para la navegación de botones
         self.selected_card = None    # Para la navegación de cards
         self.selected_icon = None    # Para la navegación de iconos en una card
-        self.total_buttons = 3
+        self.total_buttons = 6
+        self.top_buttons = 3  # Número de botones en la barra superior
         self.icons_per_card = 3
 
+        self.data_manager = DataManager()
+        self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)
         self.navigation = Navigation(self)
-        self.theme_manager = ThemeManager(self)
-
+        self.group_manager = GroupManager(self.root, self)
+        
         self.create_gui()
+        
+        
+        self.load_saved_data()
+
         self.theme_manager.apply_theme()
 
         self.root.bind('<Return>', self.navigation.activate_selected)
@@ -72,6 +81,8 @@ class ClipboardManager:
         keyboard.add_hotkey('enter', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Return')))    
         
         self.root.after(1000, self.navigation.check_window_state)
+        self.root.bind("<Map>", self.on_main_window_map)
+        self.root.bind("<Unmap>", self.on_main_window_unmap)
 
     def create_gui(self):
         self.main_frame = ttk.Frame(self.root, style='Main.TFrame')
@@ -98,7 +109,7 @@ class ClipboardManager:
         main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
         main_buttons_frame.pack(fill=tk.X, padx=8, pady=(5, 0))
 
-        self.button1 = tk.Button(main_buttons_frame, text="Botón 1", font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
+        self.button1 = tk.Button(main_buttons_frame, text="Grupos", command=self.show_groups, font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
         self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         self.button2 = tk.Button(main_buttons_frame, text="Botón 2", font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
@@ -110,14 +121,45 @@ class ClipboardManager:
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])  
-        self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
+        # self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
 
         self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.cards_frame = tk.Frame(self.canvas)
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.scrollbar.pack_forget()
 
-        self.canvas.bind('<Configure>', self.functions.on_canvas_configure)
-        self.canvas.bind_all("<MouseWheel>", self.functions.on_mousewheel)
+        # self.canvas.bind('<Configure>', self.functions.on_canvas_configure)
+        # self.canvas.bind_all("<MouseWheel>", self.functions.on_mousewheel)
 
         self.title_label.bind('<Button-1>', self.navigation.start_move)
         self.title_label.bind('<B1-Motion>', self.navigation.on_move)
+        
+        self.canvas.bind('<Configure>', self.on_canvas_configure)
+        self.cards_frame.bind('<Configure>', self.on_frame_configure)
+
+    def on_canvas_configure(self, event):
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+
+    def on_frame_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.canvas.itemconfig(self.canvas_window, width=self.canvas.winfo_width())
+        
+    def show_groups(self):
+        self.group_manager.show_groups_window()
+        
+    def load_saved_data(self):
+        groups, pinned_items = self.data_manager.load_data()
+        self.group_manager.groups = groups
+        self.clipboard_items.update(pinned_items)
+        self.functions.refresh_cards()
+        
+    def on_main_window_map(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.deiconify()
+
+    def on_main_window_unmap(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.withdraw()
