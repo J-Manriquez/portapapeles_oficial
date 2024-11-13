@@ -314,4 +314,4 @@ class Functions:
     def add_to_group(self, item_id, group_id, dialog):
         self.manager.group_manager.add_item_to_group(item_id, group_id)
         dialog.destroy()
-        tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
+        # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")

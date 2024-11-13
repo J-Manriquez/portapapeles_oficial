@@ -25,7 +25,7 @@ class GroupManager:
 
             # Barra de título personalizada
             title_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark']['bg'])
-            title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+            title_frame.pack(fill=tk.X, padx=2, pady=(0, 0))
 
             title_label = tk.Label(title_frame, text="Grupos", font=('Segoe UI', 10, 'bold'), 
                                    bg=self.theme_manager.colors['dark']['bg'], 
@@ -48,20 +48,56 @@ class GroupManager:
                                      fg=self.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.LEFT)
 
-            # Marco para la lista de grupos
-            self.groups_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark']['bg'])
-            self.groups_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+            # # Marco para la lista de grupos
+            # self.groups_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark']['bg'])
+            # self.groups_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+            # # Hacer la ventana arrastrable
+            # title_label.bind('<Button-1>', self.start_move)
+            # title_label.bind('<B1-Motion>', self.on_move)
+            
+            # Canvas para scroll y contenedor de grupos
+            canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
+            canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+            # Scrollbar oculto
+            scrollbar = ttk.Scrollbar(self.groups_window, orient=tk.VERTICAL, command=canvas.yview)
+            canvas.configure(yscrollcommand=scrollbar.set)
+
+            # Frame contenedor dentro del canvas para el scroll
+            self.groups_frame = tk.Frame(canvas, bg=self.theme_manager.colors['dark']['bg'])
+            canvas_window = canvas.create_window((0, 0), window=self.groups_frame, anchor='nw', width=295)
+
+            # Ajustar el ancho del frame contenedor al canvas
+            def on_canvas_resize(event):
+                canvas.itemconfig(canvas_window, width=event.width)
+
+            canvas.bind("<Configure>", on_canvas_resize)
+
+            # Configuración de scroll
+            def on_frame_configure(event):
+                canvas.configure(scrollregion=canvas.bbox("all"))
+
+            self.groups_frame.bind("<Configure>", on_frame_configure)
+
+            # Función para desplazamiento con la rueda del mouse
+            def _on_mousewheel(event):
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
             # Hacer la ventana arrastrable
             title_label.bind('<Button-1>', self.start_move)
             title_label.bind('<B1-Motion>', self.on_move)
 
             self.refresh_groups()
+
+        # Si la ventana de grupos ya estaba abierta, llevarla al frente
         else:
             self.groups_window.lift()
             self.groups_window.attributes('-topmost', True)
             self.groups_window.after_idle(self.groups_window.attributes, '-topmost', False)
-            
+        
     def start_move(self, event):
         self.x = event.x
         self.y = event.y
@@ -81,8 +117,10 @@ class GroupManager:
             widget.destroy()
 
         for group_id, group_info in self.groups.items():
-            group_card = tk.Frame(self.groups_frame, bg=self.theme_manager.colors['dark']['card_bg'])
-            group_card.pack(fill=tk.X, padx=5, pady=5)
+            group_card = tk.Frame(self.groups_frame, bg=self.theme_manager.colors['dark']['card_bg'], cursor="hand2")
+            group_card.pack(fill=tk.X, padx=4, pady=2)
+            
+            group_card.bind("<Button-1>", lambda e, gid=group_id: self.show_group_content(gid))
 
             name_label = tk.Label(group_card, text=group_info['name'], font=("Segoe UI", 10, "bold"),
                                 bg=self.theme_manager.colors['dark']['card_bg'],
@@ -93,40 +131,32 @@ class GroupManager:
                                 bg=self.theme_manager.colors['dark']['card_bg'],
                                 fg=self.theme_manager.colors['dark']['fg'])
             count_label.pack(side=tk.LEFT, padx=5, pady=5)
-
-            view_button = tk.Button(group_card, text="👁️", command=lambda gid=group_id: self.show_group_content(gid),
+            
+            delete_button = tk.Button(group_card, text="    🗑️", command=lambda gid=group_id: self.delete_group(gid),
                                     font=('Segoe UI', 10), bd=0, bg=self.theme_manager.colors['dark']['button_bg'],
                                     fg=self.theme_manager.colors['dark']['button_fg'])
-            view_button.pack(side=tk.RIGHT, padx=2, pady=5)
+            delete_button.pack(side=tk.RIGHT, padx=2, pady=5)
 
             edit_button = tk.Button(group_card, text="✏️", command=lambda gid=group_id: self.edit_group(gid),
                                     font=('Segoe UI', 10), bd=0, bg=self.theme_manager.colors['dark']['button_bg'],
                                     fg=self.theme_manager.colors['dark']['button_fg'])
             edit_button.pack(side=tk.RIGHT, padx=2, pady=5)
 
-            delete_button = tk.Button(group_card, text="🗑️", command=lambda gid=group_id: self.delete_group(gid),
-                                    font=('Segoe UI', 10), bd=0, bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
-            delete_button.pack(side=tk.RIGHT, padx=2, pady=5)
-
+            
+            
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
         self.data_manager.save_data(self.groups, pinned_items)
         print("Groups and pinned items saved")
 
     def edit_group(self, group_id):
-        new_name = simpledialog.askstring("Editar Grupo", "Ingrese el nuevo nombre del grupo:", 
-                                          initialvalue=self.groups[group_id]['name'])
-        if new_name:
-            self.groups[group_id]['name'] = new_name
-            self.refresh_groups()
-            self.save_groups()
+        self.show_edit_group_dialog(group_id)
 
     def delete_group(self, group_id):
-        if tk.messagebox.askyesno("Eliminar Grupo", "¿Está seguro de que desea eliminar este grupo?"):
-            del self.groups[group_id]
-            self.refresh_groups()
-            self.save_groups()
+        # if tk.messagebox.askyesno("Eliminar Grupo", "¿Está seguro de que desea eliminar este grupo?"):
+        del self.groups[group_id]
+        self.refresh_groups()
+        self.save_groups()
 
     def add_item_to_group(self, item_id, group_id):
         if group_id in self.groups:
@@ -165,23 +195,23 @@ class GroupManager:
 
         # Barra de título personalizada
         title_frame = tk.Frame(group_window, bg=self.theme_manager.colors['dark']['bg'])
-        title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+        title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
 
         title_label = tk.Label(title_frame, text=f"Grupo: {self.groups[group_id]['name']}", 
                             font=('Segoe UI', 10, 'bold'),
                             bg=self.theme_manager.colors['dark']['bg'],
                             fg=self.theme_manager.colors['dark']['fg'])
-        title_label.pack(side=tk.LEFT, padx=5)
+        title_label.pack(side=tk.LEFT, padx=5, pady=0)
 
         close_button = tk.Button(title_frame, text="❌", command=group_window.destroy,
-                                font=('Segoe UI', 10, 'bold'), bd=0, padx=10,
+                                font=('Segoe UI', 10, 'bold'),bd=0, padx=10, width=5, height=2,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'])
         close_button.pack(side=tk.RIGHT)
 
         # Marco para la lista de items
         items_frame = tk.Frame(group_window, bg=self.theme_manager.colors['dark']['bg'])
-        items_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        items_frame.pack(fill=tk.BOTH, expand=True, padx=1, pady=2)
 
         # Mostrar items del grupo
         for item in self.groups[group_id]['items']:
@@ -250,39 +280,44 @@ class GroupManager:
     def add_group(self):
         dialog = tk.Toplevel(self.master)
         dialog.title("Nuevo Grupo")
-        dialog.geometry("295x150")
+        dialog.geometry("200x115")
         dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
 
         # Barra de título personalizada
         title_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
-        title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+        title_frame.pack(fill=tk.X, padx=4, pady=(4, 0))
 
         title_label = tk.Label(title_frame, text="Nuevo Grupo", font=('Segoe UI', 10, 'bold'),
                             bg=self.theme_manager.colors['dark']['bg'],
                             fg=self.theme_manager.colors['dark']['fg'])
-        title_label.pack(side=tk.LEFT, padx=5)
+        title_label.pack(side=tk.LEFT, padx=0)
 
         close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
-                                font=('Segoe UI', 10, 'bold'), bd=0, padx=10,
+                                font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'])
         close_button.pack(side=tk.RIGHT)
 
         # Contenido
         content_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
-        content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=0)
 
         name_label = tk.Label(content_frame, text="Nombre del grupo:",
                             bg=self.theme_manager.colors['dark']['bg'],
                             fg=self.theme_manager.colors['dark']['fg'])
-        name_label.pack(pady=(0, 5))
+        name_label.pack(anchor='w', pady=(0, 5))
 
         name_entry = tk.Entry(content_frame, bg=self.theme_manager.colors['dark']['button_bg'],
                             fg=self.theme_manager.colors['dark']['fg'],
-                            insertbackground=self.theme_manager.colors['dark']['fg'])
-        name_entry.pack(fill=tk.X, pady=(0, 10))
+                            insertbackground=self.theme_manager.colors['dark']['fg'],
+                            relief=tk.FLAT,  # Quita el efecto 3D
+                            bd=0,  # Quita el borde
+                            highlightthickness=1,  # Añade un borde fino
+                            highlightcolor=self.theme_manager.colors['dark'].get('highlight', '#555555'),  # Color del borde cuando tiene foco
+                            highlightbackground=self.theme_manager.colors['dark'].get('border', '#333333'))  # Color del borde cuando no tiene foco
+        name_entry.pack(fill=tk.X, pady=(0, 0))
 
         def save_group():
             name = name_entry.get().strip()
@@ -297,8 +332,100 @@ class GroupManager:
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'],
                                 activebackground=self.theme_manager.colors['dark'].get('active_bg', '#4E4E4E'),
-                                activeforeground=self.theme_manager.colors['dark'].get('active_fg', '#FFFFFF'))
-        save_button.pack()
+                                activeforeground=self.theme_manager.colors['dark'].get('active_fg', '#FFFFFF'),
+                                relief=tk.FLAT,  # Elimina el estilo 3D
+                                bd=0,  # Elimina el borde
+                                padx=4, pady=5)
+        save_button.pack(fill=tk.X, expand=True, pady=(0, 0))
+
+        # Hacer la ventana arrastrable
+        def start_move(event):
+            dialog.x = event.x
+            dialog.y = event.y
+
+        def on_move(event):
+            deltax = event.x - dialog.x
+            deltay = event.y - dialog.y
+            x = dialog.winfo_x() + deltax
+            y = dialog.winfo_y() + deltay
+            dialog.geometry(f"+{x}+{y}")
+
+        title_frame.bind('<Button-1>', start_move)
+        title_frame.bind('<B1-Motion>', on_move)
+
+        # Centrar el diálogo en la pantalla
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+
+        dialog.focus_set()
+        name_entry.focus()
+        
+    # ----------------------------------------------------------------------------------
+    
+    def show_edit_group_dialog(self, group_id):
+        dialog = tk.Toplevel(self.master)
+        dialog.title("Editar Grupo")
+        dialog.geometry("200x115")
+        dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
+        dialog.overrideredirect(True)
+        dialog.attributes('-topmost', True)
+
+        # Barra de título personalizada
+        title_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
+        title_frame.pack(fill=tk.X, padx=4, pady=(4, 0))
+
+        title_label = tk.Label(title_frame, text="Editar Grupo", font=('Segoe UI', 10, 'bold'),
+                            bg=self.theme_manager.colors['dark']['bg'],
+                            fg=self.theme_manager.colors['dark']['fg'])
+        title_label.pack(side=tk.LEFT, padx=0)
+
+        close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
+                                font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
+                                bg=self.theme_manager.colors['dark']['button_bg'],
+                                fg=self.theme_manager.colors['dark']['button_fg'])
+        close_button.pack(side=tk.RIGHT)
+
+        # Contenido
+        content_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=0)
+
+        name_label = tk.Label(content_frame, text="Nuevo nombre del grupo:",
+                            bg=self.theme_manager.colors['dark']['bg'],
+                            fg=self.theme_manager.colors['dark']['fg'])
+        name_label.pack(anchor='w', pady=(0, 5))
+
+        name_entry = tk.Entry(content_frame, bg=self.theme_manager.colors['dark']['button_bg'],
+                            fg=self.theme_manager.colors['dark']['fg'],
+                            insertbackground=self.theme_manager.colors['dark']['fg'],
+                            relief=tk.FLAT,  # Quita el efecto 3D
+                            bd=0,  # Quita el borde
+                            highlightthickness=1,  # Añade un borde fino
+                            highlightcolor=self.theme_manager.colors['dark'].get('highlight', '#555555'),  # Color del borde cuando tiene foco
+                            highlightbackground=self.theme_manager.colors['dark'].get('border', '#333333'))  # Color del borde cuando no tiene foco
+        name_entry.insert(0, self.groups[group_id]['name'])
+        name_entry.pack(fill=tk.X, pady=(0, 0))
+
+        def save_group():
+            new_name = name_entry.get().strip()
+            if new_name:
+                self.groups[group_id]['name'] = new_name
+                self.refresh_groups()
+                self.save_groups()
+                dialog.destroy()
+
+        save_button = tk.Button(content_frame, text="Guardar", command=save_group,
+                                bg=self.theme_manager.colors['dark']['button_bg'],
+                                fg=self.theme_manager.colors['dark']['button_fg'],
+                                activebackground=self.theme_manager.colors['dark'].get('active_bg', '#4E4E4E'),
+                                activeforeground=self.theme_manager.colors['dark'].get('active_fg', '#FFFFFF'),
+                                relief=tk.FLAT,  # Elimina el estilo 3D
+                                bd=0,  # Elimina el borde
+                                padx=4, pady=5)
+        save_button.pack(fill=tk.X, expand=True, pady=(0, 0))  # Hace que el botón ocupe todo el ancho disponible
 
         # Hacer la ventana arrastrable
         def start_move(event):
