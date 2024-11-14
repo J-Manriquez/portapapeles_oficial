@@ -11,6 +11,9 @@ def main():
     # Aplicar las configuraciones iniciales
     root.geometry(f"{app.settings_manager.settings['width']}x{app.settings_manager.settings['height']}+0+0")
     
+    if show_settings:
+        root.after(100, app.settings_manager.show_settings_window)
+    
     root.mainloop()
 
 if __name__ == "__main__":

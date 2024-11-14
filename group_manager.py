@@ -26,7 +26,14 @@ class GroupManager:
             
             window_width = self.settings['width']
             window_height = self.settings['height']
-            self.groups_window.geometry(f"{window_width}x{window_height}+0+0")
+            # self.groups_window.geometry(f"{window_width}x{window_height}+0+0")
+            
+             # Calcula la posición relativa a la ventana principal
+            x = self.clipboard_manager.window_x + 10
+            y = self.clipboard_manager.window_y + 10
+            
+            self.groups_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+            
             self.groups_window.overrideredirect(True) # Oculta la barra de título
             
             self.groups_window.configure(bg=self.theme_manager.colors['dark']['bg'])
@@ -201,8 +208,13 @@ class GroupManager:
         
         window_width = self.settings_manager.settings['width']
         window_height = self.settings_manager.settings['height']
-        group_window.geometry(f"{window_width}x{window_height}+0+0")
         
+         # Calcula la posición relativa a la ventana principal
+        x = self.clipboard_manager.window_x + 20
+        y = self.clipboard_manager.window_y + 20
+        
+        group_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+                
         group_window.overrideredirect(True)
         group_window.configure(bg=self.theme_manager.colors['dark']['bg'])
         group_window.attributes('-topmost', True)
@@ -295,6 +307,13 @@ class GroupManager:
         dialog = tk.Toplevel(self.master)
         dialog.title("Nuevo Grupo")
         dialog.geometry("200x115")
+        
+        # Calcula la posición relativa a la ventana principal
+        x = self.clipboard_manager.window_x + 40
+        y = self.clipboard_manager.window_y + 40
+        
+        dialog.geometry(f"+{x}+{y}")
+        
         dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
@@ -383,7 +402,14 @@ class GroupManager:
     def show_edit_group_dialog(self, group_id):
         dialog = tk.Toplevel(self.master)
         dialog.title("Editar Grupo")
-        dialog.geometry("200x115")
+        # dialog.geometry("200x115")
+        
+        # Calcula la posición relativa a la ventana principal
+        x = self.clipboard_manager.window_x + 40
+        y = self.clipboard_manager.window_y + 40
+        
+        dialog.geometry(f"200x115+{x}+{y}")
+        
         dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)

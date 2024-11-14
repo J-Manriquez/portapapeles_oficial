@@ -28,7 +28,12 @@ class SettingsManager:
             
             window_width = self.settings['width']
             window_height = self.settings['height']
-            self.settings_window.geometry(f"{window_width}x{window_height}+0+0")
+
+            # Usa las coordenadas de la ventana principal o una posición predeterminada
+            x = getattr(self.clipboard_manager, 'window_x', 0) + 50
+            y = getattr(self.clipboard_manager, 'window_y', 0) + 50
+            
+            self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
             self.settings_window.overrideredirect(True)
             self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])

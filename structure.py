@@ -8,6 +8,8 @@ from datetime import datetime
 import keyboard # type: ignore
 import sys
 import win32gui # type: ignore
+import pyautogui  # Añade esta importación al principio del archivo
+
 from functions import Functions
 from navigation import Navigation
 from theme_manager import ThemeManager
@@ -29,8 +31,10 @@ class ClipboardManager:
 
         self.window_width = settings['width']
         self.window_height = settings['height']
+        self.window_x = 0  # Inicializa window_x
+        self.window_y = 0  # Inicializa window_y
 
-        self.root.geometry(f"{self.window_width}x{self.window_height}+0+0")
+        # self.root.geometry(f"{self.window_width}x{self.window_height}")
         self.root.overrideredirect(True)
         
         self.root.withdraw()
@@ -185,6 +189,8 @@ class ClipboardManager:
         x = self.root.winfo_x() + delta_x
         y = self.root.winfo_y() + delta_y
         self.root.geometry(f"+{x}+{y}")
+        self.window_x = x  # Actualiza la posición x de la ventana
+        self.window_y = y  # Actualiza la posición y de la ventana
 
     def on_canvas_configure(self, event):
         self.canvas.itemconfig(self.canvas_window, width=event.width)

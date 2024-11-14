@@ -5,6 +5,8 @@ import win32gui
 import keyboard
 import time
 import pyperclip
+import pyautogui  # Añade esta importación al principio del archivo
+
 from utils import measure_time  
 
 class Navigation:
@@ -251,6 +253,22 @@ class Navigation:
     def show_window(self):
         try:
             self.manager.previous_window = win32gui.GetForegroundWindow()
+            
+             # Obtener la posición actual del cursor
+            mouse_x, mouse_y = pyautogui.position()
+            
+            # Calcular la posición de la ventana
+            window_x = mouse_x - self.manager.window_width // 2
+            window_y = mouse_y - self.manager.window_height // 2
+            
+            # Asegurar que la ventana no se salga de la pantalla
+            screen_width, screen_height = pyautogui.size()
+            window_x = max(0, min(window_x, screen_width - self.manager.window_width))
+            window_y = max(0, min(window_y, screen_height - self.manager.window_height))
+            
+            self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{window_x}+{window_y}")
+            self.manager.window_x = window_x  # Guarda la posición x de la ventana
+            self.manager.window_y = window_y  # Guarda la posición y de la ventana
             
             self.manager.root.deiconify()
             self.manager.root.geometry("+0+0") 
