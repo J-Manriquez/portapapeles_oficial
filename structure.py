@@ -16,7 +16,7 @@ from data_manager import DataManager
 from settings_manager import SettingsManager
 
 class ClipboardManager:
-    def __init__(self, root):
+    def __init__(self, root, show_settings=False):
         self.root = root
         self.root.title("Portapapeles")
 
@@ -85,6 +85,9 @@ class ClipboardManager:
         self.root.after(1000, self.navigation.check_window_state)
         self.root.bind("<Map>", self.on_main_window_map)
         self.root.bind("<Unmap>", self.on_main_window_unmap)
+        
+        if show_settings:
+            self.root.after(100, self.settings_manager.show_settings_window)
 
     def create_gui(self):
         self.main_frame = ttk.Frame(self.root, style='Main.TFrame')

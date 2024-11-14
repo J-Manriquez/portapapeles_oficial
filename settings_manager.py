@@ -153,7 +153,7 @@ class SettingsManager:
             
     def restart_app(self):
         python = sys.executable
-        os.execl(python, python, *sys.argv)
+        os.execl(python, python, *sys.argv, "--show-settings")
             
     def start_move(self, event):
         self.x = event.x
