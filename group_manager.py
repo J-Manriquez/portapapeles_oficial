@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
 import uuid
+from settings_manager import SettingsManager
+
 
 class GroupManager:
     def __init__(self, master, clipboard_manager):
@@ -8,6 +10,7 @@ class GroupManager:
         self.clipboard_manager = clipboard_manager
         self.data_manager = clipboard_manager.data_manager
         self.theme_manager = clipboard_manager.theme_manager
+        self.settings_manager = clipboard_manager.settings_manager
         self.groups, _ = self.data_manager.load_data()
         self.groups_window = None
         self.groups_frame = None
@@ -17,8 +20,12 @@ class GroupManager:
         if self.groups_window is None or not self.groups_window.winfo_exists():
             self.groups_window = tk.Toplevel(self.master)
             self.groups_window.title("Grupos")
-            self.groups_window.geometry("295x400+0+0")
-            self.groups_window.overrideredirect(True)  # Oculta la barra de título
+            
+            window_width = self.settings_manager.settings['width']
+            window_height = self.settings_manager.settings['height']
+            self.groups_window.geometry(f"{window_width}x{window_height}+0+0")
+            self.groups_window.overrideredirect(True) # Oculta la barra de título
+            
             self.groups_window.configure(bg=self.theme_manager.colors['dark']['bg'])
             self.groups_window.attributes('-topmost', True) # Hacer que la ventana esté siempre en primer plano
             self.master.bind("<Destroy>", self.on_main_window_close) # Vincular el cierre de la ventana principal al cierre de la ventana de grupos
@@ -188,7 +195,11 @@ class GroupManager:
     def show_group_content(self, group_id):
         group_window = tk.Toplevel(self.master)
         group_window.title(f"Contenido del Grupo: {self.groups[group_id]['name']}")
-        group_window.geometry("295x400+0+0")
+        
+        window_width = self.settings_manager.settings['width']
+        window_height = self.settings_manager.settings['height']
+        group_window.geometry(f"{window_width}x{window_height}+0+0")
+        
         group_window.overrideredirect(True)
         group_window.configure(bg=self.theme_manager.colors['dark']['bg'])
         group_window.attributes('-topmost', True)

@@ -13,14 +13,17 @@ from navigation import Navigation
 from theme_manager import ThemeManager
 from group_manager import GroupManager
 from data_manager import DataManager
+from settings_manager import SettingsManager
 
 class ClipboardManager:
     def __init__(self, root):
         self.root = root
         self.root.title("Portapapeles")
 
-        window_width = 295
-        window_height = 400
+        self.settings_manager = SettingsManager(self.root, self)
+        
+        window_width = self.settings_manager.settings['width']
+        window_height = self.settings_manager.settings['height']
         
         self.window_width = window_width
 
@@ -49,12 +52,14 @@ class ClipboardManager:
         self.total_buttons = 6
         self.top_buttons = 3  # Número de botones en la barra superior
         self.icons_per_card = 3
+        self.hotkey='alt+v'
 
         self.data_manager = DataManager()
         self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)
         self.navigation = Navigation(self)
         self.group_manager = GroupManager(self.root, self)
+        self.settings_manager = SettingsManager(self.root, self)
         
         self.create_gui()
         
@@ -73,7 +78,7 @@ class ClipboardManager:
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
 
-        keyboard.add_hotkey('alt+j', self.navigation.toggle_window)
+        self.navigation.update_hotkey(None, self.settings_manager.settings['hotkey'])
         keyboard.add_hotkey('up', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Up')))
         keyboard.add_hotkey('down', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Down')))
         keyboard.add_hotkey('left', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Left')))
@@ -89,7 +94,7 @@ class ClipboardManager:
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
-        self.title_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
+        self.title_frame.pack(fill=tk.X, padx=3, pady=(0,6))
 
         self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark']['bg'], fg=self.theme_manager.colors['dark']['fg'])
         self.title_label.pack(side=tk.LEFT, padx=5)
@@ -97,26 +102,47 @@ class ClipboardManager:
         buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark']['bg'])
         buttons_frame.pack(side=tk.RIGHT, padx=4)
 
-        self.clear_button = tk.Button(buttons_frame, text="      🗑️", command=self.functions.clear_history, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
-        self.clear_button.pack(side=tk.LEFT)
-
         self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
         self.theme_button.pack(side=tk.LEFT)
+
+        self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.settings_manager.show_settings_window, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
+        self.clear_button.pack(side=tk.LEFT)
 
         self.close_button = tk.Button(buttons_frame, text="❌", command=self.functions.exit_app, font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
         self.close_button.pack(side=tk.LEFT)
 
         main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
-        main_buttons_frame.pack(fill=tk.X, padx=8, pady=(5, 0))
+        main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
 
-        self.button1 = tk.Button(main_buttons_frame, text="Grupos", command=self.show_groups, font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
-        self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.button1 = tk.Button(main_buttons_frame, text="Grupos", 
+                                 command=self.show_groups, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,  # Quita el efecto 3D
+                                 bd=0,  # Quita el borde
+                                 highlightthickness=1, # Añade un borde fino
+                                 pady=8)
+        self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
-        self.button2 = tk.Button(main_buttons_frame, text="Botón 2", font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
-        self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.button2 = tk.Button(main_buttons_frame, text="Con formato", 
+                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,  # Quita el efecto 3D
+                                 bd=0,  # Quita el borde
+                                 highlightthickness=1, # Añade un borde fino
+                                 pady=8) 
+        self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
-        self.button3 = tk.Button(main_buttons_frame, text="Con formato", command=self.functions.toggle_paste_format, font=('Segoe UI', 10), bg=self.theme_manager.colors['dark']['button_bg'], fg=self.theme_manager.colors['dark']['button_fg'])
-        self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo", 
+                                 command=self.functions.clear_history, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,  # Quita el efecto 3D
+                                 bd=0,  # Quita el borde
+                                 highlightthickness=1, # Añade un borde fino
+                                 pady=8)                               
+        self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)

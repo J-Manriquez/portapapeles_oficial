@@ -10,6 +10,20 @@ from utils import measure_time
 class Navigation:
     def __init__(self, manager):
         self.manager = manager
+        self.current_hotkey = f"alt+{self.manager.settings_manager.settings['hotkey'].lower()}"
+        self.update_hotkey(None, self.current_hotkey)
+        
+    def update_hotkey(self, old_hotkey, new_hotkey):
+        if old_hotkey:
+            try:
+                keyboard.remove_hotkey(old_hotkey)
+            except KeyError:
+                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
+
+        new_hotkey = f"alt+{new_hotkey.lower()}"
+        keyboard.add_hotkey(new_hotkey, self.toggle_window)
+        self.current_hotkey = new_hotkey
+        print(f"Nuevo atajo configurado: {new_hotkey}")
 
     @measure_time
     def navigate_vertical(self, event):
