@@ -13,6 +13,7 @@ class GroupManager:
         self.data_manager = clipboard_manager.data_manager
         self.theme_manager = clipboard_manager.theme_manager
         self.settings = clipboard_manager.settings
+        self.settings_manager = clipboard_manager.settings_manager
         self.groups, _, _ = self.data_manager.load_data()
         self.groups_window = None
         self.groups_frame = None
@@ -23,8 +24,8 @@ class GroupManager:
             self.groups_window = tk.Toplevel(self.master)
             self.groups_window.title("Grupos")
             
-            window_width = self.settings_manager.settings['width']
-            window_height = self.settings_manager.settings['height']
+            window_width = self.settings['width']
+            window_height = self.settings['height']
             self.groups_window.geometry(f"{window_width}x{window_height}+0+0")
             self.groups_window.overrideredirect(True) # Oculta la barra de título
             

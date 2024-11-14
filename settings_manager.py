@@ -11,7 +11,11 @@ class SettingsManager:
         self.master = master
         self.clipboard_manager = clipboard_manager
         self.settings_window = None
-        self.settings = clipboard_manager.settings
+        self.settings = None      
+          
+    def initialize_settings(self):
+        # Llama a este método después de que ClipboardManager haya inicializado completamente
+        self.settings = self.clipboard_manager.settings
         
     def save_settings(self):
         groups, pinned_items, _ = self.clipboard_manager.data_manager.load_data()

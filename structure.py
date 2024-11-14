@@ -22,8 +22,11 @@ class ClipboardManager:
 
         self.data_manager = DataManager()
         groups, pinned_items, settings = self.data_manager.load_data()
-
+        
         self.settings = settings
+        self.settings_manager = SettingsManager(self.root, self)
+        self.settings_manager.initialize_settings()
+
         self.window_width = settings['width']
         self.window_height = settings['height']
 
@@ -57,7 +60,6 @@ class ClipboardManager:
         self.functions = Functions(self)
         self.navigation = Navigation(self)
         self.group_manager = GroupManager(self.root, self)
-        self.settings_manager = SettingsManager(self.root, self)
         
         self.group_manager.groups = groups
         
@@ -157,14 +159,32 @@ class ClipboardManager:
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.scrollbar.pack_forget()
 
-        # self.canvas.bind('<Configure>', self.functions.on_canvas_configure)
-        # self.canvas.bind_all("<MouseWheel>", self.functions.on_mousewheel)
+        # Variables para el movimiento de la ventana
+        self._drag_data = {"x": 0, "y": 0, "item": None}
 
-        self.title_label.bind('<Button-1>', self.navigation.start_move)
-        self.title_label.bind('<B1-Motion>', self.navigation.on_move)
+        # Vincular eventos para mover la ventana
+        self.title_label.bind('<Button-1>', self.start_move)
+        self.title_label.bind('<ButtonRelease-1>', self.stop_move)
+        self.title_label.bind('<B1-Motion>', self.on_move)
         
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
+        
+    def start_move(self, event):
+        self._drag_data["x"] = event.x
+        self._drag_data["y"] = event.y
+
+    def stop_move(self, event):
+        self._drag_data["x"] = 0
+        self._drag_data["y"] = 0
+        self._drag_data["item"] = None
+
+    def on_move(self, event):
+        delta_x = event.x - self._drag_data["x"]
+        delta_y = event.y - self._drag_data["y"]
+        x = self.root.winfo_x() + delta_x
+        y = self.root.winfo_y() + delta_y
+        self.root.geometry(f"+{x}+{y}")
 
     def on_canvas_configure(self, event):
         self.canvas.itemconfig(self.canvas_window, width=event.width)

@@ -314,19 +314,6 @@ class Navigation:
             return 'break'  # Prevenir que el evento se propague
         return None
 
-    def start_move(self, event):
-        self.manager.x = event.x
-        self.manager.y = event.y
-
-    def on_move(self, event):
-        dx = event.x - self.manager.x
-        dy = event.y - self.manager.y
-        x = self.manager.root.winfo_x() + dx
-        y = self.manager.root.winfo_y() + dy
-        self.manager.root.geometry("+{}+{}".format(x, y))
-        self.manager.x = event.x
-        self.manager.y = event.y
-
     def ensure_visible(self, widget):
         if widget is None:
             return
