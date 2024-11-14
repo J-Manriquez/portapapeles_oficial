@@ -1,3 +1,5 @@
+# group_manager.py
+
 import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
 import uuid
@@ -10,8 +12,8 @@ class GroupManager:
         self.clipboard_manager = clipboard_manager
         self.data_manager = clipboard_manager.data_manager
         self.theme_manager = clipboard_manager.theme_manager
-        self.settings_manager = clipboard_manager.settings_manager
-        self.groups, _ = self.data_manager.load_data()
+        self.settings = clipboard_manager.settings
+        self.groups, _, _ = self.data_manager.load_data()
         self.groups_window = None
         self.groups_frame = None
 
@@ -153,9 +155,9 @@ class GroupManager:
             
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
-        self.data_manager.save_data(self.groups, pinned_items)
+        self.data_manager.save_data(self.groups, pinned_items, self.clipboard_manager.settings)
         print("Groups and pinned items saved")
-
+        
     def edit_group(self, group_id):
         self.show_edit_group_dialog(group_id)
 

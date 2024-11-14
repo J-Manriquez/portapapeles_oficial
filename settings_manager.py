@@ -11,24 +11,12 @@ class SettingsManager:
         self.master = master
         self.clipboard_manager = clipboard_manager
         self.settings_window = None
-        self.settings_file = 'app_settings.json'
-        self.load_settings()
+        self.settings = clipboard_manager.settings
         
-    def load_settings(self):
-        if os.path.exists(self.settings_file):
-            with open(self.settings_file, 'r') as f:
-                self.settings = json.load(f)
-        else:
-            self.settings = {
-                'height': 400,
-                'width': 295,
-                'hotkey': 'v'
-            }
-
     def save_settings(self):
-        with open(self.settings_file, 'w') as f:
-            json.dump(self.settings, f)
-
+        groups, pinned_items, _ = self.clipboard_manager.data_manager.load_data()
+        self.clipboard_manager.data_manager.save_data(groups, pinned_items, self.settings)
+        
     def show_settings_window(self):
         if self.settings_window is None or not self.settings_window.winfo_exists():
             self.settings_window = tk.Toplevel(self.master)

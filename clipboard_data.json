@@ -10,5 +10,10 @@
             ]
         }
     },
-    "pinned_items": {}
+    "pinned_items": {},
+    "settings": {
+        "height": 400,
+        "width": 295,
+        "hotkey": "c"
+    }
 }

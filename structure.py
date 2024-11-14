@@ -20,14 +20,14 @@ class ClipboardManager:
         self.root = root
         self.root.title("Portapapeles")
 
-        self.settings_manager = SettingsManager(self.root, self)
-        
-        window_width = self.settings_manager.settings['width']
-        window_height = self.settings_manager.settings['height']
-        
-        self.window_width = window_width
+        self.data_manager = DataManager()
+        groups, pinned_items, settings = self.data_manager.load_data()
 
-        self.root.geometry(f"{window_width}x{window_height}+0+0")
+        self.settings = settings
+        self.window_width = settings['width']
+        self.window_height = settings['height']
+
+        self.root.geometry(f"{self.window_width}x{self.window_height}+0+0")
         self.root.overrideredirect(True)
         
         self.root.withdraw()
@@ -35,37 +35,34 @@ class ClipboardManager:
 
         self.previous_window = None
 
-        self.clipboard_items = {}  # Diccionario para almacenar los items del portapapeles
+        self.clipboard_items = pinned_items
         self.current_clipboard = ""
         self.selected_index = None
-        self.is_visible = False
-        self.current_selection = {'type': 'button', 'index': 0}  # type puede ser 'button', 'card' o 'icon'
+        self.current_selection = {'type': 'button', 'index': 0}
         self.is_dark_mode = True
         
         self.paste_with_format = True
         
         self.previous_window = None
         self.last_active_window = None
-        self.selected_button = None  # Para la navegación de botones
-        self.selected_card = None    # Para la navegación de cards
-        self.selected_icon = None    # Para la navegación de iconos en una card
+        self.selected_button = None
+        self.selected_card = None
+        self.selected_icon = None
         self.total_buttons = 6
-        self.top_buttons = 3  # Número de botones en la barra superior
+        self.top_buttons = 3
         self.icons_per_card = 3
-        self.hotkey='alt+v'
+        self.hotkey = f"alt+{settings['hotkey']}"
 
-        self.data_manager = DataManager()
         self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)
         self.navigation = Navigation(self)
         self.group_manager = GroupManager(self.root, self)
         self.settings_manager = SettingsManager(self.root, self)
         
+        self.group_manager.groups = groups
+        
         self.create_gui()
-        
-        
         self.load_saved_data()
-
         self.theme_manager.apply_theme()
 
         self.root.bind('<Return>', self.navigation.activate_selected)
@@ -177,7 +174,7 @@ class ClipboardManager:
         self.group_manager.show_groups_window()
         
     def load_saved_data(self):
-        groups, pinned_items = self.data_manager.load_data()
+        groups, pinned_items, _ = self.data_manager.load_data()
         self.group_manager.groups = groups
         self.clipboard_items.update(pinned_items)
         self.functions.refresh_cards()
