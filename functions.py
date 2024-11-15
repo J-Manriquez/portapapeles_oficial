@@ -104,6 +104,8 @@ class Functions:
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
         self.recalculate_card_heights()
+        # Asegurarse de que el scroll esté en la parte superior después de actualizar
+        self.manager.canvas.yview_moveto(0)
         
 
     def update_card(self, card, item_data):

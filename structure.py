@@ -34,7 +34,6 @@ class ClipboardManager:
         self.window_x = 0  # Inicializa window_x
         self.window_y = 0  # Inicializa window_y
 
-        # self.root.geometry(f"{self.window_width}x{self.window_height}")
         self.root.overrideredirect(True)
         
         self.root.withdraw()
@@ -124,9 +123,9 @@ class ClipboardManager:
                                  command=self.show_groups, font=('Segoe UI', 10), 
                                  bg=self.theme_manager.colors['dark']['button_bg'], 
                                  fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,  # Quita el efecto 3D
-                                 bd=0,  # Quita el borde
-                                 highlightthickness=1, # Añade un borde fino
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
                                  pady=8)
         self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
@@ -134,9 +133,9 @@ class ClipboardManager:
                                  command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
                                  bg=self.theme_manager.colors['dark']['button_bg'], 
                                  fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,  # Quita el efecto 3D
-                                 bd=0,  # Quita el borde
-                                 highlightthickness=1, # Añade un borde fino
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
                                  pady=8) 
         self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
@@ -144,24 +143,21 @@ class ClipboardManager:
                                  command=self.functions.clear_history, font=('Segoe UI', 10), 
                                  bg=self.theme_manager.colors['dark']['button_bg'], 
                                  fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,  # Quita el efecto 3D
-                                 bd=0,  # Quita el borde
-                                 highlightthickness=1, # Añade un borde fino
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
                                  pady=8)                               
         self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])  
-        # self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
+        
+        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
 
         self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.cards_frame = tk.Frame(self.canvas)
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollbar.pack_forget()
+        # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Variables para el movimiento de la ventana
         self._drag_data = {"x": 0, "y": 0, "item": None}
@@ -171,8 +167,14 @@ class ClipboardManager:
         self.title_label.bind('<ButtonRelease-1>', self.stop_move)
         self.title_label.bind('<B1-Motion>', self.on_move)
         
+        # Vincula eventos de scroll
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
+        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+
+    def scrollbar_set(self, start, end):
+        # Este método se llama cuando el canvas actualiza su región de scroll
+        self.canvas.yview_moveto(float(start))
         
     def start_move(self, event):
         self._drag_data["x"] = event.x
@@ -192,12 +194,26 @@ class ClipboardManager:
         self.window_x = x  # Actualiza la posición x de la ventana
         self.window_y = y  # Actualiza la posición y de la ventana
 
+    def on_scroll(self, *args):
+        # Este método se llama cuando se realiza un scroll
+        if len(args) == 3 and isinstance(args[2], str):
+            self.canvas.yview_moveto(args[0])
+        elif len(args) == 2 and isinstance(args[0], str):
+            self.canvas.yview_scroll(int(args[1]), args[0])
+
     def on_canvas_configure(self, event):
-        self.canvas.itemconfig(self.canvas_window, width=event.width)
+        # Ajusta el tamaño del área scrollable cuando el canvas cambia de tamaño
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        width = event.width
+        self.canvas.itemconfig(self.canvas_window, width=width)
 
     def on_frame_configure(self, event):
+        # Ajusta el área scrollable cuando el contenido del frame cambia
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self.canvas.itemconfig(self.canvas_window, width=self.canvas.winfo_width())
+
+    def on_mousewheel(self, event):
+        # Maneja el evento de la rueda del ratón para hacer scroll
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         
     def show_groups(self):
         self.group_manager.show_groups_window()
