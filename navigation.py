@@ -1,13 +1,17 @@
 # navigation.py
-import win32com.client
+import win32com.client # type: ignore
+import win32clipboard  # type: ignore
 import tkinter as tk
-import win32gui
-import keyboard
+import win32gui # type: ignore
+import keyboard # type: ignore
 import time
-import pyperclip
-import pyautogui  # Añade esta importación al principio del archivo
+import pyperclip # type: ignore
+import pyautogui  # type: ignore # Añade esta importación al principio del archivo
 
 from utils import measure_time  
+
+# Definir CF_HTML ya que no está en win32con
+CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
 
 class Navigation:
     def __init__(self, manager):
@@ -195,28 +199,38 @@ class Navigation:
         try:
             self.hide_window()
             
-            # Copiar el contenido al portapapeles
-            pyperclip.copy(clipboard_data)
+            if isinstance(clipboard_data, dict):
+                text = clipboard_data.get('text', '')
+                formatted = clipboard_data.get('formatted')
+            else:
+                text = str(clipboard_data)
+                formatted = None
+
+            if self.manager.paste_with_format and formatted:
+                # Pegar con formato
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                if isinstance(formatted, str) and formatted.startswith('{\\rtf'):
+                    win32clipboard.SetClipboardData(win32con.CF_RTF, formatted.encode('utf-8'))
+                elif isinstance(formatted, str):
+                    win32clipboard.SetClipboardData(CF_HTML, formatted.encode('utf-8'))
+                win32clipboard.CloseClipboard()
+            else:
+                # Pegar sin formato
+                pyperclip.copy(text)
             
-            # Esperar un poco para asegurar que el portapapeles se ha actualizado
             time.sleep(0.05)
             
             if self.manager.previous_window:
-                # Cambiar al foco a la ventana anterior
                 win32gui.SetForegroundWindow(self.manager.previous_window)
-                
-                # Esperar un poco para asegurar que la ventana tiene el foco
                 time.sleep(0.05)
                 
-                # Crear un objeto shell para enviar las teclas
                 shell = win32com.client.Dispatch("WScript.Shell")
-                
-                # Enviar Ctrl+V para pegar
                 shell.SendKeys("^v")
                 
         except Exception as e:
             print(f"Error en el proceso de pegado: {e}")
-    
+                
     def hide_window(self, event=None):
         try:
             self.manager.root.attributes('-topmost', False)

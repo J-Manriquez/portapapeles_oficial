@@ -57,7 +57,10 @@ class ClipboardManager:
         self.total_buttons = 6
         self.top_buttons = 3
         self.icons_per_card = 3
+        
+        self.paste_with_format = True  # Variable de estado de la app
         self.hotkey = f"alt+{settings['hotkey']}"
+        
 
         self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)

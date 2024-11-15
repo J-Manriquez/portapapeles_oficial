@@ -2,11 +2,15 @@
 
 import tkinter as tk
 import uuid
+import win32con # type: ignore
 import win32clipboard # type: ignore
 import win32gui # type: ignore
 import time
 import sys
 from utils import measure_time, process_text
+
+# Definir CF_HTML ya que no está en win32con
+CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
 
 class Functions:
     def __init__(self, manager):
@@ -20,7 +24,13 @@ class Functions:
     def create_card(self, item_id, item_data, index):
         card_width = self.manager.window_width - 4  # Ajuste para el padding
         card_height = max(self.min_card_height, self.calculate_card_height(item_data['text']))
-
+        
+        # Procesamos el texto para mostrarlo de forma limpia
+        if isinstance(item_data['text'], dict):
+            processed_text = process_text(item_data['text'].get('text', ''), 3)
+        else:
+            processed_text = process_text(str(item_data['text']), 3)
+        
         # Obtén el color de fondo actual
         current_theme = 'dark' if self.manager.is_dark_mode else 'light'
         bg_color = self.manager.theme_manager.colors[current_theme]['card_bg']
@@ -71,7 +81,11 @@ class Functions:
         
         return card_container
     
-    def calculate_card_height(self, text):
+    def calculate_card_height(self, text_data):
+        if isinstance(text_data, dict):
+            text = text_data.get('text', '')
+        else:
+            text = str(text_data)
         lines = len(text.split('\n'))
         content_height = min(lines * self.line_height, 4 * self.line_height)  # Máximo 4 líneas
         return min(max(content_height + 4, self.min_card_height), self.max_card_height)
@@ -167,7 +181,7 @@ class Functions:
                 clipboard_content = self.get_clipboard_text()
                 if clipboard_content and clipboard_content != self.manager.current_clipboard:
                     self.manager.current_clipboard = clipboard_content
-                    if clipboard_content not in [item['text'] for item in self.manager.clipboard_items.values()]:
+                    if clipboard_content['text'] not in [item['text'].get('text', '') if isinstance(item['text'], dict) else item['text'] for item in self.manager.clipboard_items.values()]:
                         new_id = str(uuid.uuid4())
                         new_item = {
                             'text': clipboard_content,
@@ -179,7 +193,7 @@ class Functions:
             except Exception as e:
                 print(f"Error en monitor_clipboard: {e}")
             time.sleep(0.5)
-
+            
     def add_clipboard_item(self, new_id, new_item):
         self.manager.clipboard_items[new_id] = new_item
         if len(self.manager.clipboard_items) > 20:
@@ -193,13 +207,29 @@ class Functions:
     def get_clipboard_text(self):
         try:
             win32clipboard.OpenClipboard()
-            data = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+            formats = []
+            format_id = win32clipboard.EnumClipboardFormats(0)
+            while format_id:
+                formats.append(format_id)
+                format_id = win32clipboard.EnumClipboardFormats(format_id)
+            
+            text = None
+            formatted = None
+            
+            if win32con.CF_UNICODETEXT in formats:
+                text = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
+            
+            if win32con.CF_RTF in formats:
+                formatted = win32clipboard.GetClipboardData(win32con.CF_RTF)
+            elif CF_HTML in formats:
+                formatted = win32clipboard.GetClipboardData(CF_HTML)
+            
             win32clipboard.CloseClipboard()
-            return data
+            
+            return {'text': text, 'formatted': formatted} if text else None
         except Exception as e:
             print(f"Error al obtener texto del portapapeles: {e}")
             return None
-
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()
@@ -208,7 +238,7 @@ class Functions:
     def toggle_paste_format(self):
         self.manager.paste_with_format = not self.manager.paste_with_format
         new_text = "Con formato" if self.manager.paste_with_format else "Sin formato"
-        self.manager.button3.config(text=new_text)
+        self.manager.button2.config(text=new_text)
         self.manager.navigation.update_highlights()
         
     @measure_time
