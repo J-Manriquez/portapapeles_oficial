@@ -229,7 +229,16 @@ class Functions:
 
         dialog = tk.Toplevel(self.manager.root)
         dialog.title("Seleccionar Grupo")
-        dialog.geometry("295x400")
+        
+        window_width = self.manager.settings['width']
+        window_height = self.manager.settings['height']
+        
+        x = self.manager.window_x + 20
+        y = self.manager.window_y + 20
+        
+        dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
+                
+        # dialog.geometry("295x400")
         dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
