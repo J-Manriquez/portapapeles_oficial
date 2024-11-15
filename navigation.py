@@ -1,4 +1,8 @@
-from navigation_strategies import MainScreenNavigation, GroupsScreenNavigation, SettingsScreenNavigation
+# navigation.py
+
+from main_screen_navigation import MainScreenNavigation
+# from groups_screen_navigation import GroupsScreenNavigation
+# from settings_screen_navigation import SettingsScreenNavigation
 
 class Navigation:
     def __init__(self, manager):
@@ -49,7 +53,6 @@ class Navigation:
         import win32gui
         self.manager.last_active_window = win32gui.GetForegroundWindow()
 
-    # Métodos adicionales que podrían ser útiles
     def get_current_selection(self):
         return self.manager.current_selection
 

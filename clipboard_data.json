@@ -1,54 +1,5 @@
 {
-    "groups": {
-        "50fe70cb-ee9a-4fcd-9b75-59879863b07a": {
-            "name": "j",
-            "items": [
-                {
-                    "id": "eca9c1fc-bf93-4cbf-aef8-2bdf2bb2e035",
-                    "text": "n fuente regular\r\n            text_label = tk.Label(\r\n                text_frame,\r\n                text=processed_text,\r\n                font=(\"Segoe UI\", 10),  # Fuente regular\r\n                justify=tk.LEFT,\r\n                anchor='w',\r\n                bg=bg_color,\r\n                fg=theme['fg'],",
-                    "name": "hi"
-                },
-                {
-                    "id": "2f532f34-ae01-4618-b5ba-36681460fa10",
-                    "text": " self.line_height = 10      # Altura estimada de una l\u00ednea de texto\r\n\r\n    def calculate_card_height(self, text):\r\n        lines = len(text.split('\\n'))\r\n        if lines > 2:\r\n            content_height = min(lines * (self.line_height*2), 5 * self.line_height)  # M\u00e1ximo 4 l\u00edneas\r\n        else:"
-                },
-                {
-                    "id": "e08bceca-9760-4d4f-affd-cde09f28f007",
-                    "text": "font=(\"Segoe UI\", 10, \"bold\"),\r\n                    bg=bg_color,\r\n                    fg=theme['fg'],\r\n                    justify=tk.LEFT,\r\n                    anchor='w',\r\n                )\r\n                item_name_label.pack(padx=2, pady=0, fill=tk.X, side=tk.TOP, anchor='w')\r\n\r\n            # Etiqueta para processed_text con fuente regular\r\n            text_label = tk.Label(\r\n                text_frame,",
-                    "name": "10"
-                },
-                {
-                    "id": "4cfa334c-abcb-4995-a75b-d540c99f0943",
-                    "text": "def _configure_inner_frame(event):\r\n    if self.canvas.winfo_exists():\r\n        self.canvas.itemconfig(self.canvas_window, width=event.width)"
-                },
-                {
-                    "id": "3c03100a-1a6b-422c-a74f-be165576ebe4",
-                    "text": "window((0, 0), window=self.items_frame, anchor='nw', width=window_width)\r\n        self.canvas_window = self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)\r\n        # Configurar el desplazamiento con la rueda del rat\u00f3n\r\n        def _on_mousewheel(event):\r\n            self.canvas.yview_scroll(int(-1*(event.delta/120)), \"units\")",
-                    "name": "hi"
-                },
-                {
-                    "id": "10ff0883-d108-4d59-9205-4d7fe7a3f73c",
-                    "text": "lazamiento con la rueda del rat\u00f3n\r\n        def _on_mousewheel(event):\r\n            self.canvas.yview_scroll(int(-1*(event.delta/120)), \"units\")\r\n\r\n        self.canvas.bind_all(\"<MouseWheel>\", _on_mousewheel)\r\n\r\n        # Asegurar que el ancho del frame interior se ajuste al canvas\r\n        def _configure_inner_frame(event):\r\n            if self.canvas.winfo_ex"
-                },
-                {
-                    "id": "d718dee5-751c-48e1-8259-f2958b3c3b13",
-                    "text": "        self.canvas.bind('<Configure>', _configure_inner_frame)\r\n"
-                },
-                {
-                    "id": "bfb9c419-571f-46bd-9761-d01bf1dffdbd",
-                    "text": "content = text_entry.get(\"1.0\", tk.END)",
-                    "name": "hola"
-                },
-                {
-                    "id": "903af603-e798-47dd-b531-0d0ebff5e334",
-                    "text": {
-                        "text": "navigation_manager",
-                        "formatted": null
-                    }
-                }
-            ]
-        }
-    },
+    "groups": {},
     "pinned_items": {},
     "settings": {
         "height": 400,

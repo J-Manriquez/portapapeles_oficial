@@ -1244,7 +1244,6 @@ def process_text(text_data, cant_lineas):
 
 
 
-# --------------------------------------------------------------------
 # settings_manager.py
 
 import json
@@ -1422,245 +1421,7 @@ class SettingsManager:
         y = self.settings_window.winfo_y() + deltay
         self.settings_window.geometry(f"+{x}+{y}")
 
-
-
-# structure.py
-
-import tkinter as tk
-from tkinter import ttk
-import time
-import threading
-from datetime import datetime
-import keyboard # type: ignore
-import sys
-import win32gui # type: ignore
-import pyautogui  # Añade esta importación al principio del archivo
-
-from functions import Functions
-from key_manager import KeyManager
-from navigation import Navigation
-from theme_manager import ThemeManager
-from group_manager import GroupManager
-from data_manager import DataManager
-from settings_manager import SettingsManager
-
-class ClipboardManager:
-    def __init__(self, root, show_settings=False):
-        self.root = root
-        self.root.title("Portapapeles")
-
-        self.data_manager = DataManager()
-        groups, pinned_items, settings = self.data_manager.load_data()
-        
-        self.settings = settings
-        self.settings_manager = SettingsManager(self.root, self)
-        self.settings_manager.initialize_settings()
-
-        self.window_width = settings['width']
-        self.window_height = settings['height']
-        self.window_x = 0  # Inicializa window_x
-        self.window_y = 0  # Inicializa window_y
-
-        self.root.overrideredirect(True)
-        
-        self.root.withdraw()
-        self.is_visible = False
-
-        self.previous_window = None
-
-        self.clipboard_items = pinned_items
-        self.current_clipboard = ""
-        self.selected_index = None
-        self.current_selection = {'type': 'button', 'index': 0}
-        self.is_dark_mode = True
-        
-        self.paste_with_format = True
-        
-        self.previous_window = None
-        self.last_active_window = None
-        self.selected_button = None
-        self.selected_card = None
-        self.selected_icon = None
-        self.total_buttons = 6
-        self.top_buttons = 3
-        self.icons_per_card = 3
-        
-        self.paste_with_format = True  # Variable de estado de la app
-        
-        self.hotkey = f"alt+{settings['hotkey']}"
-
-        self.theme_manager = ThemeManager(self)
-        self.functions = Functions(self)
-        self.navigation = Navigation(self)
-        self.key_manager = KeyManager(self)
-        self.group_manager = GroupManager(self.root, self)
-        
-        self.group_manager.groups = groups
-        
-        self.create_gui()
-        self.load_saved_data()
-        self.theme_manager.apply_theme()
-
-        self.root.bind('<Return>', self.navigation.activate_selected)
-        self.root.bind('<Up>', self.navigation.navigate_vertical)
-        self.root.bind('<Down>', self.navigation.navigate_vertical)
-        self.root.bind('<Left>', self.navigation.navigate_horizontal)
-        self.root.bind('<Right>', self.navigation.navigate_horizontal)
-        self.root.bind('<FocusIn>', self.navigation.handle_focus)
-
-        self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
-        self.monitor_thread.start()
-
-        # self.navigation.update_hotkey(None, self.settings_manager.settings['hotkey'])
-        self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
-        self.key_manager.setup_global_keys()
-        
-        self.root.after(1000, self.navigation.check_window_state)
-        self.root.bind("<Map>", self.on_main_window_map)
-        self.root.bind("<Unmap>", self.on_main_window_unmap)
-        
-        if show_settings:
-            self.root.after(100, self.settings_manager.show_settings_window)
-
-    def create_gui(self):
-        self.main_frame = ttk.Frame(self.root, style='Main.TFrame')
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
-        self.title_frame.pack(fill=tk.X, padx=3, pady=(0,6))
-
-        self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark']['bg'], fg=self.theme_manager.colors['dark']['fg'])
-        self.title_label.pack(side=tk.LEFT, padx=5)
-
-        buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark']['bg'])
-        buttons_frame.pack(side=tk.RIGHT, padx=4)
-
-        self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
-        self.theme_button.pack(side=tk.LEFT)
-
-        self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.settings_manager.show_settings_window, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
-        self.clear_button.pack(side=tk.LEFT)
-
-        self.close_button = tk.Button(buttons_frame, text="❌", command=self.functions.exit_app, font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
-        self.close_button.pack(side=tk.LEFT)
-
-        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
-        main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
-
-        self.button1 = tk.Button(main_buttons_frame, text="Grupos", 
-                                 command=self.show_groups, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8)
-        self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
-
-        self.button2 = tk.Button(main_buttons_frame, text="Con formato", 
-                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8) 
-        self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
-
-        self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo", 
-                                 command=self.functions.clear_history, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8)                               
-        self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
-
-        self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
-
-        self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # Variables para el movimiento de la ventana
-        self._drag_data = {"x": 0, "y": 0, "item": None}
-
-        # Vincular eventos para mover la ventana
-        self.title_label.bind('<Button-1>', self.start_move)
-        self.title_label.bind('<ButtonRelease-1>', self.stop_move)
-        self.title_label.bind('<B1-Motion>', self.on_move)
-        
-        # Vincula eventos de scroll
-        self.canvas.bind('<Configure>', self.on_canvas_configure)
-        self.cards_frame.bind('<Configure>', self.on_frame_configure)
-        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
-
-    def scrollbar_set(self, start, end):
-        # Este método se llama cuando el canvas actualiza su región de scroll
-        self.canvas.yview_moveto(float(start))
-        
-    def start_move(self, event):
-        self._drag_data["x"] = event.x
-        self._drag_data["y"] = event.y
-
-    def stop_move(self, event):
-        self._drag_data["x"] = 0
-        self._drag_data["y"] = 0
-        self._drag_data["item"] = None
-
-    def on_move(self, event):
-        delta_x = event.x - self._drag_data["x"]
-        delta_y = event.y - self._drag_data["y"]
-        x = self.root.winfo_x() + delta_x
-        y = self.root.winfo_y() + delta_y
-        self.root.geometry(f"+{x}+{y}")
-        self.window_x = x  # Actualiza la posición x de la ventana
-        self.window_y = y  # Actualiza la posición y de la ventana
-
-    def on_scroll(self, *args):
-        # Este método se llama cuando se realiza un scroll
-        if len(args) == 3 and isinstance(args[2], str):
-            self.canvas.yview_moveto(args[0])
-        elif len(args) == 2 and isinstance(args[0], str):
-            self.canvas.yview_scroll(int(args[1]), args[0])
-
-    def on_canvas_configure(self, event):
-        # Ajusta el tamaño del área scrollable cuando el canvas cambia de tamaño
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        width = event.width
-        self.canvas.itemconfig(self.canvas_window, width=width)
-
-    def on_frame_configure(self, event):
-        # Ajusta el área scrollable cuando el contenido del frame cambia
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def on_mousewheel(self, event):
-        # Maneja el evento de la rueda del ratón para hacer scroll
-        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
-    def show_groups(self):
-        self.group_manager.show_groups_window()
-        
-    def load_saved_data(self):
-        groups, pinned_items, _ = self.data_manager.load_data()
-        self.group_manager.groups = groups
-        self.clipboard_items.update(pinned_items)
-        self.functions.refresh_cards()
-        
-    def on_main_window_map(self, event):
-        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
-            self.group_manager.groups_window.deiconify()
-
-    def on_main_window_unmap(self, event):
-        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
-            self.group_manager.groups_window.withdraw()
-            
-            
+# --------------------------------------------------------------------
             
 # key_manager.py
 import win32com
@@ -1817,142 +1578,423 @@ class KeyManager:
         except Exception as e:
             print(f"Error en el proceso de pegado: {e}")
             
-            
-            
-# navigation.py
+# structure
 
 import tkinter as tk
+from tkinter import ttk
+import threading
 import win32gui
-from utils import measure_time
+import pyautogui
+
+from functions import Functions
+from key_manager import KeyManager
+from navigation import Navigation
+from theme_manager import ThemeManager
+from group_manager import GroupManager
+from data_manager import DataManager
+from settings_manager import SettingsManager
+
+class ClipboardManager:
+    def __init__(self, root, show_settings=False):
+        self.root = root
+        self.root.title("Portapapeles")
+
+        self.data_manager = DataManager()
+        groups, pinned_items, settings = self.data_manager.load_data()
+        
+        self.settings = settings
+        self.settings_manager = SettingsManager(self.root, self)
+        self.settings_manager.initialize_settings()
+
+        self.window_width = settings['width']
+        self.window_height = settings['height']
+        self.window_x = 0
+        self.window_y = 0
+
+        self.root.overrideredirect(True)
+        
+        self.root.withdraw()
+        self.is_visible = False
+
+        self.previous_window = None
+
+        self.clipboard_items = pinned_items
+        self.current_clipboard = ""
+        self.selected_index = None
+        self.current_selection = {'type': 'button', 'index': 0}
+        self.is_dark_mode = True
+        
+        self.paste_with_format = True
+        
+        self.previous_window = None
+        self.last_active_window = None
+        self.selected_button = None
+        self.selected_card = None
+        self.selected_icon = None
+        self.total_buttons = 6
+        self.top_buttons = 3
+        self.icons_per_card = 3
+        
+        self.hotkey = f"alt+{settings['hotkey']}"
+
+        self.theme_manager = ThemeManager(self)
+        self.functions = Functions(self)
+        self.navigation = Navigation(self)
+        self.key_manager = KeyManager(self)
+        self.group_manager = GroupManager(self.root, self)
+        
+        self.group_manager.groups = groups
+        
+        self.create_gui()
+        self.load_saved_data()
+        self.theme_manager.apply_theme()
+
+        self.root.bind('<Return>', self.navigation.activate_selected)
+        self.root.bind('<Up>', self.navigation.navigate_vertical)
+        self.root.bind('<Down>', self.navigation.navigate_vertical)
+        self.root.bind('<Left>', self.navigation.navigate_horizontal)
+        self.root.bind('<Right>', self.navigation.navigate_horizontal)
+        self.root.bind('<FocusIn>', self.navigation.handle_focus)
+
+        self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
+        self.monitor_thread.start()
+
+        self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
+        self.key_manager.setup_global_keys()
+        
+        self.root.after(1000, self.navigation.check_window_state)
+        self.root.bind("<Map>", self.on_main_window_map)
+        self.root.bind("<Unmap>", self.on_main_window_unmap)
+        
+        if show_settings:
+            self.root.after(100, self.settings_manager.show_settings_window)
+
+    def create_gui(self):
+        self.main_frame = ttk.Frame(self.root, style='Main.TFrame')
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        self.title_frame.pack(fill=tk.X, padx=3, pady=(0,6))
+
+        self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark']['bg'], fg=self.theme_manager.colors['dark']['fg'])
+        self.title_label.pack(side=tk.LEFT, padx=5)
+
+        buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark']['bg'])
+        buttons_frame.pack(side=tk.RIGHT, padx=4)
+
+        self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
+        self.theme_button.pack(side=tk.LEFT)
+
+        self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.show_settings, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
+        self.clear_button.pack(side=tk.LEFT)
+
+        self.close_button = tk.Button(buttons_frame, text="❌", command=self.functions.exit_app, font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
+        self.close_button.pack(side=tk.LEFT)
+
+        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
+
+        self.button1 = tk.Button(main_buttons_frame, text="Grupos", 
+                                 command=self.show_groups, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
+                                 pady=8)
+        self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
+
+        self.button2 = tk.Button(main_buttons_frame, text="Con formato", 
+                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
+                                 pady=8) 
+        self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
+
+        self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo", 
+                                 command=self.functions.clear_history, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
+                                 pady=8)                               
+        self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
+
+        self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
+
+        self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # Variables para el movimiento de la ventana
+        self._drag_data = {"x": 0, "y": 0, "item": None}
+
+        # Vincular eventos para mover la ventana
+        self.title_label.bind('<Button-1>', self.start_move)
+        self.title_label.bind('<ButtonRelease-1>', self.stop_move)
+        self.title_label.bind('<B1-Motion>', self.on_move)
+        
+        # Vincula eventos de scroll
+        self.canvas.bind('<Configure>', self.on_canvas_configure)
+        self.cards_frame.bind('<Configure>', self.on_frame_configure)
+        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+
+    def show_groups(self):
+        self.group_manager.show_groups_window()
+        self.navigation.set_strategy('groups')
+
+    def show_settings(self):
+        self.settings_manager.show_settings_window()
+        self.navigation.set_strategy('settings')
+
+    def show_main_screen(self):
+        # Lógica para mostrar la pantalla principal
+        self.navigation.set_strategy('main')
+
+    def load_saved_data(self):
+        groups, pinned_items, _ = self.data_manager.load_data()
+        self.group_manager.groups = groups
+        self.clipboard_items.update(pinned_items)
+        self.functions.refresh_cards()
+
+    def on_main_window_map(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.deiconify()
+
+    def on_main_window_unmap(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.withdraw()
+
+    def start_move(self, event):
+        self._drag_data["x"] = event.x
+        self._drag_data["y"] = event.y
+
+    def stop_move(self, event):
+        self._drag_data["x"] = 0
+        self._drag_data["y"] = 0
+        self._drag_data["item"] = None
+
+    def on_move(self, event):
+        delta_x = event.x - self._drag_data["x"]
+        delta_y = event.y - self._drag_data["y"]
+        x = self.root.winfo_x() + delta_x
+        y = self.root.winfo_y() + delta_y
+        self.root.geometry(f"+{x}+{y}")
+        self.window_x = x
+        self.window_y = y
+
+    def on_canvas_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        width = event.width
+        self.canvas.itemconfig(self.canvas_window, width=width)
+
+    def on_frame_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+
+
+# navigation.py
+
+from navigation_strategies import MainScreenNavigation, GroupsScreenNavigation, SettingsScreenNavigation
 
 class Navigation:
     def __init__(self, manager):
         self.manager = manager
+        self.strategies = {
+            'main': MainScreenNavigation(manager),
+            # 'groups': GroupsScreenNavigation(manager),
+            # 'settings': SettingsScreenNavigation(manager)
+        }
+        self.current_strategy = self.strategies['main']
 
-    @measure_time
+    def set_strategy(self, screen_type):
+        if screen_type in self.strategies:
+            self.current_strategy = self.strategies[screen_type]
+            print(f"Estrategia de navegación cambiada a: {screen_type}")
+        else:
+            print(f"Estrategia de navegación no reconocida: {screen_type}")
+
     def navigate_vertical(self, event):
-        if not self.manager.is_visible:
-            return
-        
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        
-        try:
-            if current_type == 'card':
-                items = list(self.manager.clipboard_items.keys())
-                if event.keysym == 'Up':
-                    if current_index > 0:
-                        self.manager.current_selection['index'] = current_index - 1
-                    else:
-                        # Mover a los botones 1, 2 y pegar
-                        self.manager.current_selection = {'type': 'button', 'index': 0}
-                elif event.keysym == 'Down':
-                    if current_index < len(items) - 1:
-                        self.manager.current_selection['index'] = current_index + 1
-            
-            elif current_type == 'button':
-                if event.keysym == 'Up':
-                    if current_index < 3:  # Estamos en los botones 1, 2, pegar
-                        # Mover a la barra superior
-                        self.manager.current_selection = {'type': 'top_button', 'index': 0}
-                    else:  # Estamos en la barra superior
-                        # No hacer nada, ya estamos en la parte superior
-                        pass
-                elif event.keysym == 'Down':
-                    if current_index < 3:  # Estamos en los botones 1, 2, pegar
-                        if len(self.manager.clipboard_items) > 0:
-                            # Mover a la primera card
-                            self.manager.current_selection = {'type': 'card', 'index': 0}
-                    else:  # Estamos en la barra superior
-                        # Mover a los botones 1, 2, pegar
-                        self.manager.current_selection = {'type': 'button', 'index': 0}
-            
-            elif current_type == 'top_button':
-                if event.keysym == 'Down':
-                    # Mover a los botones 1, 2, pegar
-                    self.manager.current_selection = {'type': 'button', 'index': 0}
-            
-            elif current_type == 'icon':
-                card_index = current_index // self.manager.icons_per_card
-                if event.keysym == 'Up':
-                    if card_index > 0:
-                        self.manager.current_selection = {'type': 'card', 'index': card_index - 1}
-                    else:
-                        # Mover a los botones 1, 2, pegar
-                        self.manager.current_selection = {'type': 'button', 'index': 0}
-                elif event.keysym == 'Down':
-                    if card_index < len(self.manager.clipboard_items) - 1:
-                        self.manager.current_selection = {'type': 'card', 'index': card_index + 1}
-            
-            if len(self.manager.cards_frame.winfo_children()) > 0:
-                target_widget = None
-                if current_type == 'card' and self.manager.current_selection['index'] < len(self.manager.clipboard_items):
-                    target_widget = self.manager.cards_frame.winfo_children()[self.manager.current_selection['index']]
-                
-                if target_widget:
-                    self.ensure_visible(target_widget)
-            
-            self.update_highlights()
-            
-        except Exception as e:
-            print(f"Error en navegación vertical: {e}")
-            
-    @measure_time
+        self.current_strategy.navigate_vertical(event)
+
     def navigate_horizontal(self, event):
-        if not self.manager.is_visible:
-            return
-        
+        self.current_strategy.navigate_horizontal(event)
+
+    def activate_selected(self, event=None):
+        self.current_strategy.activate_selected(event)
+
+    def update_highlights(self):
+        self.current_strategy.update_highlights()
+
+    def initialize_focus(self):
+        self.current_strategy.initialize_focus()
+
+    def handle_focus(self, event=None):
+        if self.manager.is_visible:
+            self.manager.root.focus_force()
+
+    def check_window_state(self):
+        try:
+            actual_visible = self.manager.root.winfo_viewable()
+            if actual_visible != self.manager.is_visible:
+                print(f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
+                self.manager.is_visible = actual_visible
+        except Exception as e:
+            print(f"Error al verificar estado de la ventana: {e}")
+
+    def update_active_window(self):
+        import win32gui
+        self.manager.last_active_window = win32gui.GetForegroundWindow()
+
+    # Métodos adicionales que podrían ser útiles
+    def get_current_selection(self):
+        return self.manager.current_selection
+
+    def set_current_selection(self, selection_type, index):
+        self.manager.current_selection = {'type': selection_type, 'index': index}
+        self.update_highlights()
+
+    def get_clipboard_items(self):
+        return self.manager.clipboard_items
+
+    def get_cards_frame(self):
+        return self.manager.cards_frame
+
+    def get_canvas(self):
+        return self.manager.canvas
+
+    def is_dark_mode(self):
+        return self.manager.is_dark_mode
+
+    def get_theme_colors(self):
+        return self.manager.theme_manager.colors
+    
+    
+#  navigation_strategies.py
+
+from abc import ABC, abstractmethod
+import tkinter as tk
+
+class NavigationStrategy(ABC):
+    @abstractmethod
+    def navigate_vertical(self, event):
+        pass
+
+    @abstractmethod
+    def navigate_horizontal(self, event):
+        pass
+
+    @abstractmethod
+    def activate_selected(self, event=None):
+        pass
+
+    @abstractmethod
+    def update_highlights(self):
+        pass
+
+    @abstractmethod
+    def initialize_focus(self):
+        pass
+
+class MainScreenNavigation(NavigationStrategy):
+    def __init__(self, manager):
+        self.manager = manager
+
+    def navigate_vertical(self, event):
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
         
-        try:
-            if current_type == 'card':
-                if event.keysym == 'Right':
-                    # Mover al icono de flecha (primer icono)
-                    self.manager.current_selection = {'type': 'icon', 'index': current_index * self.manager.icons_per_card}
-                # No hay acción para 'Left' en una card
+        if current_type == 'card':
+            items = list(self.manager.clipboard_items.keys())
+            if event.keysym == 'Up':
+                if current_index > 0:
+                    self.manager.current_selection['index'] = current_index - 1
+                else:
+                    self.manager.current_selection = {'type': 'button', 'index': 0}
+            elif event.keysym == 'Down':
+                if current_index < len(items) - 1:
+                    self.manager.current_selection['index'] = current_index + 1
+        
+        elif current_type == 'button':
+            if event.keysym == 'Up':
+                if current_index < 3:
+                    self.manager.current_selection = {'type': 'top_button', 'index': 0}
+            elif event.keysym == 'Down':
+                if current_index < 3:
+                    if len(self.manager.clipboard_items) > 0:
+                        self.manager.current_selection = {'type': 'card', 'index': 0}
+                else:
+                    self.manager.current_selection = {'type': 'button', 'index': 0}
+        
+        elif current_type == 'top_button':
+            if event.keysym == 'Down':
+                self.manager.current_selection = {'type': 'button', 'index': 0}
+        
+        elif current_type == 'icon':
+            card_index = current_index // self.manager.icons_per_card
+            if event.keysym == 'Up':
+                if card_index > 0:
+                    self.manager.current_selection = {'type': 'card', 'index': card_index - 1}
+                else:
+                    self.manager.current_selection = {'type': 'button', 'index': 0}
+            elif event.keysym == 'Down':
+                if card_index < len(self.manager.clipboard_items) - 1:
+                    self.manager.current_selection = {'type': 'card', 'index': card_index + 1}
+        
+        self.ensure_visible()
+        self.update_highlights()
+
+    def navigate_horizontal(self, event):
+        current_type = self.manager.current_selection['type']
+        current_index = self.manager.current_selection['index']
+        
+        if current_type == 'card':
+            if event.keysym == 'Right':
+                self.manager.current_selection = {'type': 'icon', 'index': current_index * self.manager.icons_per_card}
+        
+        elif current_type == 'icon':
+            card_index = current_index // self.manager.icons_per_card
+            icon_position = current_index % self.manager.icons_per_card
             
-            elif current_type == 'icon':
-                card_index = current_index // self.manager.icons_per_card
-                icon_position = current_index % self.manager.icons_per_card
-                
-                if event.keysym == 'Left':
-                    if icon_position > 0:
-                        # Mover al icono anterior
-                        self.manager.current_selection['index'] = current_index - 1
-                    else:
-                        # Volver a la card
-                        self.manager.current_selection = {'type': 'card', 'index': card_index}
-                elif event.keysym == 'Right':
-                    if icon_position < self.manager.icons_per_card - 1:
-                        # Mover al siguiente icono
-                        self.manager.current_selection['index'] = current_index + 1
-                    # No hay acción si estamos en el último icono
-            
-            elif current_type == 'button':
-                if current_index < 3:  # Botones 1, 2, pegar
-                    if event.keysym == 'Left':
-                        self.manager.current_selection['index'] = (current_index - 1) % 3
-                    elif event.keysym == 'Right':
-                        self.manager.current_selection['index'] = (current_index + 1) % 3
-                else:  # Barra superior
-                    if event.keysym == 'Left':
-                        self.manager.current_selection['index'] = 3 + (current_index - 4) % 3
-                    elif event.keysym == 'Right':
-                        self.manager.current_selection['index'] = 3 + (current_index - 2) % 3
-            
-            elif current_type == 'top_button':
+            if event.keysym == 'Left':
+                if icon_position > 0:
+                    self.manager.current_selection['index'] = current_index - 1
+                else:
+                    self.manager.current_selection = {'type': 'card', 'index': card_index}
+            elif event.keysym == 'Right':
+                if icon_position < self.manager.icons_per_card - 1:
+                    self.manager.current_selection['index'] = current_index + 1
+        
+        elif current_type == 'button':
+            if current_index < 3:  # Botones 1, 2, pegar
                 if event.keysym == 'Left':
                     self.manager.current_selection['index'] = (current_index - 1) % 3
                 elif event.keysym == 'Right':
                     self.manager.current_selection['index'] = (current_index + 1) % 3
-            
-            self.update_highlights()
-            
-        except Exception as e:
-            print(f"Error en navegación horizontal: {e}")
+            else:  # Barra superior
+                if event.keysym == 'Left':
+                    self.manager.current_selection['index'] = 3 + (current_index - 4) % 3
+                elif event.keysym == 'Right':
+                    self.manager.current_selection['index'] = 3 + (current_index - 2) % 3
+        
+        elif current_type == 'top_button':
+            if event.keysym == 'Left':
+                self.manager.current_selection['index'] = (current_index - 1) % 3
+            elif event.keysym == 'Right':
+                self.manager.current_selection['index'] = (current_index + 1) % 3
+        
+        self.update_highlights()
 
-    @measure_time
     def activate_selected(self, event=None):
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
@@ -1990,41 +2032,6 @@ class Navigation:
                 elif icon_position == 2:  # Delete
                     self.manager.functions.delete_item(item_id)
 
-    def initialize_focus(self):
-        try:
-            # Iniciar la selección en la primera card si hay cards disponibles
-            if len(self.manager.clipboard_items) > 0:
-                self.manager.current_selection = {'type': 'card', 'index': 0}
-            else:
-                # Si no hay cards, iniciar en el primer botón principal
-                self.manager.current_selection = {'type': 'button', 'index': 0}
-            
-            self.manager.root.focus_force()
-            self.manager.root.update_idletasks()
-            self.update_highlights()
-            
-        except Exception as e:
-            print(f"Error al inicializar foco: {e}")
-
-    def handle_focus(self, event=None):
-        if self.manager.is_visible:
-            self.manager.root.focus_force()
-
-    def ensure_visible(self, widget):
-        if widget is None:
-            return
-            
-        try:
-            bbox = self.manager.canvas.bbox("all")
-            if bbox:
-                widget_y = widget.winfo_y()
-                canvas_height = self.manager.canvas.winfo_height()
-                if widget_y > 0:
-                    self.manager.canvas.yview_moveto(widget_y / bbox[3])
-        except Exception as e:
-            print(f"Error al asegurar visibilidad: {e}")
-
-    @measure_time
     def update_highlights(self):
         self.clear_all_highlights()
         
@@ -2034,47 +2041,51 @@ class Navigation:
         highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
         icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
         
-        try:
-            if current_type == 'button':
-                buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
-                if 0 <= current_index < len(buttons):
-                    buttons[current_index].configure(bg=highlight_color)
-            
-            elif current_type == 'top_button':
-                top_buttons = [self.manager.clear_button, self.manager.theme_button, self.manager.close_button]
-                if 0 <= current_index < len(top_buttons):
-                    top_buttons[current_index].configure(bg=highlight_color)
-            
-            elif current_type == 'card':
-                cards = self.manager.cards_frame.winfo_children()
-                if current_index < len(cards):
-                    card = cards[current_index]
-                    self.highlight_entire_card(card, highlight_color)
-                    self.ensure_visible(card)
-            
-            elif current_type == 'icon':
-                card_index = current_index // self.manager.icons_per_card
-                icon_position = current_index % self.manager.icons_per_card
-                cards = self.manager.cards_frame.winfo_children()
-                
-                if card_index < len(cards):
-                    card = cards[card_index]
-                    icons_frame = None
-                    
-                    for child in card.winfo_children():
-                        if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
-                            icons_frame = child
-                            break
-                    
-                    if icons_frame and icon_position < len(icons_frame.winfo_children()):
-                        icons = icons_frame.winfo_children()
-                        if 0 <= icon_position < len(icons):
-                            icons[icon_position].configure(bg=icon_highlight_color)
-                    self.ensure_visible(card)
-                    
-        except Exception as e:
-            print(f"Error al actualizar highlights: {e}")
+        if current_type == 'button':
+            buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
+            if 0 <= current_index < len(buttons):
+                buttons[current_index].configure(bg=highlight_color)
         
+        elif current_type == 'top_button':
+            top_buttons = [self.manager.clear_button, self.manager.theme_button, self.manager.close_button]
+            if 0 <= current_index < len(top_buttons):
+                top_buttons[current_index].configure(bg=highlight_color)
+        
+        elif current_type == 'card':
+            cards = self.manager.cards_frame.winfo_children()
+            if current_index < len(cards):
+                card = cards[current_index]
+                self.highlight_entire_card(card, highlight_color)
+        
+        elif current_type == 'icon':
+            card_index = current_index // self.manager.icons_per_card
+            icon_position = current_index % self.manager.icons_per_card
+            cards = self.manager.cards_frame.winfo_children()
+            
+            if card_index < len(cards):
+                card = cards[card_index]
+                icons_frame = None
+                
+                for child in card.winfo_children():
+                    if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
+                        icons_frame = child
+                        break
+                
+                if icons_frame and icon_position < len(icons_frame.winfo_children()):
+                    icons = icons_frame.winfo_children()
+                    if 0 <= icon_position < len(icons):
+                        icons[icon_position].configure(bg=icon_highlight_color)
+
+    def initialize_focus(self):
+        if len(self.manager.clipboard_items) > 0:
+            self.manager.current_selection = {'type': 'card', 'index': 0}
+        else:
+            self.manager.current_selection = {'type': 'button', 'index': 0}
+        
+        self.manager.root.focus_force()
+        self.manager.root.update_idletasks()
+        self.update_highlights()
+
     def clear_all_highlights(self):
         theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
         base_color = theme['card_bg']
@@ -2093,7 +2104,7 @@ class Navigation:
                     for subchild in child.winfo_children():
                         if isinstance(subchild, (tk.Label, tk.Button)):
                             subchild.configure(bg=base_color)
-                            
+
     def highlight_entire_card(self, card, color):
         card.configure(bg=color)
     
@@ -2109,14 +2120,27 @@ class Navigation:
         for icon in icons_frame.winfo_children():
             icon.configure(bg=theme['card_bg'])
 
-    def check_window_state(self):
-        try:
-            actual_visible = self.manager.root.winfo_viewable()
-            if actual_visible != self.manager.is_visible:
-                print(f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
-                self.manager.is_visible = actual_visible
-        except Exception as e:
-            print(f"Error al verificar estado de la ventana: {e}")
+    def ensure_visible(self):
+        current_type = self.manager.current_selection['type']
+        current_index = self.manager.current_selection['index']
+        
+        if current_type == 'card':
+            cards = self.manager.cards_frame.winfo_children()
+            if current_index < len(cards):
+                widget = cards[current_index]
+                bbox = self.manager.canvas.bbox("all")
+                if bbox:
+                    widget_y = widget.winfo_y()
+                    canvas_height = self.manager.canvas.winfo_height()
+                    if widget_y > 0:
+                        self.manager.canvas.yview_moveto(widget_y / bbox[3])
 
-    def update_active_window(self):
-        self.manager.last_active_window = win32gui.GetForegroundWindow()
+class GroupsScreenNavigation(NavigationStrategy):
+    def __init__(self, manager):
+        self.manager = manager
+        # Implementar la navegación específica para la pantalla de grupos
+
+class SettingsScreenNavigation(NavigationStrategy):
+    def __init__(self, manager):
+        self.manager = manager
+        # Implementar la navegación específica para la pantalla de configuraciones
