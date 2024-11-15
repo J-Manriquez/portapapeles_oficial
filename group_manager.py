@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
 import uuid
 from settings_manager import SettingsManager
+from group_content_manager import GroupContentManager
 
 
 class GroupManager:
@@ -17,7 +18,10 @@ class GroupManager:
         self.groups, _, _ = self.data_manager.load_data()
         self.groups_window = None
         self.groups_frame = None
+        self.group_content_manager = GroupContentManager(master, clipboard_manager, clipboard_manager.theme_manager, clipboard_manager.settings_manager)
 
+    def show_group_content(self, group_id):
+        self.group_content_manager.show_group_content(group_id)
 
     def show_groups_window(self):
         if self.groups_window is None or not self.groups_window.winfo_exists():
@@ -201,106 +205,7 @@ class GroupManager:
             self.groups_window.destroy()
             
     # ----------------------------------------------------------------------
-    
-    def show_group_content(self, group_id):
-        group_window = tk.Toplevel(self.master)
-        group_window.title(f"Contenido del Grupo: {self.groups[group_id]['name']}")
-        
-        window_width = self.settings_manager.settings['width']
-        window_height = self.settings_manager.settings['height']
-        
-         # Calcula la posición relativa a la ventana principal
-        x = self.clipboard_manager.window_x + 20
-        y = self.clipboard_manager.window_y + 20
-        
-        group_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-                
-        group_window.overrideredirect(True)
-        group_window.configure(bg=self.theme_manager.colors['dark']['bg'])
-        group_window.attributes('-topmost', True)
-
-        # Barra de título personalizada
-        title_frame = tk.Frame(group_window, bg=self.theme_manager.colors['dark']['bg'])
-        title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
-
-        title_label = tk.Label(title_frame, text=f"Grupo: {self.groups[group_id]['name']}", 
-                            font=('Segoe UI', 10, 'bold'),
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
-        title_label.pack(side=tk.LEFT, padx=5, pady=0)
-
-        close_button = tk.Button(title_frame, text="❌", command=group_window.destroy,
-                                font=('Segoe UI', 10, 'bold'),bd=0, padx=10, width=5, height=2,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
-        close_button.pack(side=tk.RIGHT)
-
-        # Marco para la lista de items
-        items_frame = tk.Frame(group_window, bg=self.theme_manager.colors['dark']['bg'])
-        items_frame.pack(fill=tk.BOTH, expand=True, padx=1, pady=2)
-
-        # Mostrar items del grupo
-        for item in self.groups[group_id]['items']:
-            item_frame = tk.Frame(items_frame, bg=self.theme_manager.colors['dark']['card_bg'])
-            item_frame.pack(fill=tk.X, padx=5, pady=2)
-
-            text = item['text'][:50] + '...' if len(item['text']) > 50 else item['text']
-            item_label = tk.Label(item_frame, text=text, 
-                                bg=self.theme_manager.colors['dark']['card_bg'],
-                                fg=self.theme_manager.colors['dark']['fg'],
-                                anchor='w', padx=5, pady=5)
-            item_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-            delete_button = tk.Button(item_frame, text="🗑️", 
-                                    command=lambda i=item['id']: self.remove_item_from_group(group_id, i, items_frame),
-                                    font=('Segoe UI', 10), bd=0,
-                                    bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
-            delete_button.pack(side=tk.RIGHT, padx=2, pady=2)
-
-        # Hacer la ventana arrastrable
-        def start_move(event):
-            group_window.x = event.x
-            group_window.y = event.y
-
-        def on_move(event):
-            deltax = event.x - group_window.x
-            deltay = event.y - group_window.y
-            x = group_window.winfo_x() + deltax
-            y = group_window.winfo_y() + deltay
-            group_window.geometry(f"+{x}+{y}")
-
-        title_frame.bind('<Button-1>', start_move)
-        title_frame.bind('<B1-Motion>', on_move)
-
-    def remove_item_from_group(self, group_id, item_id, items_frame):
-        self.groups[group_id]['items'] = [item for item in self.groups[group_id]['items'] if item['id'] != item_id]
-        self.save_groups()
-        self.refresh_group_content(group_id, items_frame)
-
-    def refresh_group_content(self, group_id, items_frame):
-        for widget in items_frame.winfo_children():
-            widget.destroy()
-        
-        for item in self.groups[group_id]['items']:
-            item_frame = tk.Frame(items_frame, bg=self.theme_manager.colors['dark']['card_bg'])
-            item_frame.pack(fill=tk.X, padx=5, pady=2)
-
-            text = item['text'][:50] + '...' if len(item['text']) > 50 else item['text']
-            item_label = tk.Label(item_frame, text=text, 
-                                bg=self.theme_manager.colors['dark']['card_bg'],
-                                fg=self.theme_manager.colors['dark']['fg'],
-                                anchor='w', padx=5, pady=5)
-            item_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-            delete_button = tk.Button(item_frame, text="🗑️", 
-                                    command=lambda i=item['id']: self.remove_item_from_group(group_id, i, items_frame),
-                                    font=('Segoe UI', 10), bd=0,
-                                    bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
-            delete_button.pack(side=tk.RIGHT, padx=2, pady=2)
-
-    # -----------------------------------------------------------------------
+   
     
     
     def add_group(self):

@@ -6,7 +6,7 @@ import win32clipboard # type: ignore
 import win32gui # type: ignore
 import time
 import sys
-from utils import measure_time
+from utils import measure_time, process_text
 
 class Functions:
     def __init__(self, manager):
@@ -33,7 +33,7 @@ class Functions:
         text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # Procesamos el texto para mostrarlo de forma limpia
-        processed_text = self.process_text(item_data['text'])
+        processed_text = process_text(item_data['text'], 3)
 
         text_label = tk.Label(text_frame, text=processed_text,
                             justify=tk.LEFT, anchor='w', padx=10, pady=5,
@@ -76,42 +76,6 @@ class Functions:
         content_height = min(lines * self.line_height, 4 * self.line_height)  # Máximo 4 líneas
         return min(max(content_height + 4, self.min_card_height), self.max_card_height)
     
-    def process_text(self, text):
-        """
-        Procesa el texto para mostrarlo de forma limpia y ordenada
-        """
-        # Eliminamos espacios extras y tabulaciones al inicio y final
-        text = text.strip()
-        
-        # Dividimos el texto en líneas
-        lines = text.splitlines()
-        
-        # Eliminamos líneas vacías consecutivas y espacios extras
-        clean_lines = []
-        prev_empty = False
-        for line in lines:
-            line = line.strip()
-            
-            # Si la línea está vacía
-            if not line:
-                if not prev_empty:  # Solo mantenemos una línea vacía
-                    clean_lines.append('')
-                    prev_empty = True
-            else:
-                clean_lines.append(line)
-                prev_empty = False
-        
-        # Tomamos solo las primeras 3 líneas para la vista previa
-        preview_lines = clean_lines[:3]
-        
-        # Si hay más líneas, indicamos cuántas más hay
-        if len(clean_lines) > 3:
-            remaining_lines = len(clean_lines) - 3
-            preview_lines.append(f"+ {remaining_lines} líneas más")
-            
-        # Unimos las líneas con saltos de línea
-        return '\n'.join(preview_lines)
-
     @measure_time
     def refresh_cards(self):
         if not hasattr(self.manager, 'cards_frame') or not self.manager.cards_frame.winfo_exists():
@@ -143,7 +107,7 @@ class Functions:
         
 
     def update_card(self, card, item_data):
-        processed_text = self.process_text(item_data['text'])
+        processed_text = process_text(item_data['text'], 3)
         text_label = card.winfo_children()[0].winfo_children()[0]
         text_label.config(text=processed_text)
 
