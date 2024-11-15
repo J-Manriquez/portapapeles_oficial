@@ -38,6 +38,13 @@
                     "id": "bfb9c419-571f-46bd-9761-d01bf1dffdbd",
                     "text": "content = text_entry.get(\"1.0\", tk.END)",
                     "name": "hola"
+                },
+                {
+                    "id": "903af603-e798-47dd-b531-0d0ebff5e334",
+                    "text": {
+                        "text": "navigation_manager",
+                        "formatted": null
+                    }
                 }
             ]
         }
@@ -46,6 +53,6 @@
     "settings": {
         "height": 400,
         "width": 295,
-        "hotkey": "v"
+        "hotkey": "z"
     }
 }

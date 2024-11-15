@@ -155,8 +155,8 @@ class SettingsManager:
             elif setting_name == "Alt+":
                 old_hotkey = self.settings['hotkey']
                 self.settings['hotkey'] = new_value
-                self.clipboard_manager.navigation.update_hotkey(old_hotkey, new_value)
-
+                self.clipboard_manager.key_manager.update_hotkey(old_hotkey, new_value)
+                
             self.save_settings()
             self.restart_app()
             

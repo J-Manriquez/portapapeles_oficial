@@ -11,6 +11,7 @@ import win32gui # type: ignore
 import pyautogui  # Añade esta importación al principio del archivo
 
 from functions import Functions
+from key_manager import KeyManager
 from navigation import Navigation
 from theme_manager import ThemeManager
 from group_manager import GroupManager
@@ -59,12 +60,13 @@ class ClipboardManager:
         self.icons_per_card = 3
         
         self.paste_with_format = True  # Variable de estado de la app
-        self.hotkey = f"alt+{settings['hotkey']}"
         
+        self.hotkey = f"alt+{settings['hotkey']}"
 
         self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)
         self.navigation = Navigation(self)
+        self.key_manager = KeyManager(self)
         self.group_manager = GroupManager(self.root, self)
         
         self.group_manager.groups = groups
@@ -83,12 +85,9 @@ class ClipboardManager:
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
 
-        self.navigation.update_hotkey(None, self.settings_manager.settings['hotkey'])
-        keyboard.add_hotkey('up', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Up')))
-        keyboard.add_hotkey('down', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Down')))
-        keyboard.add_hotkey('left', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Left')))
-        keyboard.add_hotkey('right', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Right')))
-        keyboard.add_hotkey('enter', lambda: self.root.after(0, lambda: self.navigation.handle_global_key('Return')))    
+        # self.navigation.update_hotkey(None, self.settings_manager.settings['hotkey'])
+        self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
+        self.key_manager.setup_global_keys()
         
         self.root.after(1000, self.navigation.check_window_state)
         self.root.bind("<Map>", self.on_main_window_map)

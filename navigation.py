@@ -1,34 +1,12 @@
 # navigation.py
-import win32com.client # type: ignore
-import win32clipboard  # type: ignore
+
 import tkinter as tk
-import win32gui # type: ignore
-import keyboard # type: ignore
-import time
-import pyperclip # type: ignore
-import pyautogui  # type: ignore # Añade esta importación al principio del archivo
-
-from utils import measure_time  
-
-# Definir CF_HTML ya que no está en win32con
-CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+import win32gui
+from utils import measure_time
 
 class Navigation:
     def __init__(self, manager):
         self.manager = manager
-        self.current_hotkey = self.manager.hotkey
-        self.update_hotkey(None, self.current_hotkey)
-        
-    def update_hotkey(self, old_hotkey, new_hotkey):
-        if old_hotkey:
-            try:
-                keyboard.remove_hotkey(old_hotkey)
-            except KeyError:
-                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
-
-        keyboard.add_hotkey(new_hotkey, self.toggle_window)
-        self.current_hotkey = new_hotkey
-        print(f"Nuevo atajo configurado: {new_hotkey}")
 
     @measure_time
     def navigate_vertical(self, event):
@@ -152,19 +130,19 @@ class Navigation:
             
         except Exception as e:
             print(f"Error en navegación horizontal: {e}")
+
     @measure_time
     def activate_selected(self, event=None):
-        start_time = time.time()
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
         
         if current_type == 'button':
             if current_index == 0:  # Botón 1
-                pass  # Implementar función para Botón 1
+                self.manager.show_groups()
             elif current_index == 1:  # Botón 2
-                pass  # Implementar función para Botón 2
-            elif current_index == 2:  # Botón 3 (Pegar con/sin formato)
                 self.manager.functions.toggle_paste_format()
+            elif current_index == 2:  # Botón 3 (Borrar Todo)
+                self.manager.functions.clear_history()
             elif current_index == 3:  # Botón Eliminar todas las cards
                 self.manager.functions.clear_history()
             elif current_index == 4:  # Botón Cambiar tema
@@ -176,7 +154,7 @@ class Navigation:
             if current_index < len(items):
                 item_id, item_data = items[current_index]
                 clipboard_data = item_data['text']
-                self.paste_content(clipboard_data)
+                self.manager.key_manager.paste_content(clipboard_data)
         elif current_type == 'icon':
             items = list(self.manager.clipboard_items.keys())
             card_index = current_index // self.manager.icons_per_card
@@ -185,122 +163,11 @@ class Navigation:
             if card_index < len(items):
                 item_id = items[card_index]
                 if icon_position == 0:  # Arrow
-                    pass
+                    self.manager.functions.on_arrow_click(item_id)
                 elif icon_position == 1:  # Pin
                     self.manager.functions.toggle_pin(item_id)
                 elif icon_position == 2:  # Delete
                     self.manager.functions.delete_item(item_id)
-
-        end_time = time.time()
-        print(f"Tiempo total de operación: {(end_time - start_time) * 1000:.2f} ms")
-        
-    @measure_time
-    def paste_content(self, clipboard_data):
-        try:
-            self.hide_window()
-            
-            if isinstance(clipboard_data, dict):
-                text = clipboard_data.get('text', '')
-                formatted = clipboard_data.get('formatted')
-            else:
-                text = str(clipboard_data)
-                formatted = None
-
-            if self.manager.paste_with_format and formatted:
-                # Pegar con formato
-                win32clipboard.OpenClipboard()
-                win32clipboard.EmptyClipboard()
-                if isinstance(formatted, str) and formatted.startswith('{\\rtf'):
-                    win32clipboard.SetClipboardData(win32con.CF_RTF, formatted.encode('utf-8'))
-                elif isinstance(formatted, str):
-                    win32clipboard.SetClipboardData(CF_HTML, formatted.encode('utf-8'))
-                win32clipboard.CloseClipboard()
-            else:
-                # Pegar sin formato
-                pyperclip.copy(text)
-            
-            time.sleep(0.05)
-            
-            if self.manager.previous_window:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-                time.sleep(0.05)
-                
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys("^v")
-                
-        except Exception as e:
-            print(f"Error en el proceso de pegado: {e}")
-                
-    def hide_window(self, event=None):
-        try:
-            self.manager.root.attributes('-topmost', False)
-            self.manager.root.withdraw()
-            self.manager.is_visible = False
-            self.restore_focus()
-        except Exception as e:
-            print(f"Error al ocultar la ventana: {e}")
-
-    def restore_focus(self):
-        if self.manager.previous_window:
-            try:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-            except Exception as e:
-                print(f"Error al restaurar el foco: {e}")
-                try:
-                    self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
-                except:
-                    pass
-
-    def check_window_state(self):
-        try:
-            actual_visible = self.manager.root.winfo_viewable()
-            if actual_visible != self.manager.is_visible:
-                print(f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
-                self.manager.is_visible = actual_visible
-        except Exception as e:
-            print(f"Error al verificar estado de la ventana: {e}")
-
-    def update_active_window(self):
-        self.manager.last_active_window = win32gui.GetForegroundWindow()
-
-    @measure_time
-    def show_window(self):
-        try:
-            self.manager.previous_window = win32gui.GetForegroundWindow()
-            
-             # Obtener la posición actual del cursor
-            mouse_x, mouse_y = pyautogui.position()
-            
-            # Calcular la posición de la ventana
-            window_x = mouse_x - self.manager.window_width // 2
-            window_y = mouse_y - self.manager.window_height // 2
-            
-            # Asegurar que la ventana no se salga de la pantalla
-            screen_width, screen_height = pyautogui.size()
-            window_x = max(0, min(window_x, screen_width - self.manager.window_width))
-            window_y = max(0, min(window_y, screen_height - self.manager.window_height))
-            
-            self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{window_x}+{window_y}")
-            self.manager.window_x = window_x  # Guarda la posición x de la ventana
-            self.manager.window_y = window_y  # Guarda la posición y de la ventana
-            
-            self.manager.root.deiconify()
-            self.manager.root.geometry("+0+0") 
-            self.manager.root.lift()  
-            self.manager.root.attributes('-topmost', True)
-            
-            self.manager.is_visible = True
-            
-            self.initialize_focus()
-        
-            if not hasattr(self.manager, 'current_selection') or not self.manager.current_selection:
-                self.manager.current_selection = {'type': 'card', 'index': 0}
-            
-            self.manager.root.focus_force()
-            self.update_highlights()
-            
-        except Exception as e:
-            print(f"Error al mostrar la ventana: {e}")
 
     def initialize_focus(self):
         try:
@@ -321,30 +188,6 @@ class Navigation:
     def handle_focus(self, event=None):
         if self.manager.is_visible:
             self.manager.root.focus_force()
-
-    def toggle_window(self):
-        if not self.manager.is_visible:
-            self.manager.root.after(10, self.manager.functions.recalculate_card_heights)
-        try:
-            if self.manager.is_visible:
-                self.hide_window()
-            else:
-                self.manager.previous_window = win32gui.GetForegroundWindow()
-                self.manager.root.after(10, self.show_window)
-        except Exception as e:
-            print(f"Error al alternar la ventana: {e}")
-            
-    def handle_global_key(self, key):
-        if self.manager.is_visible:
-            if key in ['Up', 'Down']:
-                self.navigate_vertical(type('Event', (), {'keysym': key})())
-            elif key in ['Left', 'Right']:
-                self.navigate_horizontal(type('Event', (), {'keysym': key})())
-            elif key == 'Return':
-                self.activate_selected()
-            self.manager.root.after(10, self.manager.root.update_idletasks)
-            return 'break'  # Prevenir que el evento se propague
-        return None
 
     def ensure_visible(self, widget):
         if widget is None:
@@ -444,3 +287,15 @@ class Navigation:
         icons_frame.configure(bg=theme['card_bg'])
         for icon in icons_frame.winfo_children():
             icon.configure(bg=theme['card_bg'])
+
+    def check_window_state(self):
+        try:
+            actual_visible = self.manager.root.winfo_viewable()
+            if actual_visible != self.manager.is_visible:
+                print(f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
+                self.manager.is_visible = actual_visible
+        except Exception as e:
+            print(f"Error al verificar estado de la ventana: {e}")
+
+    def update_active_window(self):
+        self.manager.last_active_window = win32gui.GetForegroundWindow()
