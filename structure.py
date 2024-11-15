@@ -1,14 +1,8 @@
-# structure.py
-
 import tkinter as tk
 from tkinter import ttk
-import time
 import threading
-from datetime import datetime
-import keyboard # type: ignore
-import sys
-import win32gui # type: ignore
-import pyautogui  # Añade esta importación al principio del archivo
+import win32gui
+import pyautogui
 
 from functions import Functions
 from key_manager import KeyManager
@@ -32,8 +26,8 @@ class ClipboardManager:
 
         self.window_width = settings['width']
         self.window_height = settings['height']
-        self.window_x = 0  # Inicializa window_x
-        self.window_y = 0  # Inicializa window_y
+        self.window_x = 0
+        self.window_y = 0
 
         self.root.overrideredirect(True)
         
@@ -59,8 +53,6 @@ class ClipboardManager:
         self.top_buttons = 3
         self.icons_per_card = 3
         
-        self.paste_with_format = True  # Variable de estado de la app
-        
         self.hotkey = f"alt+{settings['hotkey']}"
 
         self.theme_manager = ThemeManager(self)
@@ -85,7 +77,6 @@ class ClipboardManager:
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
 
-        # self.navigation.update_hotkey(None, self.settings_manager.settings['hotkey'])
         self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
         self.key_manager.setup_global_keys()
         
@@ -112,7 +103,7 @@ class ClipboardManager:
         self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
         self.theme_button.pack(side=tk.LEFT)
 
-        self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.settings_manager.show_settings_window, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
+        self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.show_settings, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
         self.clear_button.pack(side=tk.LEFT)
 
         self.close_button = tk.Button(buttons_frame, text="❌", command=self.functions.exit_app, font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
@@ -159,7 +150,6 @@ class ClipboardManager:
 
         self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Variables para el movimiento de la ventana
         self._drag_data = {"x": 0, "y": 0, "item": None}
@@ -174,10 +164,32 @@ class ClipboardManager:
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
         self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
 
-    def scrollbar_set(self, start, end):
-        # Este método se llama cuando el canvas actualiza su región de scroll
-        self.canvas.yview_moveto(float(start))
-        
+    def show_groups(self):
+        self.group_manager.show_groups_window()
+        self.navigation.set_strategy('groups')
+
+    def show_settings(self):
+        self.settings_manager.show_settings_window()
+        self.navigation.set_strategy('settings')
+
+    def show_main_screen(self):
+        # Lógica para mostrar la pantalla principal
+        self.navigation.set_strategy('main')
+
+    def load_saved_data(self):
+        groups, pinned_items, _ = self.data_manager.load_data()
+        self.group_manager.groups = groups
+        self.clipboard_items.update(pinned_items)
+        self.functions.refresh_cards()
+
+    def on_main_window_map(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.deiconify()
+
+    def on_main_window_unmap(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.withdraw()
+
     def start_move(self, event):
         self._drag_data["x"] = event.x
         self._drag_data["y"] = event.y
@@ -193,43 +205,16 @@ class ClipboardManager:
         x = self.root.winfo_x() + delta_x
         y = self.root.winfo_y() + delta_y
         self.root.geometry(f"+{x}+{y}")
-        self.window_x = x  # Actualiza la posición x de la ventana
-        self.window_y = y  # Actualiza la posición y de la ventana
-
-    def on_scroll(self, *args):
-        # Este método se llama cuando se realiza un scroll
-        if len(args) == 3 and isinstance(args[2], str):
-            self.canvas.yview_moveto(args[0])
-        elif len(args) == 2 and isinstance(args[0], str):
-            self.canvas.yview_scroll(int(args[1]), args[0])
+        self.window_x = x
+        self.window_y = y
 
     def on_canvas_configure(self, event):
-        # Ajusta el tamaño del área scrollable cuando el canvas cambia de tamaño
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         width = event.width
         self.canvas.itemconfig(self.canvas_window, width=width)
 
     def on_frame_configure(self, event):
-        # Ajusta el área scrollable cuando el contenido del frame cambia
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def on_mousewheel(self, event):
-        # Maneja el evento de la rueda del ratón para hacer scroll
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
-    def show_groups(self):
-        self.group_manager.show_groups_window()
-        
-    def load_saved_data(self):
-        groups, pinned_items, _ = self.data_manager.load_data()
-        self.group_manager.groups = groups
-        self.clipboard_items.update(pinned_items)
-        self.functions.refresh_cards()
-        
-    def on_main_window_map(self, event):
-        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
-            self.group_manager.groups_window.deiconify()
-
-    def on_main_window_unmap(self, event):
-        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
-            self.group_manager.groups_window.withdraw()
