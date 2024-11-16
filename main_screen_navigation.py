@@ -5,18 +5,22 @@ import tkinter as tk
 class MainScreenNavigation:
     def __init__(self, manager):
         self.manager = manager
-        self.navigation_order = ['top_buttons', 'main_buttons', 'cards', 'icons']
+        self.navigation_order = ['top_buttons', 'main_buttons', 'cards', 'icons']   
 
     def navigate_vertical(self, event):
+        print(f"MainScreenNavigation: Navigating vertically {event.keysym}")
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
-
+        print(f"Before navigation: type={current_type}, index={current_index}")
+        
         if event.keysym == 'Up':
             self.move_up(current_type, current_index)
         elif event.keysym == 'Down':
             self.move_down(current_type, current_index)
 
+        self.update_highlights()
         self.ensure_visible()
+        print(f"After navigation: type={self.manager.current_selection['type']}, index={self.manager.current_selection['index']}")
         self.update_highlights()
 
     def move_up(self, current_type, current_index):
@@ -27,13 +31,11 @@ class MainScreenNavigation:
                 self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
         elif current_type == 'main_buttons':
             self.manager.current_selection = {'type': 'top_buttons', 'index': 0}
-        elif current_type == 'icons':
-            card_index = current_index // 3
-            if card_index > 0:
-                self.manager.current_selection = {'type': 'cards', 'index': card_index - 1}
-            else:
-                self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-
+        elif current_type == 'top_buttons':
+            # Si ya estamos en los botones superiores, no hacemos nada
+            pass
+        print(f"After move_up: {self.manager.current_selection}")
+        
     def move_down(self, current_type, current_index):
         if current_type == 'top_buttons':
             self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
@@ -43,8 +45,10 @@ class MainScreenNavigation:
         elif current_type == 'cards':
             if current_index < self.get_cards_count() - 1:
                 self.manager.current_selection['index'] = current_index + 1
-
+        print(f"After move_down: {self.manager.current_selection}")
+        
     def navigate_horizontal(self, event):
+        print(f"MainScreenNavigation: Navigating horizontally {event.keysym}")  
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
 
@@ -123,14 +127,56 @@ class MainScreenNavigation:
             elif icon_position == 2:  # Delete
                 self.manager.functions.delete_item(item_id)
 
+    # def update_highlights(self):
+    #     print("Updating highlights")  
+    #     self.clear_all_highlights()
+        
+    #     current_type = self.manager.current_selection['type']
+    #     current_index = self.manager.current_selection['index']
+        
+    #     highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
+    #     icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
+        
+    #     if current_type == 'main_buttons':
+    #         buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
+    #         if 0 <= current_index < len(buttons):
+    #             buttons[current_index].configure(bg=highlight_color)
+        
+    #     elif current_type == 'top_buttons':
+    #         top_buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
+    #         if 0 <= current_index < len(top_buttons):
+    #             top_buttons[current_index].configure(bg=highlight_color)
+        
+    #     elif current_type == 'cards':
+    #         cards = self.manager.cards_frame.winfo_children()
+    #         if current_index < len(cards):
+    #             card = cards[current_index]
+    #             self.highlight_entire_card(card, highlight_color)
+        
+    #     elif current_type == 'icons':
+    #         card_index = current_index // 3
+    #         icon_position = current_index % 3
+    #         cards = self.manager.cards_frame.winfo_children()
+            
+    #         if card_index < len(cards):
+    #             card = cards[card_index]
+    #             icons_frame = self.find_icons_frame(card)
+                
+    #             if icons_frame and icon_position < len(icons_frame.winfo_children()):
+    #                 icons = icons_frame.winfo_children()
+    #                 if 0 <= icon_position < len(icons):
+    #                     icons[icon_position].configure(bg=icon_highlight_color)
+                        
+    #     self.manager.root.update_idletasks()  # Forzar actualización de la interfaz
+    
     def update_highlights(self):
+        print("Updating highlights")
         self.clear_all_highlights()
         
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
         
         highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
-        icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
         
         if current_type == 'main_buttons':
             buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
@@ -145,22 +191,11 @@ class MainScreenNavigation:
         elif current_type == 'cards':
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
-                card = cards[current_index]
-                self.highlight_entire_card(card, highlight_color)
+                cards[current_index].configure(bg=highlight_color)
         
-        elif current_type == 'icons':
-            card_index = current_index // 3
-            icon_position = current_index % 3
-            cards = self.manager.cards_frame.winfo_children()
-            
-            if card_index < len(cards):
-                card = cards[card_index]
-                icons_frame = self.find_icons_frame(card)
-                
-                if icons_frame and icon_position < len(icons_frame.winfo_children()):
-                    icons = icons_frame.winfo_children()
-                    if 0 <= icon_position < len(icons):
-                        icons[icon_position].configure(bg=icon_highlight_color)
+        print(f"Highlighted: {current_type}, index: {current_index}")
+        self.manager.root.update_idletasks()
+        self.manager.root.after(10, self.manager.root.update)
 
     def initialize_focus(self):
         if self.get_cards_count() > 0:

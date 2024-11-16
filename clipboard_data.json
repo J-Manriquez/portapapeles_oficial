@@ -1,9 +1,15 @@
 {
     "groups": {},
-    "pinned_items": {},
-    "settings": {
-        "height": 400,
-        "width": 295,
-        "hotkey": "z"
-    }
-}
+    "pinned_items": {
+        "d042b5f4-9a6f-434a-86ab-4e31b67ee222": {
+            "text": {
+                "text": "refresh_cards tom\u00f3 39.41 ms",
+                "formatted": null
+            },
+            "pinned": true,
+            "with_format": true
+        },
+        "6009ddac-fbbe-4cd3-8159-8a395baca222": {
+            "text": {
+                "text": "error\r\n            if self.original_cursor_pos:\r\n                win32api.SetCursorPos(self.original_cursor_pos)\r\n            self.original_cursor_pos = None\r\n            \r\n            \r\n            \r\n            ",
+                "formatted": 

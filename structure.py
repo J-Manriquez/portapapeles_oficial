@@ -59,7 +59,6 @@ class ClipboardManager:
 
         self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)
-        self.navigation = Navigation(self)
         self.key_manager = KeyManager(self)
         self.group_manager = GroupManager(self.root, self)
         
@@ -67,27 +66,42 @@ class ClipboardManager:
         
         self.create_gui()
         self.load_saved_data()
+        
+        self.navigation = Navigation(self)
+        
         self.theme_manager.apply_theme()
 
-        self.root.bind('<Return>', self.navigation.activate_selected)
-        self.root.bind('<Up>', self.navigation.navigate_vertical)
-        self.root.bind('<Down>', self.navigation.navigate_vertical)
-        self.root.bind('<Left>', self.navigation.navigate_horizontal)
-        self.root.bind('<Right>', self.navigation.navigate_horizontal)
-        self.root.bind('<FocusIn>', self.navigation.handle_focus)
+        # self.root.bind('<Return>', self.navigation.activate_selected)
+        # self.root.bind('<Up>', self.navigation.navigate_vertical)
+        # self.root.bind('<Down>', self.navigation.navigate_vertical)
+        # self.root.bind('<Left>', self.navigation.navigate_horizontal)
+        # self.root.bind('<Right>', self.navigation.navigate_horizontal)
+        # self.root.bind('<FocusIn>', self.navigation.handle_focus)
 
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
 
         self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
-        self.key_manager.setup_global_keys()
+        # self.key_manager.setup_global_keys()
         
         self.root.after(1000, self.navigation.check_window_state)
         self.root.bind("<Map>", self.on_main_window_map)
         self.root.bind("<Unmap>", self.on_main_window_unmap)
         
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        
         if show_settings:
             self.root.after(100, self.settings_manager.show_settings_window)
+        
+        self.key_manager.setup_global_keys()
+        
+    def force_update(self):
+        self.root.update_idletasks()
+        self.root.update()
+            
+    def on_close(self):
+        self.root.withdraw()
+        self.is_visible = False
 
     def create_gui(self):
         self.main_frame = ttk.Frame(self.root, style='Main.TFrame')

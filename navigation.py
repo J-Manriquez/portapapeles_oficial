@@ -22,19 +22,32 @@ class Navigation:
             print(f"Estrategia de navegación no reconocida: {screen_type}")
 
     def navigate_vertical(self, event):
+        print(f"Navigating vertically: {event.keysym}")  # Añade este print para depuración
         self.current_strategy.navigate_vertical(event)
 
     def navigate_horizontal(self, event):
+        print(f"Navigating horizontally: {event.keysym}")  # Añade este print para depuración
         self.current_strategy.navigate_horizontal(event)
 
     def activate_selected(self, event=None):
+        print("Activating selected")  # Añade este print para depuración
         self.current_strategy.activate_selected(event)
 
     def update_highlights(self):
         self.current_strategy.update_highlights()
 
+
+    def get_cards_count(self):
+        return len(self.manager.cards_frame.winfo_children()) if hasattr(self.manager, 'cards_frame') else 0
+
     def initialize_focus(self):
-        self.current_strategy.initialize_focus()
+        if self.get_cards_count() > 0:
+            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        else:
+            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
+        
+        self.update_highlights()
+        self.manager.root.update_idletasks()
 
     def handle_focus(self, event=None):
         if self.manager.is_visible:
