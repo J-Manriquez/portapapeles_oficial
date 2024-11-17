@@ -1,7 +1,191 @@
+# navigation_strategies.py
+
+from abc import ABC, abstractmethod
+
+class NavigationStrategy(ABC):
+    @abstractmethod
+    def navigate_vertical(self, event):
+        pass
+
+    @abstractmethod
+    def navigate_horizontal(self, event):
+        pass
+
+    @abstractmethod
+    def activate_selected(self, event=None):
+        pass
+
+    @abstractmethod
+    def update_highlights(self):
+        pass
+
+    @abstractmethod
+    def initialize_focus(self):
+        pass
+
+# Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
+# y SettingsScreenNavigation ahora están en archivos separados.
+
+# utils.py
+
+import time
+
+def measure_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__} tomó {(end_time - start_time) * 1000:.2f} ms")
+        return result
+    return wrapper
+
+def process_text(text_data, cant_lineas):
+    """
+    Procesa el texto para mostrarlo de forma limpia y ordenada
+    """
+    # Comprueba si text_data es un diccionario y extrae el texto
+    if isinstance(text_data, dict):
+        text = text_data.get('text', '')
+    else:
+        text = str(text_data)
+
+    # Eliminamos espacios extras y tabulaciones al inicio y final
+    text = text.strip()
+    
+    # Dividimos el texto en líneas
+    lines = text.splitlines()
+    
+    # Eliminamos líneas vacías consecutivas y espacios extras
+    clean_lines = []
+    prev_empty = False
+    for line in lines:
+        line = line.strip()
+        
+        # Si la línea está vacía
+        if not line:
+            if not prev_empty:  # Solo mantenemos una línea vacía
+                clean_lines.append('')
+                prev_empty = True
+        else:
+            clean_lines.append(line)
+            prev_empty = False
+    
+    # Tomamos solo las primeras 'cant_lineas' para la vista previa
+    preview_lines = clean_lines[:cant_lineas]
+    
+    # Si hay más líneas, indicamos cuántas más hay
+    if len(clean_lines) > cant_lineas:
+        remaining_lines = len(clean_lines) - cant_lineas
+        preview_lines.append(f"+ {remaining_lines} líneas más")
+        
+    # Unimos las líneas con saltos de línea
+    return '\n'.join(preview_lines)
+
+
+#theme_manager.py
+
+import tkinter as tk
+from tkinter import ttk
+
+class ThemeManager:
+    def __init__(self, manager):
+        self.manager = manager
+        self.colors = {
+            'dark': {
+                'bg': '#1e1e1e',
+                'fg': '#ffffff',
+                'button_bg': '#333333',
+                'button_fg': '#ffffff',
+                'listbox_bg': '#2d2d2d',
+                'listbox_fg': '#ffffff',
+                'active_bg': '#4E4E4E',  # Añadido
+                'active_fg': '#FFFFFF',  # Añadido
+                'card_bg': '#333333'
+            },
+            'light': {
+                'bg': '#f0f0f0',
+                'fg': '#000000',
+                'button_bg': '#e0e0e0',
+                'button_fg': '#000000',
+                'listbox_bg': '#ffffff',
+                'listbox_fg': '#000000',
+                'active_bg': '#D0D0D0',  # Añadido
+                'active_fg': '#000000',  # Añadido
+                'card_bg': '#ffffff'
+            }
+        }
+
+    def toggle_theme(self):
+        self.manager.is_dark_mode = not self.manager.is_dark_mode
+        self.manager.theme_button.config(text="🌙" if self.manager.is_dark_mode else "☀️")
+        self.apply_theme()
+
+    def apply_theme(self):
+        theme = self.colors['dark'] if self.manager.is_dark_mode else self.colors['light']
+        
+        self.manager.root.configure(bg=theme['bg'])
+        self.manager.main_frame.configure(style='Main.TFrame')
+        self.manager.title_frame.configure(bg=theme['bg'])
+        self.manager.title_label.configure(bg=theme['bg'], fg=theme['fg'])
+        
+        self.manager.clear_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+        self.manager.theme_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+        
+        self.manager.close_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.button1.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.button2.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.button3.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.canvas.configure(bg=theme['bg'])
+        self.manager.cards_frame.configure(bg=theme['bg'])
+        
+        self.manager.functions.refresh_cards()
+
+        style = ttk.Style()  
+        style.theme_use('clam')  
+        style.configure('Main.TFrame', background=theme['bg'])
+        
+        
+        
 # data_manager.py
 
 import json
 import os
+import base64
+
 
 class DataManager:
     def __init__(self, file_path='clipboard_data.json'):
@@ -10,7 +194,7 @@ class DataManager:
     def save_data(self, groups, pinned_items, settings):
         data = {
             'groups': groups,
-            'pinned_items': pinned_items,
+            'pinned_items': self.encode_pinned_items(pinned_items),
             'settings': settings
         }
         with open(self.file_path, 'w') as f:
@@ -29,22 +213,73 @@ class DataManager:
             data = json.load(f)
         
         groups = data.get('groups', {})
-        for group in groups.values():
-            if 'items' in group:
-                group['items'] = [item if isinstance(item, dict) else {'id': item, 'text': 'Unknown'} for item in group['items']]
-        
+        pinned_items = self.decode_pinned_items(data.get('pinned_items', {}))
         settings = data.get('settings', {
             'height': 400,
             'width': 295,
             'hotkey': 'v'
         })
         
-        return groups, data.get('pinned_items', {}), settings
+        return groups, pinned_items, settings
 
+    def encode_pinned_items(self, pinned_items):
+        encoded_items = {}
+        for item_id, item_data in pinned_items.items():
+            encoded_item = item_data.copy()
+            if isinstance(item_data['text'], dict) and 'formatted' in item_data['text']:
+                formatted_data = item_data['text']['formatted']
+                if isinstance(formatted_data, str):
+                    # Si ya es una cadena, la codificamos directamente
+                    encoded_item['text']['formatted'] = base64.b64encode(formatted_data.encode('utf-8')).decode('utf-8')
+                elif isinstance(formatted_data, bytes):
+                    # Si ya es bytes, la codificamos directamente
+                    encoded_item['text']['formatted'] = base64.b64encode(formatted_data).decode('utf-8')
+                else:
+                    # Si no es ni str ni bytes, convertimos a str y luego codificamos
+                    encoded_item['text']['formatted'] = base64.b64encode(str(formatted_data).encode('utf-8')).decode('utf-8')
+            encoded_items[item_id] = encoded_item
+        return encoded_items
 
+    def decode_pinned_items(self, encoded_items):
+        decoded_items = {}
+        for item_id, item_data in encoded_items.items():
+            decoded_item = item_data.copy()
+            if isinstance(item_data['text'], dict) and 'formatted' in item_data['text']:
+                decoded_item['text']['formatted'] = base64.b64decode(item_data['text']['formatted'].encode('utf-8'))
+            decoded_items[item_id] = decoded_item
+        return decoded_items
+    
+    
+    
+# main.py
+import keyboard
+import sys
+import tkinter as tk
+from structure import ClipboardManager
 
+def main():
+    root = tk.Tk()
+    show_settings = "--show-settings" in sys.argv
+    app = ClipboardManager(root, show_settings)
+    # Aplicar las configuraciones iniciales
+    root.geometry(f"{app.settings_manager.settings['width']}x{app.settings_manager.settings['height']}+0+0")
+    
+    # if show_settings:
+    #     root.after(100, app.settings_manager.show_settings_window)
+    
+    # Configurar el atajo de teclado global
+    keyboard.add_hotkey(app.hotkey, app.key_manager.toggle_window)
+    
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
+    
+    
+    
 # functions.py
 
+import base64
 import tkinter as tk
 import uuid
 import win32con # type: ignore
@@ -271,10 +506,15 @@ class Functions:
             
             win32clipboard.CloseClipboard()
             
+            if formatted:
+                if isinstance(formatted, bytes):
+                    formatted = formatted.decode('utf-8', errors='ignore')
+            
             return {'text': text, 'formatted': formatted} if text else None
         except Exception as e:
             print(f"Error al obtener texto del portapapeles: {e}")
             return None
+        
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()
@@ -367,7 +607,186 @@ class Functions:
         # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
         
         
+# key_manager.py
+import win32com
+import win32clipboard  # type: ignore
+import keyboard
+import win32gui
+import win32com.client
+import pyperclip
+import time
+import pyautogui
+import win32api
+import win32con
+import ctypes
+import base64
+
+
+# Definir CF_HTML ya que no está en win32con
+CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+
+class KeyManager:
+    def __init__(self, manager):
+        self.manager = manager
+        self.hotkey = self.manager.hotkey
+        self.current_hotkey = None
+        self.update_hotkey(None, self.hotkey)
+        self.original_cursor_pos = None
+
+    def update_hotkey(self, old_hotkey, new_hotkey):
+        if old_hotkey:
+            try:
+                keyboard.remove_hotkey(old_hotkey)
+            except KeyError:
+                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
+
+        # Asegúrate de que el nuevo atajo incluya 'alt+'
+        if not new_hotkey.lower().startswith('alt+'):
+            new_hotkey = 'alt+' + new_hotkey
         
+        keyboard.add_hotkey(new_hotkey, self.toggle_window)
+        self.current_hotkey = new_hotkey
+        print(f"Nuevo atajo configurado: {new_hotkey}")
+
+    def toggle_window(self):
+        print("Toggling window")
+        if not self.manager.is_visible:
+            print("Showing window")
+            self.original_cursor_pos = win32gui.GetCursorPos()
+            self.show_window()
+        else:
+            print("Hiding window")
+            self.hide_window()
+
+    def hide_window(self):
+        self.manager.root.withdraw()
+        self.manager.is_visible = False
+        self.restore_focus()
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+        self.setup_global_keys()  # Asegurarse de que los atajos globales sigan funcionando
+
+    def show_window(self):
+        print("In show_window function")
+        try:
+            self.manager.previous_window = win32gui.GetForegroundWindow()
+            self.manager.root.deiconify()
+            self.manager.root.lift()
+            self.manager.root.attributes('-topmost', True)
+            self.manager.is_visible = True
+            self.manager.navigation.initialize_focus()
+            self.setup_global_keys()
+            
+            # Forzar la actualización de la ventana
+            self.manager.root.update_idletasks()
+            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
+            self.manager.root.focus_force()
+            
+        except Exception as e:
+            print(f"Error al mostrar la ventana: {e}")
+
+    def restore_focus(self):
+        if self.manager.previous_window:
+            try:
+                win32gui.SetForegroundWindow(self.manager.previous_window)
+            except Exception as e:
+                print(f"Error al restaurar el foco: {e}")
+                try:
+                    self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
+                except:
+                    pass
+
+    def setup_global_keys(self):
+        keyboard.unhook_all()
+        keyboard.add_hotkey(self.current_hotkey, self.toggle_window)
+        keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
+        keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
+        keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
+        keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
+        keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
+
+    def handle_global_key(self, key):
+        if self.manager.is_visible:
+            print(f"Handling global key: {key}")
+            if key in ['Up', 'Down']:
+                self.manager.navigation.navigate_vertical(type('Event', (), {'keysym': key})())
+            elif key in ['Left', 'Right']:
+                self.manager.navigation.navigate_horizontal(type('Event', (), {'keysym': key})())
+            elif key == 'Return':
+                self.manager.navigation.activate_selected()
+            
+            self.manager.root.update_idletasks()
+            self.manager.root.after(10, self.manager.root.update)
+            self.manager.root.after(20, self.restore_cursor_position)  # Restaurar cursor después de la actualización
+
+    def restore_cursor_position(self):
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+
+
+    def paste_content(self, clipboard_data):
+        try:
+            # Ocultar la ventana de la aplicación
+            self.hide_window()
+            
+            # Guardar la posición actual del cursor
+            current_cursor_pos = win32gui.GetCursorPos()
+            
+            if isinstance(clipboard_data, dict):
+                text = clipboard_data.get('text', '')
+                formatted = clipboard_data.get('formatted')
+            else:
+                text = str(clipboard_data)
+                formatted = None
+
+            if self.manager.paste_with_format and formatted:
+                # Pegar con formato
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                
+                # Decodificar el contenido formateado de Base64
+                if isinstance(formatted, str):
+                    formatted_data = base64.b64decode(formatted.encode('utf-8'))
+                    
+                    if formatted_data.startswith(b'{\\rtf'):
+                        win32clipboard.SetClipboardData(win32con.CF_RTF, formatted_data)
+                    else:
+                        CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+                        win32clipboard.SetClipboardData(CF_HTML, formatted_data)
+                
+                win32clipboard.CloseClipboard()
+            else:
+                # Pegar sin formato
+                pyperclip.copy(text)
+            
+            # Esperar un poco para asegurar que el portapapeles se ha actualizado
+            time.sleep(0.05)
+            
+            # Restaurar el foco a la ventana anterior
+            if self.manager.previous_window:
+                win32gui.SetForegroundWindow(self.manager.previous_window)
+                time.sleep(0.05)
+                
+                # Restaurar la posición del cursor
+                win32api.SetCursorPos(current_cursor_pos)
+                
+                # Simular la pulsación de teclas Ctrl+V para pegar
+                shell = win32com.client.Dispatch("WScript.Shell")
+                shell.SendKeys("^v")
+            
+            # Limpiar la posición original del cursor
+            self.original_cursor_pos = None
+            
+        except Exception as e:
+            print(f"Error en el proceso de pegado: {e}")
+        finally:
+            # Asegurarse de que la posición del cursor se restaure incluso si hay un error
+            if self.original_cursor_pos:
+                win32api.SetCursorPos(self.original_cursor_pos)
+            self.original_cursor_pos = None
+            
+            
+            
 # group_content_manager.py
 
 import tkinter as tk
@@ -1065,218 +1484,7 @@ class GroupManager:
         dialog.focus_set()
         name_entry.focus()
         
-    
-            
-#theme_manager.py
-
-import tkinter as tk
-from tkinter import ttk
-
-class ThemeManager:
-    def __init__(self, manager):
-        self.manager = manager
-        self.colors = {
-            'dark': {
-                'bg': '#1e1e1e',
-                'fg': '#ffffff',
-                'button_bg': '#333333',
-                'button_fg': '#ffffff',
-                'listbox_bg': '#2d2d2d',
-                'listbox_fg': '#ffffff',
-                'active_bg': '#4E4E4E',  # Añadido
-                'active_fg': '#FFFFFF',  # Añadido
-                'card_bg': '#333333'
-            },
-            'light': {
-                'bg': '#f0f0f0',
-                'fg': '#000000',
-                'button_bg': '#e0e0e0',
-                'button_fg': '#000000',
-                'listbox_bg': '#ffffff',
-                'listbox_fg': '#000000',
-                'active_bg': '#D0D0D0',  # Añadido
-                'active_fg': '#000000',  # Añadido
-                'card_bg': '#ffffff'
-            }
-        }
-
-    def toggle_theme(self):
-        self.manager.is_dark_mode = not self.manager.is_dark_mode
-        self.manager.theme_button.config(text="🌙" if self.manager.is_dark_mode else "☀️")
-        self.apply_theme()
-
-    def apply_theme(self):
-        theme = self.colors['dark'] if self.manager.is_dark_mode else self.colors['light']
         
-        self.manager.root.configure(bg=theme['bg'])
-        self.manager.main_frame.configure(style='Main.TFrame')
-        self.manager.title_frame.configure(bg=theme['bg'])
-        self.manager.title_label.configure(bg=theme['bg'], fg=theme['fg'])
-        
-        self.manager.clear_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-        self.manager.theme_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-        
-        self.manager.close_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button1.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button2.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button3.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.canvas.configure(bg=theme['bg'])
-        self.manager.cards_frame.configure(bg=theme['bg'])
-        
-        self.manager.functions.refresh_cards()
-
-        style = ttk.Style()  
-        style.theme_use('clam')  
-        style.configure('Main.TFrame', background=theme['bg'])
-        
-        
-        
-# utils.py
-
-import time
-
-def measure_time(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        print(f"{func.__name__} tomó {(end_time - start_time) * 1000:.2f} ms")
-        return result
-    return wrapper
-
-def process_text(text_data, cant_lineas):
-    """
-    Procesa el texto para mostrarlo de forma limpia y ordenada
-    """
-    # Comprueba si text_data es un diccionario y extrae el texto
-    if isinstance(text_data, dict):
-        text = text_data.get('text', '')
-    else:
-        text = str(text_data)
-
-    # Eliminamos espacios extras y tabulaciones al inicio y final
-    text = text.strip()
-    
-    # Dividimos el texto en líneas
-    lines = text.splitlines()
-    
-    # Eliminamos líneas vacías consecutivas y espacios extras
-    clean_lines = []
-    prev_empty = False
-    for line in lines:
-        line = line.strip()
-        
-        # Si la línea está vacía
-        if not line:
-            if not prev_empty:  # Solo mantenemos una línea vacía
-                clean_lines.append('')
-                prev_empty = True
-        else:
-            clean_lines.append(line)
-            prev_empty = False
-    
-    # Tomamos solo las primeras 'cant_lineas' para la vista previa
-    preview_lines = clean_lines[:cant_lineas]
-    
-    # Si hay más líneas, indicamos cuántas más hay
-    if len(clean_lines) > cant_lineas:
-        remaining_lines = len(clean_lines) - cant_lineas
-        preview_lines.append(f"+ {remaining_lines} líneas más")
-        
-    # Unimos las líneas con saltos de línea
-    return '\n'.join(preview_lines)
-
-
-# --------------------------------------------------------------------
-
-# main.py
-import keyboard
-import sys
-import tkinter as tk
-from structure import ClipboardManager
-
-def main():
-    root = tk.Tk()
-    show_settings = "--show-settings" in sys.argv
-    app = ClipboardManager(root, show_settings)
-    # Aplicar las configuraciones iniciales
-    root.geometry(f"{app.settings_manager.settings['width']}x{app.settings_manager.settings['height']}+0+0")
-    
-    # if show_settings:
-    #     root.after(100, app.settings_manager.show_settings_window)
-    
-    # Configurar el atajo de teclado global
-    keyboard.add_hotkey(app.hotkey, app.key_manager.toggle_window)
-    
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
-    
-        
-# navigation_strategies.py
-
-from abc import ABC, abstractmethod
-
-class NavigationStrategy(ABC):
-    @abstractmethod
-    def navigate_vertical(self, event):
-        pass
-
-    @abstractmethod
-    def navigate_horizontal(self, event):
-        pass
-
-    @abstractmethod
-    def activate_selected(self, event=None):
-        pass
-
-    @abstractmethod
-    def update_highlights(self):
-        pass
-
-    @abstractmethod
-    def initialize_focus(self):
-        pass
-
-# Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
-# y SettingsScreenNavigation ahora están en archivos separados.
-
-
 # settings_manager.py
 
 import json
@@ -1454,8 +1662,9 @@ class SettingsManager:
         x = self.settings_window.winfo_x() + deltax
         y = self.settings_window.winfo_y() + deltay
         self.settings_window.geometry(f"+{x}+{y}")
-
-
+        
+        
+        
 # structure.py
 
 import tkinter as tk
@@ -1781,7 +1990,6 @@ class Navigation:
         return self.manager.theme_manager.colors
     
     
-    
 # main_screen_navigation.py
 
 import tkinter as tk
@@ -2036,176 +2244,4 @@ class MainScreenNavigation:
     
     
     
-# key_manager.py
-import win32com
-import win32clipboard  # type: ignore
-import keyboard
-import win32gui
-import win32com.client
-import pyperclip
-import time
-import pyautogui
-import win32api
-import win32con
-import ctypes
 
-# Definir CF_HTML ya que no está en win32con
-CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
-
-class KeyManager:
-    def __init__(self, manager):
-        self.manager = manager
-        self.hotkey = self.manager.hotkey
-        self.current_hotkey = None
-        self.update_hotkey(None, self.hotkey)
-        self.original_cursor_pos = None
-
-    def update_hotkey(self, old_hotkey, new_hotkey):
-        if old_hotkey:
-            try:
-                keyboard.remove_hotkey(old_hotkey)
-            except KeyError:
-                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
-
-        # Asegúrate de que el nuevo atajo incluya 'alt+'
-        if not new_hotkey.lower().startswith('alt+'):
-            new_hotkey = 'alt+' + new_hotkey
-        
-        keyboard.add_hotkey(new_hotkey, self.toggle_window)
-        self.current_hotkey = new_hotkey
-        print(f"Nuevo atajo configurado: {new_hotkey}")
-
-    def toggle_window(self):
-        print("Toggling window")
-        if not self.manager.is_visible:
-            print("Showing window")
-            self.original_cursor_pos = win32gui.GetCursorPos()
-            self.show_window()
-        else:
-            print("Hiding window")
-            self.hide_window()
-
-    def hide_window(self):
-        self.manager.root.withdraw()
-        self.manager.is_visible = False
-        self.restore_focus()
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-        self.setup_global_keys()  # Asegurarse de que los atajos globales sigan funcionando
-
-    def show_window(self):
-        print("In show_window function")
-        try:
-            self.manager.previous_window = win32gui.GetForegroundWindow()
-            self.manager.root.deiconify()
-            self.manager.root.lift()
-            self.manager.root.attributes('-topmost', True)
-            self.manager.is_visible = True
-            self.manager.navigation.initialize_focus()
-            self.setup_global_keys()
-            
-            # Forzar la actualización de la ventana
-            self.manager.root.update_idletasks()
-            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
-            self.manager.root.focus_force()
-            
-        except Exception as e:
-            print(f"Error al mostrar la ventana: {e}")
-
-    def restore_focus(self):
-        if self.manager.previous_window:
-            try:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-            except Exception as e:
-                print(f"Error al restaurar el foco: {e}")
-                try:
-                    self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
-                except:
-                    pass
-
-    def setup_global_keys(self):
-        keyboard.unhook_all()
-        keyboard.add_hotkey(self.current_hotkey, self.toggle_window)
-        keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
-        keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
-        keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
-        keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
-        keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
-
-    def handle_global_key(self, key):
-        if self.manager.is_visible:
-            print(f"Handling global key: {key}")
-            if key in ['Up', 'Down']:
-                self.manager.navigation.navigate_vertical(type('Event', (), {'keysym': key})())
-            elif key in ['Left', 'Right']:
-                self.manager.navigation.navigate_horizontal(type('Event', (), {'keysym': key})())
-            elif key == 'Return':
-                self.manager.navigation.activate_selected()
-            
-            self.manager.root.update_idletasks()
-            self.manager.root.after(10, self.manager.root.update)
-            self.manager.root.after(20, self.restore_cursor_position)  # Restaurar cursor después de la actualización
-
-    def restore_cursor_position(self):
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-
-
-    def paste_content(self, clipboard_data):
-        try:
-            # Ocultar la ventana de la aplicación
-            self.hide_window()
-            
-            # Guardar la posición actual del cursor
-            current_cursor_pos = win32gui.GetCursorPos()
-            
-            if isinstance(clipboard_data, dict):
-                text = clipboard_data.get('text', '')
-                formatted = clipboard_data.get('formatted')
-            else:
-                text = str(clipboard_data)
-                formatted = None
-
-            if self.manager.paste_with_format and formatted:
-                # Pegar con formato
-                win32clipboard.OpenClipboard()
-                win32clipboard.EmptyClipboard()
-                if isinstance(formatted, str) and formatted.startswith('{\\rtf'):
-                    win32clipboard.SetClipboardData(win32con.CF_RTF, formatted.encode('utf-8'))
-                elif isinstance(formatted, str):
-                    CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
-                    win32clipboard.SetClipboardData(CF_HTML, formatted.encode('utf-8'))
-                win32clipboard.CloseClipboard()
-            else:
-                # Pegar sin formato
-                pyperclip.copy(text)
-            
-            # Esperar un poco para asegurar que el portapapeles se ha actualizado
-            time.sleep(0.05)
-            
-            # Restaurar el foco a la ventana anterior
-            if self.manager.previous_window:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-                time.sleep(0.05)
-                
-                # Restaurar la posición del cursor
-                win32api.SetCursorPos(current_cursor_pos)
-                
-                # Simular la pulsación de teclas Ctrl+V para pegar
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys("^v")
-            
-            # Limpiar la posición original del cursor
-            self.original_cursor_pos = None
-            
-        except Exception as e:
-            print(f"Error en el proceso de pegado: {e}")
-        finally:
-            # Asegurarse de que la posición del cursor se restaure incluso si hay un error
-            if self.original_cursor_pos:
-                win32api.SetCursorPos(self.original_cursor_pos)
-            self.original_cursor_pos = None
-            
-            
-            
-            

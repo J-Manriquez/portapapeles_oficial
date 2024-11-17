@@ -116,9 +116,13 @@ class KeyManager:
 
 
     def paste_content(self, clipboard_data):
+        print('*************************'f"Intentando pegar: {clipboard_data}")
         try:
             # Ocultar la ventana de la aplicación
             self.hide_window()
+            
+            # Esperar un momento para asegurar que la ventana anterior esté activa
+            time.sleep(0.1)
             
             # Guardar la posición actual del cursor
             current_cursor_pos = win32gui.GetCursorPos()
@@ -130,43 +134,33 @@ class KeyManager:
                 text = str(clipboard_data)
                 formatted = None
 
+            # Copiar el contenido al portapapeles
             if self.manager.paste_with_format and formatted:
-                # Pegar con formato
                 win32clipboard.OpenClipboard()
                 win32clipboard.EmptyClipboard()
                 
-                # Decodificar el contenido formateado de Base64
                 if isinstance(formatted, str):
                     formatted_data = base64.b64decode(formatted.encode('utf-8'))
                     
                     if formatted_data.startswith(b'{\\rtf'):
                         win32clipboard.SetClipboardData(win32con.CF_RTF, formatted_data)
                     else:
-                        CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
                         win32clipboard.SetClipboardData(CF_HTML, formatted_data)
                 
                 win32clipboard.CloseClipboard()
             else:
-                # Pegar sin formato
-                pyperclip.copy(text)
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardText(text)
+                win32clipboard.CloseClipboard()
             
-            # Esperar un poco para asegurar que el portapapeles se ha actualizado
-            time.sleep(0.05)
+            # Simular la pulsación de teclas Ctrl+V para pegar
+            pyautogui.hotkey('ctrl', 'v')
             
-            # Restaurar el foco a la ventana anterior
-            if self.manager.previous_window:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-                time.sleep(0.05)
-                
-                # Restaurar la posición del cursor
-                win32api.SetCursorPos(current_cursor_pos)
-                
-                # Simular la pulsación de teclas Ctrl+V para pegar
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys("^v")
-            
-            # Limpiar la posición original del cursor
-            self.original_cursor_pos = None
+            # Restaurar la posición del cursor
+            win32api.SetCursorPos(current_cursor_pos)
+            print("Contenido pegado exitosamente")
+
             
         except Exception as e:
             print(f"Error en el proceso de pegado: {e}")

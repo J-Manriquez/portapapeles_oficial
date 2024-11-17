@@ -175,7 +175,21 @@ class ClipboardManager:
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
         self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
-
+        
+        self.canvas.bind('<Button-1>', self.on_canvas_click)
+        
+    def on_canvas_click(self, event):
+        # Obtener el widget clickeado
+        clicked_widget = event.widget.winfo_containing(event.x_root, event.y_root)
+        
+        # Verificar si el clic fue en una tarjeta
+        for index, card in enumerate(self.cards_frame.winfo_children()):
+            if clicked_widget == card or clicked_widget.master == card:
+                # Evitar activar si se hizo clic en los iconos
+                if not isinstance(clicked_widget, tk.Button):
+                    self.navigation.activate_card(index)
+                return
+            
     def show_groups(self):
         self.group_manager.show_groups_window()
         self.navigation.set_strategy('groups')
