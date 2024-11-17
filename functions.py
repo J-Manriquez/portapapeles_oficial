@@ -1,5 +1,6 @@
 # functions.py
 
+import base64
 import tkinter as tk
 import uuid
 import win32con # type: ignore
@@ -226,10 +227,15 @@ class Functions:
             
             win32clipboard.CloseClipboard()
             
+            if formatted:
+                if isinstance(formatted, bytes):
+                    formatted = formatted.decode('utf-8', errors='ignore')
+            
             return {'text': text, 'formatted': formatted} if text else None
         except Exception as e:
             print(f"Error al obtener texto del portapapeles: {e}")
             return None
+        
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()

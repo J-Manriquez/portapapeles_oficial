@@ -10,6 +10,8 @@ import pyautogui
 import win32api
 import win32con
 import ctypes
+import base64
+
 
 # Definir CF_HTML ya que no está en win32con
 CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
@@ -132,11 +134,17 @@ class KeyManager:
                 # Pegar con formato
                 win32clipboard.OpenClipboard()
                 win32clipboard.EmptyClipboard()
-                if isinstance(formatted, str) and formatted.startswith('{\\rtf'):
-                    win32clipboard.SetClipboardData(win32con.CF_RTF, formatted.encode('utf-8'))
-                elif isinstance(formatted, str):
-                    CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
-                    win32clipboard.SetClipboardData(CF_HTML, formatted.encode('utf-8'))
+                
+                # Decodificar el contenido formateado de Base64
+                if isinstance(formatted, str):
+                    formatted_data = base64.b64decode(formatted.encode('utf-8'))
+                    
+                    if formatted_data.startswith(b'{\\rtf'):
+                        win32clipboard.SetClipboardData(win32con.CF_RTF, formatted_data)
+                    else:
+                        CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+                        win32clipboard.SetClipboardData(CF_HTML, formatted_data)
+                
                 win32clipboard.CloseClipboard()
             else:
                 # Pegar sin formato

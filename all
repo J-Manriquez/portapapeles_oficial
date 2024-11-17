@@ -1276,6 +1276,186 @@ class NavigationStrategy(ABC):
 # Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
 # y SettingsScreenNavigation ahora están en archivos separados.
 
+
+# settings_manager.py
+
+import json
+import os
+import sys
+import tkinter as tk
+from tkinter import ttk
+
+class SettingsManager:
+    def __init__(self, master, clipboard_manager):
+        self.master = master
+        self.clipboard_manager = clipboard_manager
+        self.settings_window = None
+        self.settings = None      
+          
+    def initialize_settings(self):
+        # Llama a este método después de que ClipboardManager haya inicializado completamente
+        self.settings = self.clipboard_manager.settings
+        
+    def save_settings(self):
+        groups, pinned_items, _ = self.clipboard_manager.data_manager.load_data()
+        self.clipboard_manager.data_manager.save_data(groups, pinned_items, self.settings)
+        
+    def show_settings_window(self):
+        if self.settings_window is None or not self.settings_window.winfo_exists():
+            self.settings_window = tk.Toplevel(self.master)
+            self.settings_window.title("Configuraciones")
+            
+            window_width = self.settings['width']
+            window_height = self.settings['height']
+
+            # Usa las coordenadas de la ventana principal o una posición predeterminada
+            x = getattr(self.clipboard_manager, 'window_x', 0) + 50
+            y = getattr(self.clipboard_manager, 'window_y', 0) + 50
+            
+            self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+            
+            self.settings_window.overrideredirect(True)
+            self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            self.settings_window.attributes('-topmost', True)
+
+            # Barra de título personalizada
+            title_frame = tk.Frame(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            title_frame.pack(fill=tk.X, padx=6, pady=(0, 0))
+
+            title_label = tk.Label(title_frame, text="Configuraciones", font=('Segoe UI', 10, 'bold'), 
+                                   bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], 
+                                   fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+            title_label.pack(side=tk.LEFT, padx=5)
+
+            close_button = tk.Button(title_frame, text="❌", command=self.settings_window.destroy, 
+                                     font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
+                                     bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                                     fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+            close_button.pack(side=tk.RIGHT)
+
+            # Canvas para scroll y contenedor de configuraciones
+            canvas = tk.Canvas(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
+            canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+            # Scrollbar oculto
+            scrollbar = ttk.Scrollbar(self.settings_window, orient=tk.VERTICAL, command=canvas.yview)
+            canvas.configure(yscrollcommand=scrollbar.set)
+
+            # Frame contenedor dentro del canvas para el scroll
+            self.settings_frame = tk.Frame(canvas, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            canvas_window = canvas.create_window((0, 0), window=self.settings_frame, anchor='nw', width=295)
+
+            # Ajustar el ancho del frame contenedor al canvas
+            def on_canvas_resize(event):
+                canvas.itemconfig(canvas_window, width=event.width)
+
+            canvas.bind("<Configure>", on_canvas_resize)
+
+            # Configuración de scroll
+            def on_frame_configure(event):
+                canvas.configure(scrollregion=canvas.bbox("all"))
+
+            self.settings_frame.bind("<Configure>", on_frame_configure)
+
+            # Función para desplazamiento con la rueda del mouse
+            def _on_mousewheel(event):
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+            # Crear cards de configuración
+            subtitle = tk.Label(self.settings_frame, text="Tecla de activación", 
+                        font=('Segoe UI', 10, 'bold'),
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Alt+", self.settings['hotkey'])
+            
+            subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app", 
+                        font=('Segoe UI', 10, 'bold'),
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Alto", str(self.settings['height']))
+            self.create_setting_card("Ancho", str(self.settings['width']))
+
+            # Hacer la ventana arrastrable
+            title_label.bind('<Button-1>', self.start_move)
+            title_label.bind('<B1-Motion>', self.on_move)
+
+        else:
+            self.settings_window.lift()
+            self.settings_window.attributes('-topmost', True)
+            self.settings_window.after_idle(self.settings_window.attributes, '-topmost', False)
+
+    def create_setting_card(self, setting_name, default_value):
+        card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
+        card.pack(fill=tk.X, padx=4, pady=2)
+
+        label = tk.Label(card, text=f"{setting_name}: {default_value}", 
+                         bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
+                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                         anchor='w', padx=5, pady=5)
+        label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        edit_button = tk.Button(card, text="✏️", 
+                                command=lambda: self.toggle_edit_mode(card, label, edit_button, setting_name, default_value),
+                                font=('Segoe UI', 10), bd=0,
+                                bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                                fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+        edit_button.pack(side=tk.RIGHT, padx=2, pady=2)
+
+    def toggle_edit_mode(self, card, label, button, setting_name, current_value):
+        if button['text'] == "✏️":
+            # Cambiar a modo edición
+            entry = tk.Entry(card, bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                             fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                             insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+            entry.insert(0, current_value)
+            entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+            label.pack_forget()
+            button.configure(text="💾")
+        else:
+            # Guardar cambios
+            entry = [child for child in card.winfo_children() if isinstance(child, tk.Entry)][0]
+            new_value = entry.get()
+            label.configure(text=f"{setting_name}: {new_value}")
+            entry.destroy()
+            label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            button.configure(text="✏️")
+            
+            # Actualizar configuraciones
+            if setting_name == "Alto":
+                self.settings['height'] = int(new_value)
+            elif setting_name == "Ancho":
+                self.settings['width'] = int(new_value)
+            elif setting_name == "Alt+":
+                old_hotkey = self.settings['hotkey']
+                new_hotkey = 'alt+' + new_value
+                self.settings['hotkey'] = new_value  # Guarda solo la letra
+                self.clipboard_manager.key_manager.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
+                
+            self.save_settings()
+            self.restart_app()
+            
+    def restart_app(self):
+        python = sys.executable
+        os.execl(python, python, *sys.argv, "--show-settings")
+            
+    def start_move(self, event):
+        self.x = event.x
+        self.y = event.y
+
+    def on_move(self, event):
+        deltax = event.x - self.x
+        deltay = event.y - self.y
+        x = self.settings_window.winfo_x() + deltax
+        y = self.settings_window.winfo_y() + deltay
+        self.settings_window.geometry(f"+{x}+{y}")
+
+
 # structure.py
 
 import tkinter as tk
@@ -1601,6 +1781,7 @@ class Navigation:
         return self.manager.theme_manager.colors
     
     
+    
 # main_screen_navigation.py
 
 import tkinter as tk
@@ -1608,7 +1789,7 @@ import tkinter as tk
 class MainScreenNavigation:
     def __init__(self, manager):
         self.manager = manager
-        self.navigation_order = ['top_buttons', 'main_buttons', 'cards', 'icons']   
+        self.navigation_order = ['top_buttons', 'main_buttons', 'cards']   
 
     def navigate_vertical(self, event):
         print(f"MainScreenNavigation: Navigating vertically {event.keysym}")
@@ -1627,7 +1808,7 @@ class MainScreenNavigation:
         self.update_highlights()
 
     def move_up(self, current_type, current_index):
-        if current_type == 'cards':
+        if current_type in ['cards', 'icons']:
             if current_index > 0:
                 self.manager.current_selection['index'] = current_index - 1
             else:
@@ -1730,47 +1911,15 @@ class MainScreenNavigation:
             elif icon_position == 2:  # Delete
                 self.manager.functions.delete_item(item_id)
 
-    # def update_highlights(self):
-    #     print("Updating highlights")  
-    #     self.clear_all_highlights()
+    def initialize_focus(self):
+        if self.get_cards_count() > 0:
+            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        else:
+            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
         
-    #     current_type = self.manager.current_selection['type']
-    #     current_index = self.manager.current_selection['index']
-        
-    #     highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
-    #     icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
-        
-    #     if current_type == 'main_buttons':
-    #         buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
-    #         if 0 <= current_index < len(buttons):
-    #             buttons[current_index].configure(bg=highlight_color)
-        
-    #     elif current_type == 'top_buttons':
-    #         top_buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
-    #         if 0 <= current_index < len(top_buttons):
-    #             top_buttons[current_index].configure(bg=highlight_color)
-        
-    #     elif current_type == 'cards':
-    #         cards = self.manager.cards_frame.winfo_children()
-    #         if current_index < len(cards):
-    #             card = cards[current_index]
-    #             self.highlight_entire_card(card, highlight_color)
-        
-    #     elif current_type == 'icons':
-    #         card_index = current_index // 3
-    #         icon_position = current_index % 3
-    #         cards = self.manager.cards_frame.winfo_children()
-            
-    #         if card_index < len(cards):
-    #             card = cards[card_index]
-    #             icons_frame = self.find_icons_frame(card)
-                
-    #             if icons_frame and icon_position < len(icons_frame.winfo_children()):
-    #                 icons = icons_frame.winfo_children()
-    #                 if 0 <= icon_position < len(icons):
-    #                     icons[icon_position].configure(bg=icon_highlight_color)
-                        
-    #     self.manager.root.update_idletasks()  # Forzar actualización de la interfaz
+        self.manager.root.focus_force()
+        self.manager.root.update_idletasks()
+        self.update_highlights()
     
     def update_highlights(self):
         print("Updating highlights")
@@ -1780,6 +1929,7 @@ class MainScreenNavigation:
         current_index = self.manager.current_selection['index']
         
         highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
+        icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
         
         if current_type == 'main_buttons':
             buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
@@ -1794,56 +1944,65 @@ class MainScreenNavigation:
         elif current_type == 'cards':
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
-                cards[current_index].configure(bg=highlight_color)
+                self.highlight_entire_card(cards[current_index], highlight_color)
         
+        elif current_type == 'icons':
+            card_index = current_index // 3
+            icon_position = current_index % 3
+            cards = self.manager.cards_frame.winfo_children()
+            
+            if card_index < len(cards):
+                card = cards[card_index]
+                icons_frame = self.find_icons_frame(card)
+                
+                if icons_frame and icon_position < len(icons_frame.winfo_children()):
+                    icons = icons_frame.winfo_children()
+                    if 0 <= icon_position < len(icons):
+                        self.highlight_entire_card(card, highlight_color)
+                        icons[icon_position].configure(bg=icon_highlight_color)
+                        
         print(f"Highlighted: {current_type}, index: {current_index}")
         self.manager.root.update_idletasks()
         self.manager.root.after(10, self.manager.root.update)
 
-    def initialize_focus(self):
-        if self.get_cards_count() > 0:
-            self.manager.current_selection = {'type': 'cards', 'index': 0}
-        else:
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        
-        self.manager.root.focus_force()
-        self.manager.root.update_idletasks()
-        self.update_highlights()
+    def highlight_entire_card(self, card, color):
+        card.configure(bg=color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, (tk.Label, tk.Button)):
+                        subchild.configure(bg=color)
+            elif isinstance(child, (tk.Label, tk.Button)):
+                child.configure(bg=color)
 
     def clear_all_highlights(self):
         theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
         base_color = theme['card_bg']
+        button_color = theme['button_bg']
         
         buttons = [self.manager.button1, self.manager.button2, self.manager.button3,
-                   self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
+                self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
         for button in buttons:
-            button.configure(bg=theme['button_bg'])
+            button.configure(bg=button_color)
         
         for card in self.manager.cards_frame.winfo_children():
-            card.configure(bg=base_color)
-            
-            for child in card.winfo_children():
-                child.configure(bg=base_color)
-                if isinstance(child, tk.Frame):
-                    for subchild in child.winfo_children():
-                        if isinstance(subchild, (tk.Label, tk.Button)):
-                            subchild.configure(bg=base_color)
+            self.reset_card_colors(card, base_color, button_color)
 
-    def highlight_entire_card(self, card, color):
-        card.configure(bg=color)
-    
-        text_frame = card.winfo_children()[0]  
-        text_frame.configure(bg=color)
-        for subwidget in text_frame.winfo_children():
-            if isinstance(subwidget, tk.Label):
-                subwidget.configure(bg=color)
-        
-        theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
-        icons_frame = self.find_icons_frame(card)
-        if icons_frame:
-            icons_frame.configure(bg=theme['card_bg'])
-            for icon in icons_frame.winfo_children():
-                icon.configure(bg=theme['card_bg'])
+    def reset_card_colors(self, card, base_color, button_color):
+        card.configure(bg=base_color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=base_color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, tk.Label):
+                        subchild.configure(bg=base_color)
+                    elif isinstance(subchild, tk.Button):
+                        subchild.configure(bg=button_color)
+            elif isinstance(child, tk.Label):
+                child.configure(bg=base_color)
+            elif isinstance(child, tk.Button):
+                child.configure(bg=button_color)
 
     def ensure_visible(self):
         current_type = self.manager.current_selection['type']
@@ -1874,6 +2033,7 @@ class MainScreenNavigation:
             if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
                 return child
         return None
+    
     
     
 # key_manager.py
@@ -2047,180 +2207,5 @@ class KeyManager:
             self.original_cursor_pos = None
             
             
-# settings_manager.py
-
-import json
-import os
-import sys
-import tkinter as tk
-from tkinter import ttk
-
-class SettingsManager:
-    def __init__(self, master, clipboard_manager):
-        self.master = master
-        self.clipboard_manager = clipboard_manager
-        self.settings_window = None
-        self.settings = None      
-          
-    def initialize_settings(self):
-        # Llama a este método después de que ClipboardManager haya inicializado completamente
-        self.settings = self.clipboard_manager.settings
-        
-    def save_settings(self):
-        groups, pinned_items, _ = self.clipboard_manager.data_manager.load_data()
-        self.clipboard_manager.data_manager.save_data(groups, pinned_items, self.settings)
-        
-    def show_settings_window(self):
-        if self.settings_window is None or not self.settings_window.winfo_exists():
-            self.settings_window = tk.Toplevel(self.master)
-            self.settings_window.title("Configuraciones")
             
-            window_width = self.settings['width']
-            window_height = self.settings['height']
-
-            # Usa las coordenadas de la ventana principal o una posición predeterminada
-            x = getattr(self.clipboard_manager, 'window_x', 0) + 50
-            y = getattr(self.clipboard_manager, 'window_y', 0) + 50
             
-            self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-            
-            self.settings_window.overrideredirect(True)
-            self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
-            self.settings_window.attributes('-topmost', True)
-
-            # Barra de título personalizada
-            title_frame = tk.Frame(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
-            title_frame.pack(fill=tk.X, padx=6, pady=(0, 0))
-
-            title_label = tk.Label(title_frame, text="Configuraciones", font=('Segoe UI', 10, 'bold'), 
-                                   bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], 
-                                   fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
-            title_label.pack(side=tk.LEFT, padx=5)
-
-            close_button = tk.Button(title_frame, text="❌", command=self.settings_window.destroy, 
-                                     font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
-                                     bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                                     fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
-            close_button.pack(side=tk.RIGHT)
-
-            # Canvas para scroll y contenedor de configuraciones
-            canvas = tk.Canvas(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
-            canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-            # Scrollbar oculto
-            scrollbar = ttk.Scrollbar(self.settings_window, orient=tk.VERTICAL, command=canvas.yview)
-            canvas.configure(yscrollcommand=scrollbar.set)
-
-            # Frame contenedor dentro del canvas para el scroll
-            self.settings_frame = tk.Frame(canvas, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
-            canvas_window = canvas.create_window((0, 0), window=self.settings_frame, anchor='nw', width=295)
-
-            # Ajustar el ancho del frame contenedor al canvas
-            def on_canvas_resize(event):
-                canvas.itemconfig(canvas_window, width=event.width)
-
-            canvas.bind("<Configure>", on_canvas_resize)
-
-            # Configuración de scroll
-            def on_frame_configure(event):
-                canvas.configure(scrollregion=canvas.bbox("all"))
-
-            self.settings_frame.bind("<Configure>", on_frame_configure)
-
-            # Función para desplazamiento con la rueda del mouse
-            def _on_mousewheel(event):
-                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-            # Crear cards de configuración
-            subtitle = tk.Label(self.settings_frame, text="Tecla de activación", 
-                        font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                        anchor='w')
-            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
-            self.create_setting_card("Alt+", self.settings['hotkey'])
-            
-            subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app", 
-                        font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                        anchor='w')
-            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
-            self.create_setting_card("Alto", str(self.settings['height']))
-            self.create_setting_card("Ancho", str(self.settings['width']))
-
-            # Hacer la ventana arrastrable
-            title_label.bind('<Button-1>', self.start_move)
-            title_label.bind('<B1-Motion>', self.on_move)
-
-        else:
-            self.settings_window.lift()
-            self.settings_window.attributes('-topmost', True)
-            self.settings_window.after_idle(self.settings_window.attributes, '-topmost', False)
-
-    def create_setting_card(self, setting_name, default_value):
-        card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
-        card.pack(fill=tk.X, padx=4, pady=2)
-
-        label = tk.Label(card, text=f"{setting_name}: {default_value}", 
-                         bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
-                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                         anchor='w', padx=5, pady=5)
-        label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        edit_button = tk.Button(card, text="✏️", 
-                                command=lambda: self.toggle_edit_mode(card, label, edit_button, setting_name, default_value),
-                                font=('Segoe UI', 10), bd=0,
-                                bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                                fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
-        edit_button.pack(side=tk.RIGHT, padx=2, pady=2)
-
-    def toggle_edit_mode(self, card, label, button, setting_name, current_value):
-        if button['text'] == "✏️":
-            # Cambiar a modo edición
-            entry = tk.Entry(card, bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                             fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                             insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
-            entry.insert(0, current_value)
-            entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
-            label.pack_forget()
-            button.configure(text="💾")
-        else:
-            # Guardar cambios
-            entry = [child for child in card.winfo_children() if isinstance(child, tk.Entry)][0]
-            new_value = entry.get()
-            label.configure(text=f"{setting_name}: {new_value}")
-            entry.destroy()
-            label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            button.configure(text="✏️")
-            
-            # Actualizar configuraciones
-            if setting_name == "Alto":
-                self.settings['height'] = int(new_value)
-            elif setting_name == "Ancho":
-                self.settings['width'] = int(new_value)
-            elif setting_name == "Alt+":
-                old_hotkey = self.settings['hotkey']
-                new_hotkey = 'alt+' + new_value
-                self.settings['hotkey'] = new_value  # Guarda solo la letra
-                self.clipboard_manager.key_manager.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
-                
-            self.save_settings()
-            self.restart_app()
-            
-    def restart_app(self):
-        python = sys.executable
-        os.execl(python, python, *sys.argv, "--show-settings")
-            
-    def start_move(self, event):
-        self.x = event.x
-        self.y = event.y
-
-    def on_move(self, event):
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.settings_window.winfo_x() + deltax
-        y = self.settings_window.winfo_y() + deltay
-        self.settings_window.geometry(f"+{x}+{y}")
