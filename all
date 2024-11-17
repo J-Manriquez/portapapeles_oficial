@@ -1454,8 +1454,6 @@ class NavigationStrategy(ABC):
 # Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
 # y SettingsScreenNavigation ahora están en archivos separados.
 
-
-
 # structure.py
 
 import tkinter as tk
@@ -1529,20 +1527,12 @@ class ClipboardManager:
         
         self.theme_manager.apply_theme()
 
-        # self.root.bind('<Return>', self.navigation.activate_selected)
-        # self.root.bind('<Up>', self.navigation.navigate_vertical)
-        # self.root.bind('<Down>', self.navigation.navigate_vertical)
-        # self.root.bind('<Left>', self.navigation.navigate_horizontal)
-        # self.root.bind('<Right>', self.navigation.navigate_horizontal)
-        # self.root.bind('<FocusIn>', self.navigation.handle_focus)
-
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
 
         self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
         # self.key_manager.setup_global_keys()
         
-        self.root.after(1000, self.navigation.check_window_state)
         self.root.bind("<Map>", self.on_main_window_map)
         self.root.bind("<Unmap>", self.on_main_window_unmap)
         
@@ -1551,6 +1541,7 @@ class ClipboardManager:
         if show_settings:
             self.root.after(100, self.settings_manager.show_settings_window)
         
+        self.root.after(1000, self.navigation.check_window_state)
         self.key_manager.setup_global_keys()
         
     def force_update(self):
@@ -1753,7 +1744,7 @@ class Navigation:
         try:
             actual_visible = self.manager.root.winfo_viewable()
             if actual_visible != self.manager.is_visible:
-                print(f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
+                print('**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
                 self.manager.is_visible = actual_visible
         except Exception as e:
             print(f"Error al verificar estado de la ventana: {e}")
@@ -1783,6 +1774,7 @@ class Navigation:
 
     def get_theme_colors(self):
         return self.manager.theme_manager.colors
+    
     
     
 # main_screen_navigation.py
@@ -2060,6 +2052,7 @@ class MainScreenNavigation:
         return None
     
     
+    
 # key_manager.py
 import win32com
 import win32clipboard  # type: ignore
@@ -2110,6 +2103,7 @@ class KeyManager:
         self.restore_focus()
         if self.original_cursor_pos:
             win32api.SetCursorPos(self.original_cursor_pos)
+        self.setup_global_keys()  # Asegurarse de que los atajos globales sigan funcionando
 
     def show_window(self):
         print("In show_window function")
@@ -2223,3 +2217,6 @@ class KeyManager:
             if self.original_cursor_pos:
                 win32api.SetCursorPos(self.original_cursor_pos)
             self.original_cursor_pos = None
+            
+            
+            

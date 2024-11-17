@@ -154,8 +154,9 @@ class SettingsManager:
                 self.settings['width'] = int(new_value)
             elif setting_name == "Alt+":
                 old_hotkey = self.settings['hotkey']
-                self.settings['hotkey'] = new_value
-                self.clipboard_manager.key_manager.update_hotkey(old_hotkey, new_value)
+                new_hotkey = 'alt+' + new_value
+                self.settings['hotkey'] = new_value  # Guarda solo la letra
+                self.clipboard_manager.key_manager.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
                 
             self.save_settings()
             self.restart_app()

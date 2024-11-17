@@ -57,7 +57,7 @@ class Navigation:
         try:
             actual_visible = self.manager.root.winfo_viewable()
             if actual_visible != self.manager.is_visible:
-                print(f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
+                print('**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
                 self.manager.is_visible = actual_visible
         except Exception as e:
             print(f"Error al verificar estado de la ventana: {e}")

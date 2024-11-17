@@ -18,6 +18,7 @@ class KeyManager:
     def __init__(self, manager):
         self.manager = manager
         self.hotkey = self.manager.hotkey
+        self.current_hotkey = None
         self.update_hotkey(None, self.hotkey)
         self.original_cursor_pos = None
 
@@ -28,6 +29,10 @@ class KeyManager:
             except KeyError:
                 print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
 
+        # Asegúrate de que el nuevo atajo incluya 'alt+'
+        if not new_hotkey.lower().startswith('alt+'):
+            new_hotkey = 'alt+' + new_hotkey
+        
         keyboard.add_hotkey(new_hotkey, self.toggle_window)
         self.current_hotkey = new_hotkey
         print(f"Nuevo atajo configurado: {new_hotkey}")
@@ -48,6 +53,7 @@ class KeyManager:
         self.restore_focus()
         if self.original_cursor_pos:
             win32api.SetCursorPos(self.original_cursor_pos)
+        self.setup_global_keys()  # Asegurarse de que los atajos globales sigan funcionando
 
     def show_window(self):
         print("In show_window function")

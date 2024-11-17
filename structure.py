@@ -32,6 +32,9 @@ class ClipboardManager:
         self.window_y = 0
 
         self.root.overrideredirect(True)
+        self.root.attributes('-topmost', True)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)  # Manejar el cierre de la ventana
+
         
         self.root.withdraw()
         self.is_visible = False
@@ -71,28 +74,21 @@ class ClipboardManager:
         
         self.theme_manager.apply_theme()
 
-        # self.root.bind('<Return>', self.navigation.activate_selected)
-        # self.root.bind('<Up>', self.navigation.navigate_vertical)
-        # self.root.bind('<Down>', self.navigation.navigate_vertical)
-        # self.root.bind('<Left>', self.navigation.navigate_horizontal)
-        # self.root.bind('<Right>', self.navigation.navigate_horizontal)
-        # self.root.bind('<FocusIn>', self.navigation.handle_focus)
-
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
 
         self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
         # self.key_manager.setup_global_keys()
         
-        self.root.after(1000, self.navigation.check_window_state)
-        self.root.bind("<Map>", self.on_main_window_map)
-        self.root.bind("<Unmap>", self.on_main_window_unmap)
+        # self.root.bind("<Map>", self.on_main_window_map)
+        # self.root.bind("<Unmap>", self.on_main_window_unmap)
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
         if show_settings:
             self.root.after(100, self.settings_manager.show_settings_window)
         
+        self.root.after(1000, self.navigation.check_window_state)
         self.key_manager.setup_global_keys()
         
     def force_update(self):
