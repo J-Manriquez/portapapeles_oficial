@@ -192,6 +192,20 @@ class MainScreenNavigation:
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
                 cards[current_index].configure(bg=highlight_color)
+                
+        elif current_type == 'icons':
+            card_index = current_index // 3
+            icon_position = current_index % 3
+            cards = self.manager.cards_frame.winfo_children()
+            
+            if card_index < len(cards):
+                card = cards[card_index]
+                icons_frame = self.find_icons_frame(card)
+                
+                if icons_frame and icon_position < len(icons_frame.winfo_children()):
+                    icons = icons_frame.winfo_children()
+                    if 0 <= icon_position < len(icons):
+                        icons[icon_position].configure(bg=highlight_color)
         
         print(f"Highlighted: {current_type}, index: {current_index}")
         self.manager.root.update_idletasks()
