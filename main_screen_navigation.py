@@ -5,7 +5,7 @@ import tkinter as tk
 class MainScreenNavigation:
     def __init__(self, manager):
         self.manager = manager
-        self.navigation_order = ['top_buttons', 'main_buttons', 'cards', 'icons']   
+        self.navigation_order = ['top_buttons', 'main_buttons', 'cards']   
 
     def navigate_vertical(self, event):
         print(f"MainScreenNavigation: Navigating vertically {event.keysym}")
@@ -24,7 +24,7 @@ class MainScreenNavigation:
         self.update_highlights()
 
     def move_up(self, current_type, current_index):
-        if current_type == 'cards':
+        if current_type in ['cards', 'icons']:
             if current_index > 0:
                 self.manager.current_selection['index'] = current_index - 1
             else:
@@ -127,47 +127,15 @@ class MainScreenNavigation:
             elif icon_position == 2:  # Delete
                 self.manager.functions.delete_item(item_id)
 
-    # def update_highlights(self):
-    #     print("Updating highlights")  
-    #     self.clear_all_highlights()
+    def initialize_focus(self):
+        if self.get_cards_count() > 0:
+            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        else:
+            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
         
-    #     current_type = self.manager.current_selection['type']
-    #     current_index = self.manager.current_selection['index']
-        
-    #     highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
-    #     icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
-        
-    #     if current_type == 'main_buttons':
-    #         buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
-    #         if 0 <= current_index < len(buttons):
-    #             buttons[current_index].configure(bg=highlight_color)
-        
-    #     elif current_type == 'top_buttons':
-    #         top_buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
-    #         if 0 <= current_index < len(top_buttons):
-    #             top_buttons[current_index].configure(bg=highlight_color)
-        
-    #     elif current_type == 'cards':
-    #         cards = self.manager.cards_frame.winfo_children()
-    #         if current_index < len(cards):
-    #             card = cards[current_index]
-    #             self.highlight_entire_card(card, highlight_color)
-        
-    #     elif current_type == 'icons':
-    #         card_index = current_index // 3
-    #         icon_position = current_index % 3
-    #         cards = self.manager.cards_frame.winfo_children()
-            
-    #         if card_index < len(cards):
-    #             card = cards[card_index]
-    #             icons_frame = self.find_icons_frame(card)
-                
-    #             if icons_frame and icon_position < len(icons_frame.winfo_children()):
-    #                 icons = icons_frame.winfo_children()
-    #                 if 0 <= icon_position < len(icons):
-    #                     icons[icon_position].configure(bg=icon_highlight_color)
-                        
-    #     self.manager.root.update_idletasks()  # Forzar actualización de la interfaz
+        self.manager.root.focus_force()
+        self.manager.root.update_idletasks()
+        self.update_highlights()
     
     def update_highlights(self):
         print("Updating highlights")
@@ -177,6 +145,7 @@ class MainScreenNavigation:
         current_index = self.manager.current_selection['index']
         
         highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
+        icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
         
         if current_type == 'main_buttons':
             buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
@@ -191,8 +160,8 @@ class MainScreenNavigation:
         elif current_type == 'cards':
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
-                cards[current_index].configure(bg=highlight_color)
-                
+                self.highlight_entire_card(cards[current_index], highlight_color)
+        
         elif current_type == 'icons':
             card_index = current_index // 3
             icon_position = current_index % 3
@@ -205,56 +174,51 @@ class MainScreenNavigation:
                 if icons_frame and icon_position < len(icons_frame.winfo_children()):
                     icons = icons_frame.winfo_children()
                     if 0 <= icon_position < len(icons):
-                        icons[icon_position].configure(bg=highlight_color)
-        
+                        self.highlight_entire_card(card, highlight_color)
+                        icons[icon_position].configure(bg=icon_highlight_color)
+                        
         print(f"Highlighted: {current_type}, index: {current_index}")
         self.manager.root.update_idletasks()
         self.manager.root.after(10, self.manager.root.update)
 
-    def initialize_focus(self):
-        if self.get_cards_count() > 0:
-            self.manager.current_selection = {'type': 'cards', 'index': 0}
-        else:
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        
-        self.manager.root.focus_force()
-        self.manager.root.update_idletasks()
-        self.update_highlights()
+    def highlight_entire_card(self, card, color):
+        card.configure(bg=color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, (tk.Label, tk.Button)):
+                        subchild.configure(bg=color)
+            elif isinstance(child, (tk.Label, tk.Button)):
+                child.configure(bg=color)
 
     def clear_all_highlights(self):
         theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
         base_color = theme['card_bg']
+        button_color = theme['button_bg']
         
         buttons = [self.manager.button1, self.manager.button2, self.manager.button3,
-                   self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
+                self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
         for button in buttons:
-            button.configure(bg=theme['button_bg'])
+            button.configure(bg=button_color)
         
         for card in self.manager.cards_frame.winfo_children():
-            card.configure(bg=base_color)
-            
-            for child in card.winfo_children():
-                child.configure(bg=base_color)
-                if isinstance(child, tk.Frame):
-                    for subchild in child.winfo_children():
-                        if isinstance(subchild, (tk.Label, tk.Button)):
-                            subchild.configure(bg=base_color)
+            self.reset_card_colors(card, base_color, button_color)
 
-    def highlight_entire_card(self, card, color):
-        card.configure(bg=color)
-    
-        text_frame = card.winfo_children()[0]  
-        text_frame.configure(bg=color)
-        for subwidget in text_frame.winfo_children():
-            if isinstance(subwidget, tk.Label):
-                subwidget.configure(bg=color)
-        
-        theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
-        icons_frame = self.find_icons_frame(card)
-        if icons_frame:
-            icons_frame.configure(bg=theme['card_bg'])
-            for icon in icons_frame.winfo_children():
-                icon.configure(bg=theme['card_bg'])
+    def reset_card_colors(self, card, base_color, button_color):
+        card.configure(bg=base_color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=base_color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, tk.Label):
+                        subchild.configure(bg=base_color)
+                    elif isinstance(subchild, tk.Button):
+                        subchild.configure(bg=button_color)
+            elif isinstance(child, tk.Label):
+                child.configure(bg=base_color)
+            elif isinstance(child, tk.Button):
+                child.configure(bg=button_color)
 
     def ensure_visible(self):
         current_type = self.manager.current_selection['type']

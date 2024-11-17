@@ -5,10 +5,8 @@
             "items": []
         }
     },
-    "pinned_items": {},
-    "settings": {
-        "height": 400,
-        "width": 295,
-        "hotkey": "z"
-    }
-}
+    "pinned_items": {
+        "a269a6a3-f0d8-4e93-bca7-0be0c813e430": {
+            "text": {
+                "text": " current_index < len(cards):\r\n                widget = cards[current_index]\r\n                bbox = self.manager.canvas.bbox(\"all\")\r\n                if bbox:\r\n                    widget_y = widget.winfo_y()\r\n                    canvas_height = self.manager.canvas.winfo_height()\r\n                    if widget_y > 0:\r\n                        self.manager.canvas.yview_moveto(widget_y / bbox[3])\r\n\r\n    def get_cards_count(self):\r\n        return len(self.manager.cards_frame.winfo_children",
+                "formatted": 
