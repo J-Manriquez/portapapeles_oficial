@@ -30,8 +30,8 @@ class SettingsManager:
             window_height = self.settings['height']
 
             # Usa las coordenadas de la ventana principal o una posición predeterminada
-            x = getattr(self.clipboard_manager, 'window_x', 0) + 50
-            y = getattr(self.clipboard_manager, 'window_y', 0) + 50
+            x = getattr(self.clipboard_manager, 'window_x', 0) 
+            y = getattr(self.clipboard_manager, 'window_y', 0)
             
             self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
@@ -48,7 +48,7 @@ class SettingsManager:
                                    fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
             title_label.pack(side=tk.LEFT, padx=5)
 
-            close_button = tk.Button(title_frame, text="❌", command=self.settings_window.destroy, 
+            close_button = tk.Button(title_frame, text="❌", command=self.close_settings_window, 
                                      font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                      bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
                                      fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
@@ -175,3 +175,7 @@ class SettingsManager:
         x = self.settings_window.winfo_x() + deltax
         y = self.settings_window.winfo_y() + deltay
         self.settings_window.geometry(f"+{x}+{y}")
+        
+    def close_settings_window(self):
+        self.settings_window.destroy()
+        self.clipboard_manager.show_main_screen()

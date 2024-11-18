@@ -33,8 +33,8 @@ class GroupManager:
             # self.groups_window.geometry(f"{window_width}x{window_height}+0+0")
             
              # Calcula la posición relativa a la ventana principal
-            x = self.clipboard_manager.window_x + 10
-            y = self.clipboard_manager.window_y + 10
+            x = self.clipboard_manager.window_x 
+            y = self.clipboard_manager.window_y 
             
             self.groups_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
@@ -63,19 +63,11 @@ class GroupManager:
                                    fg=self.theme_manager.colors['dark']['button_fg'])
             add_button.pack(side=tk.LEFT)
 
-            close_button = tk.Button(buttons_frame, text="❌", command=self.groups_window.destroy, 
+            close_button = tk.Button(buttons_frame, text="❌", command=self.close_groups_window, 
                                      font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                      bg=self.theme_manager.colors['dark']['button_bg'],
                                      fg=self.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.LEFT)
-
-            # # Marco para la lista de grupos
-            # self.groups_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark']['bg'])
-            # self.groups_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-            # # Hacer la ventana arrastrable
-            # title_label.bind('<Button-1>', self.start_move)
-            # title_label.bind('<B1-Motion>', self.on_move)
             
             # Canvas para scroll y contenedor de grupos
             canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
@@ -210,6 +202,10 @@ class GroupManager:
     def on_main_window_close(self, event):
         if self.groups_window and self.groups_window.winfo_exists():
             self.groups_window.destroy()
+            
+    def close_groups_window(self):
+        self.groups_window.destroy()
+        self.clipboard_manager.show_main_screen()
             
     # ----------------------------------------------------------------------
    

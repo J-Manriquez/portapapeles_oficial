@@ -51,6 +51,7 @@ class ClipboardManager:
                     'text': {'text': item_data['text'], 'formatted': {}},
                     'pinned': item_data['pinned']
                 }
+                
         self.current_clipboard = ""
         self.selected_index = None
         self.current_selection = {'type': 'button', 'index': 0}
@@ -87,9 +88,7 @@ class ClipboardManager:
         self.monitor_thread.start()
 
         self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
-        
-        # self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        
+                
         if show_settings:
             self.root.after(100, self.settings_manager.show_settings_window)
         
@@ -193,14 +192,36 @@ class ClipboardManager:
     def show_groups(self):
         self.group_manager.show_groups_window()
         self.navigation.set_strategy('groups')
+        self.root.withdraw()
 
     def show_settings(self):
         self.settings_manager.show_settings_window()
         self.navigation.set_strategy('settings')
+        self.root.withdraw()
+        
+    def refresh_main_screen(self):
+        # Actualizar la región de desplazamiento
+        self.canvas.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        
+        # Volver a vincular eventos de scroll
+        self.canvas.bind('<Configure>', self.on_canvas_configure)
+        self.cards_frame.bind('<Configure>', self.on_frame_configure)
+        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+        
+        # Asegurarse de que el canvas tenga el foco
+        self.canvas.focus_set()
+        
+        # Refrescar las tarjetas
+        self.functions.refresh_cards()
 
     def show_main_screen(self):
         # Lógica para mostrar la pantalla principal
         self.navigation.set_strategy('main')
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+        self.refresh_main_screen()
 
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()

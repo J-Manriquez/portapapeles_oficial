@@ -195,13 +195,18 @@ class GroupContentManager:
         dialog = tk.Toplevel(self.master)
         dialog.title("Editar Item")
         
-        # Calcula la posición relativa a la ventana principal
         x = self.clipboard_manager.window_x + 40
         y = self.clipboard_manager.window_y + 40
         
-        # Calcular la altura inicial basada en el contenido
-        text_lines = item['text'].count('\n') + 1
-        initial_height = min(150 + (text_lines * 20), 600)  # 20 píxeles por línea, máximo 600
+        if isinstance(item['text'], dict):
+            text = item['text'].get('text', '')
+            original_format = item['text'].get('formatted', {})
+        else:
+            text = str(item['text'])
+            original_format = {}
+        
+        text_lines = text.count('\n') + 1
+        initial_height = min(150 + (text_lines * 20), 600)
         
         dialog.geometry(f"300x{initial_height}+{x}+{y}")
         
@@ -209,7 +214,6 @@ class GroupContentManager:
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
 
-        # Barra de título personalizada
         title_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
         title_frame.pack(fill=tk.X, padx=4, pady=(4, 0))
 
@@ -224,7 +228,6 @@ class GroupContentManager:
                                 fg=self.theme_manager.colors['dark']['button_fg'])
         close_button.pack(side=tk.RIGHT)
         
-        # Contenido
         content_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
         content_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=0)
 
@@ -249,7 +252,7 @@ class GroupContentManager:
                             fg=self.theme_manager.colors['dark']['fg'],
                             insertbackground=self.theme_manager.colors['dark']['fg'],
                             font=('Segoe UI', 10))
-        text_entry.insert(tk.END, item['text'])
+        text_entry.insert(tk.END, text)
         text_entry.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
 
         def save_item():
@@ -257,7 +260,12 @@ class GroupContentManager:
             new_text = text_entry.get("1.0", tk.END).strip()
             if new_text:
                 item['name'] = new_name
-                item['text'] = new_text
+                if new_text != text:
+                    # Si el texto ha cambiado, eliminamos el formato
+                    item['text'] = {'text': new_text, 'formatted': {}}
+                else:
+                    # Si el texto no ha cambiado, mantenemos el formato original
+                    item['text'] = {'text': new_text, 'formatted': original_format}
                 self.clipboard_manager.group_manager.save_groups()
                 dialog.destroy()
                 self.refresh_group_content(group_id)
@@ -267,7 +275,7 @@ class GroupContentManager:
                                 fg=self.theme_manager.colors['dark']['button_fg'])
         save_button.pack(fill=tk.X, pady=(0, 5))
 
-        # Hacer la ventana arrastrable
+        # Código para hacer la ventana arrastrable
         def start_move(event):
             dialog.x = event.x
             dialog.y = event.y
@@ -286,14 +294,12 @@ class GroupContentManager:
         def adjust_dialog_height(event=None):
             content = text_entry.get("1.0", tk.END)
             lines = content.count('\n') + 1
-            new_height = min(150 + (lines * 20), 600)  # 100 píxeles base + 20 por línea, máximo 600
+            new_height = min(150 + (lines * 20), 600)
             dialog.geometry(f"300x{new_height}")
 
-        # Vincular la función de ajuste al evento de cambio en el texto
         text_entry.bind("<KeyRelease>", adjust_dialog_height)
 
         dialog.focus_set()
         name_entry.focus()
 
-        # Ajustar la altura inicial
         adjust_dialog_height()

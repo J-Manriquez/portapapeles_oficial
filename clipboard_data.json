@@ -6,124 +6,23 @@
                 {
                     "id": "64bd3ac3-d0e1-49e9-abe6-1f704da4bc7e",
                     "text": {
-                        "text": "groups\": {},\r\n    \"pinned_items\": {},\r\n    \"settings\": {\r\n        \"height\": 400,\r\n        \"width\": 295,\r\n        \"hotkey\": \"z\"\r\n    }",
-                        "formatted": {
-                            "font": "Consolas, 'Courier New', monospace",
-                            "size": null,
-                            "color": null,
-                            "bold": false,
-                            "italic": false,
-                            "rtf": null,
-                            "html": true,
-                            "underline": null,
-                            "strikethrough": null,
-                            "superscript": null,
-                            "subscript": null,
-                            "background_color": null,
-                            "alignment": null
-                        }
-                    }
+                        "text": "groups\": {},\r\n    \"pinned_items\": {},\r\n    \"settings\": {\r\n        \"height\": 400,\r\n        \"width\": 295,\r\n        \"hotkey\": \"z\"\r\n    } jajajaja",
+                        "formatted": {}
+                    },
+                    "name": ""
                 }
             ]
         }
     },
     "pinned_items": {
-        "64bd3ac3-d0e1-49e9-abe6-1f704da4bc7e": {
+        "b613aa01-13ba-419e-9ef2-ceef812653b4": {
             "text": {
-                "text": "groups\": {},\r\n    \"pinned_items\": {},\r\n    \"settings\": {\r\n        \"height\": 400,\r\n        \"width\": 295,\r\n        \"hotkey\": \"z\"\r\n    }",
+                "text": "close_settings_window",
                 "format": {
                     "font": "Consolas, 'Courier New', monospace",
                     "size": null,
                     "color": null,
                     "bold": false,
-                    "italic": false,
-                    "rtf": null,
-                    "html": true,
-                    "underline": null,
-                    "strikethrough": null,
-                    "superscript": null,
-                    "subscript": null,
-                    "background_color": null,
-                    "alignment": null
-                }
-            },
-            "pinned": true,
-            "with_format": true
-        },
-        "8e84370b-8265-4763-b7fc-fc93796e037a": {
-            "text": {
-                "text": "},\r\n    \"settings\": {\r\n        \"height\": 400,\r\n        \"width\": 295,\r\n        \"hotkey\": \"z\"\r\n    }\r\n}",
-                "format": {
-                    "font": "Consolas, 'Courier New', monospace",
-                    "size": null,
-                    "color": null,
-                    "bold": false,
-                    "italic": false,
-                    "rtf": null,
-                    "html": true,
-                    "underline": null,
-                    "strikethrough": null,
-                    "superscript": null,
-                    "subscript": null,
-                    "background_color": null,
-                    "alignment": null
-                }
-            },
-            "pinned": true,
-            "with_format": false
-        },
-        "83da055f-47bf-4977-9ace-9d97ce3f3299": {
-            "text": {
-                "text": "1. Materiales necesarios:\nUna pera de enema o un kit de irrigaci\u00f3n anal (disponible en farmacias).\nAgua tibia (ni caliente ni fr\u00eda). No uses jabones ni sustancias irritantes.\nLubricante a base de agua.\nToallas o papel higi\u00e9nico.",
-                "format": {
-                    "font": null,
-                    "size": null,
-                    "color": null,
-                    "bold": true,
-                    "italic": false,
-                    "rtf": null,
-                    "html": true,
-                    "underline": null,
-                    "strikethrough": null,
-                    "superscript": null,
-                    "subscript": null,
-                    "background_color": null,
-                    "alignment": null
-                }
-            },
-            "pinned": true,
-            "with_format": false
-        },
-        "be069026-54ff-47c5-b2e6-c10ee6d8828b": {
-            "text": {
-                "text": "Materiales necesarios:",
-                "format": {
-                    "font": null,
-                    "size": null,
-                    "color": null,
-                    "bold": false,
-                    "italic": false,
-                    "rtf": null,
-                    "html": true,
-                    "underline": null,
-                    "strikethrough": null,
-                    "superscript": null,
-                    "subscript": null,
-                    "background_color": null,
-                    "alignment": null
-                }
-            },
-            "pinned": true,
-            "with_format": false
-        },
-        "47313043-955f-42af-9327-d8ef13b4082f": {
-            "text": {
-                "text": "Materiales necesarios:\nUna pera de enema o un kit de irrigaci\u00f3n anal (disponible en farmacias).\nAgua tibia (ni caliente ni fr\u00eda). No uses jabones ni sustancias irritantes.\nLubricante a base de agua.\nToallas o papel higi\u00e9nico.",
-                "format": {
-                    "font": null,
-                    "size": null,
-                    "color": null,
-                    "bold": true,
                     "italic": false,
                     "rtf": null,
                     "html": true,
