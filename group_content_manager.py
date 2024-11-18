@@ -16,7 +16,12 @@ class GroupContentManager:
         self.max_card_height = 120  # Altura máxima en píxeles (4 líneas + 2*2 padding)
         self.line_height = 10      # Altura estimada de una línea de texto
 
-    def calculate_card_height(self, text):
+    def calculate_card_height(self, text_data):
+        if isinstance(text_data, dict):
+            text = text_data.get('text', '')
+        else:
+            text = str(text_data)
+        
         lines = len(text.split('\n'))
         if lines > 2:
             content_height = min(lines * (self.line_height*2), 7 * self.line_height)  # Máximo 4 líneas

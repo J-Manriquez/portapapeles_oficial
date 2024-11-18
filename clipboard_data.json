@@ -2,7 +2,29 @@
     "groups": {
         "7293acc6-2e0d-492e-bfbb-07971be03980": {
             "name": "hola",
-            "items": []
+            "items": [
+                {
+                    "id": "64bd3ac3-d0e1-49e9-abe6-1f704da4bc7e",
+                    "text": {
+                        "text": "groups\": {},\r\n    \"pinned_items\": {},\r\n    \"settings\": {\r\n        \"height\": 400,\r\n        \"width\": 295,\r\n        \"hotkey\": \"z\"\r\n    }",
+                        "formatted": {
+                            "font": "Consolas, 'Courier New', monospace",
+                            "size": null,
+                            "color": null,
+                            "bold": false,
+                            "italic": false,
+                            "rtf": null,
+                            "html": true,
+                            "underline": null,
+                            "strikethrough": null,
+                            "superscript": null,
+                            "subscript": null,
+                            "background_color": null,
+                            "alignment": null
+                        }
+                    }
+                }
+            ]
         }
     },
     "pinned_items": {
