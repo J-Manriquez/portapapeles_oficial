@@ -143,7 +143,7 @@ class ClipboardManager:
                                  pady=8)
         self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
-        self.button2 = tk.Button(main_buttons_frame, text="Con formato", 
+        self.button2 = tk.Button(main_buttons_frame, text="Sin formato", 
                                  command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
                                  bg=self.theme_manager.colors['dark']['button_bg'], 
                                  fg=self.theme_manager.colors['dark']['button_fg'],
