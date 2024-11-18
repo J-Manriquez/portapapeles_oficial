@@ -60,12 +60,32 @@ class KeyManager:
         print("In show_window function")
         try:
             self.manager.previous_window = win32gui.GetForegroundWindow()
+            # Obtener la posición actual del cursor
+            mouse_x, mouse_y = pyautogui.position()
+            
+            # Calcular la posición de la ventana
+            window_x = mouse_x - self.manager.window_width // 2
+            window_y = mouse_y - self.manager.window_height // 2
+            
+            # Asegurar que la ventana no se salga de la pantalla
+            screen_width, screen_height = pyautogui.size()
+            window_x = max(0, min(window_x, screen_width - self.manager.window_width))
+            window_y = max(0, min(window_y, screen_height - self.manager.window_height))
+            
+            self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{window_x}+{window_y}")
+            self.manager.window_x = window_x  # Guarda la posición x de la ventana
+            self.manager.window_y = window_y  # Guarda la posición y de la ventana
+            
             self.manager.root.deiconify()
             self.manager.root.lift()
             self.manager.root.attributes('-topmost', True)
             self.manager.is_visible = True
             self.manager.navigation.initialize_focus()
             self.setup_global_keys()
+            
+            # Actualizar la región de desplazamiento del canvas
+            self.manager.canvas.update_idletasks()
+            self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
             
             self.manager.root.update_idletasks()
             self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))

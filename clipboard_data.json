@@ -1,5 +1,10 @@
 {
-    "groups": {},
+    "groups": {
+        "7293acc6-2e0d-492e-bfbb-07971be03980": {
+            "name": "hola",
+            "items": []
+        }
+    },
     "pinned_items": {
         "64bd3ac3-d0e1-49e9-abe6-1f704da4bc7e": {
             "text": {
