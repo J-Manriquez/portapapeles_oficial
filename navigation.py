@@ -17,20 +17,20 @@ class Navigation:
     def set_strategy(self, screen_type):
         if screen_type in self.strategies:
             self.current_strategy = self.strategies[screen_type]
-            print(f"Estrategia de navegación cambiada a: {screen_type}")
+       #printf"Estrategia de navegación cambiada a: {screen_type}")
         else:
             print(f"Estrategia de navegación no reconocida: {screen_type}")
 
     def navigate_vertical(self, event):
-        print(f"Navigating vertically: {event.keysym}")  # Añade este print para depuración
+   #printf"Navigating vertically: {event.keysym}")  # Añade este print para depuración
         self.current_strategy.navigate_vertical(event)
 
     def navigate_horizontal(self, event):
-        print(f"Navigating horizontally: {event.keysym}")  # Añade este print para depuración
+   #printf"Navigating horizontally: {event.keysym}")  # Añade este print para depuración
         self.current_strategy.navigate_horizontal(event)
 
     def activate_selected(self, event=None):
-        print("Activating selected")  # Añade este print para depuración
+   #print"Activating selected")  # Añade este print para depuración
         self.current_strategy.activate_selected(event)
 
     def update_highlights(self):
@@ -57,7 +57,7 @@ class Navigation:
         try:
             actual_visible = self.manager.root.winfo_viewable()
             if actual_visible != self.manager.is_visible:
-                print('**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
+           #print'**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
                 self.manager.is_visible = actual_visible
         except Exception as e:
             print(f"Error al verificar estado de la ventana: {e}")

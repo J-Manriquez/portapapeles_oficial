@@ -1,185 +1,4 @@
-# navigation_strategies.py
-
-from abc import ABC, abstractmethod
-
-class NavigationStrategy(ABC):
-    @abstractmethod
-    def navigate_vertical(self, event):
-        pass
-
-    @abstractmethod
-    def navigate_horizontal(self, event):
-        pass
-
-    @abstractmethod
-    def activate_selected(self, event=None):
-        pass
-
-    @abstractmethod
-    def update_highlights(self):
-        pass
-
-    @abstractmethod
-    def initialize_focus(self):
-        pass
-
-# Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
-# y SettingsScreenNavigation ahora están en archivos separados.
-
-# utils.py
-
-import time
-
-def measure_time(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        print(f"{func.__name__} tomó {(end_time - start_time) * 1000:.2f} ms")
-        return result
-    return wrapper
-
-def process_text(text_data, cant_lineas):
-    """
-    Procesa el texto para mostrarlo de forma limpia y ordenada
-    """
-    # Comprueba si text_data es un diccionario y extrae el texto
-    if isinstance(text_data, dict):
-        text = text_data.get('text', '')
-    else:
-        text = str(text_data)
-
-    # Eliminamos espacios extras y tabulaciones al inicio y final
-    text = text.strip()
-    
-    # Dividimos el texto en líneas
-    lines = text.splitlines()
-    
-    # Eliminamos líneas vacías consecutivas y espacios extras
-    clean_lines = []
-    prev_empty = False
-    for line in lines:
-        line = line.strip()
-        
-        # Si la línea está vacía
-        if not line:
-            if not prev_empty:  # Solo mantenemos una línea vacía
-                clean_lines.append('')
-                prev_empty = True
-        else:
-            clean_lines.append(line)
-            prev_empty = False
-    
-    # Tomamos solo las primeras 'cant_lineas' para la vista previa
-    preview_lines = clean_lines[:cant_lineas]
-    
-    # Si hay más líneas, indicamos cuántas más hay
-    if len(clean_lines) > cant_lineas:
-        remaining_lines = len(clean_lines) - cant_lineas
-        preview_lines.append(f"+ {remaining_lines} líneas más")
-        
-    # Unimos las líneas con saltos de línea
-    return '\n'.join(preview_lines)
-
-
-#theme_manager.py
-
-import tkinter as tk
-from tkinter import ttk
-
-class ThemeManager:
-    def __init__(self, manager):
-        self.manager = manager
-        self.colors = {
-            'dark': {
-                'bg': '#1e1e1e',
-                'fg': '#ffffff',
-                'button_bg': '#333333',
-                'button_fg': '#ffffff',
-                'listbox_bg': '#2d2d2d',
-                'listbox_fg': '#ffffff',
-                'active_bg': '#4E4E4E',  # Añadido
-                'active_fg': '#FFFFFF',  # Añadido
-                'card_bg': '#333333'
-            },
-            'light': {
-                'bg': '#f0f0f0',
-                'fg': '#000000',
-                'button_bg': '#e0e0e0',
-                'button_fg': '#000000',
-                'listbox_bg': '#ffffff',
-                'listbox_fg': '#000000',
-                'active_bg': '#D0D0D0',  # Añadido
-                'active_fg': '#000000',  # Añadido
-                'card_bg': '#ffffff'
-            }
-        }
-
-    def toggle_theme(self):
-        self.manager.is_dark_mode = not self.manager.is_dark_mode
-        self.manager.theme_button.config(text="🌙" if self.manager.is_dark_mode else "☀️")
-        self.apply_theme()
-
-    def apply_theme(self):
-        theme = self.colors['dark'] if self.manager.is_dark_mode else self.colors['light']
-        
-        self.manager.root.configure(bg=theme['bg'])
-        self.manager.main_frame.configure(style='Main.TFrame')
-        self.manager.title_frame.configure(bg=theme['bg'])
-        self.manager.title_label.configure(bg=theme['bg'], fg=theme['fg'])
-        
-        self.manager.clear_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-        self.manager.theme_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-        
-        self.manager.close_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button1.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button2.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button3.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.canvas.configure(bg=theme['bg'])
-        self.manager.cards_frame.configure(bg=theme['bg'])
-        
-        self.manager.functions.refresh_cards()
-
-        style = ttk.Style()  
-        style.theme_use('clam')  
-        style.configure('Main.TFrame', background=theme['bg'])
-        
-        
-        
+// Archivo: data_manager.py
 # data_manager.py
 
 import json
@@ -199,7 +18,7 @@ class DataManager:
         }
         with open(self.file_path, 'w') as f:
             json.dump(data, f, indent=4)
-        print(f"All data saved to {self.file_path}")
+   #printf"All data saved to {self.file_path}")
 
     def load_data(self):
         if not os.path.exists(self.file_path):
@@ -248,35 +67,8 @@ class DataManager:
                 decoded_item['text']['formatted'] = base64.b64decode(item_data['text']['formatted'].encode('utf-8'))
             decoded_items[item_id] = decoded_item
         return decoded_items
-    
-    
-    
-# main.py
-import keyboard
-import sys
-import tkinter as tk
-from structure import ClipboardManager
 
-def main():
-    root = tk.Tk()
-    show_settings = "--show-settings" in sys.argv
-    app = ClipboardManager(root, show_settings)
-    # Aplicar las configuraciones iniciales
-    root.geometry(f"{app.settings_manager.settings['width']}x{app.settings_manager.settings['height']}+0+0")
-    
-    # if show_settings:
-    #     root.after(100, app.settings_manager.show_settings_window)
-    
-    # Configurar el atajo de teclado global
-    keyboard.add_hotkey(app.hotkey, app.key_manager.toggle_window)
-    
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
-    
-    
-    
+// Archivo: functions.py
 # functions.py
 
 import base64
@@ -300,7 +92,7 @@ class Functions:
         self.line_height = 18  # Altura estimada de una línea de texto
 
 
-    @measure_time
+    # @measure_time
     def create_card(self, item_id, item_data, index):
         card_width = self.manager.window_width - 4  # Ajuste para el padding
         card_height = max(self.min_card_height, self.calculate_card_height(item_data['text']))
@@ -370,7 +162,7 @@ class Functions:
         content_height = min(lines * self.line_height, 4 * self.line_height)  # Máximo 4 líneas
         return min(max(content_height + 4, self.min_card_height), self.max_card_height)
     
-    @measure_time
+    # @measure_time
     def refresh_cards(self):
         if not hasattr(self.manager, 'cards_frame') or not self.manager.cards_frame.winfo_exists():
             print("cards_frame no existe o ha sido destruido")
@@ -454,7 +246,7 @@ class Functions:
     def on_mousewheel(self, event):
         self.manager.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    @measure_time
+    # @measure_time
     def monitor_clipboard(self):
         while True:
             try:
@@ -472,7 +264,7 @@ class Functions:
                         self.manager.root.after(0, self.add_clipboard_item, new_id, new_item)
             except Exception as e:
                 print(f"Error en monitor_clipboard: {e}")
-            time.sleep(0.5)
+            # time.sleep(0.5)
             
     def add_clipboard_item(self, new_id, new_item):
         self.manager.clipboard_items[new_id] = new_item
@@ -512,21 +304,21 @@ class Functions:
             
             return {'text': text, 'formatted': formatted} if text else None
         except Exception as e:
-            print(f"Error al obtener texto del portapapeles: {e}")
+            # print(f"Error al obtener texto del portapapeles: {e}")
             return None
         
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()
     
-    @measure_time    
+    # @measure_time    
     def toggle_paste_format(self):
         self.manager.paste_with_format = not self.manager.paste_with_format
         new_text = "Con formato" if self.manager.paste_with_format else "Sin formato"
         self.manager.button2.config(text=new_text)
         self.manager.navigation.update_highlights()
         
-    @measure_time
+    # @measure_time
     def recalculate_card_heights(self):
         for card in self.manager.cards_frame.winfo_children():
             if hasattr(card, 'item_id'):
@@ -605,188 +397,8 @@ class Functions:
         self.manager.group_manager.add_item_to_group(item_id, group_id)
         dialog.destroy()
         # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
-        
-        
-# key_manager.py
-import win32com
-import win32clipboard  # type: ignore
-import keyboard
-import win32gui
-import win32com.client
-import pyperclip
-import time
-import pyautogui
-import win32api
-import win32con
-import ctypes
-import base64
 
-
-# Definir CF_HTML ya que no está en win32con
-CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
-
-class KeyManager:
-    def __init__(self, manager):
-        self.manager = manager
-        self.hotkey = self.manager.hotkey
-        self.current_hotkey = None
-        self.update_hotkey(None, self.hotkey)
-        self.original_cursor_pos = None
-
-    def update_hotkey(self, old_hotkey, new_hotkey):
-        if old_hotkey:
-            try:
-                keyboard.remove_hotkey(old_hotkey)
-            except KeyError:
-                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
-
-        # Asegúrate de que el nuevo atajo incluya 'alt+'
-        if not new_hotkey.lower().startswith('alt+'):
-            new_hotkey = 'alt+' + new_hotkey
-        
-        keyboard.add_hotkey(new_hotkey, self.toggle_window)
-        self.current_hotkey = new_hotkey
-        print(f"Nuevo atajo configurado: {new_hotkey}")
-
-    def toggle_window(self):
-        print("Toggling window")
-        if not self.manager.is_visible:
-            print("Showing window")
-            self.original_cursor_pos = win32gui.GetCursorPos()
-            self.show_window()
-        else:
-            print("Hiding window")
-            self.hide_window()
-
-    def hide_window(self):
-        self.manager.root.withdraw()
-        self.manager.is_visible = False
-        self.restore_focus()
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-        self.setup_global_keys()  # Asegurarse de que los atajos globales sigan funcionando
-
-    def show_window(self):
-        print("In show_window function")
-        try:
-            self.manager.previous_window = win32gui.GetForegroundWindow()
-            self.manager.root.deiconify()
-            self.manager.root.lift()
-            self.manager.root.attributes('-topmost', True)
-            self.manager.is_visible = True
-            self.manager.navigation.initialize_focus()
-            self.setup_global_keys()
-            
-            # Forzar la actualización de la ventana
-            self.manager.root.update_idletasks()
-            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
-            self.manager.root.focus_force()
-            
-        except Exception as e:
-            print(f"Error al mostrar la ventana: {e}")
-
-    def restore_focus(self):
-        if self.manager.previous_window:
-            try:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-            except Exception as e:
-                print(f"Error al restaurar el foco: {e}")
-                try:
-                    self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
-                except:
-                    pass
-
-    def setup_global_keys(self):
-        keyboard.unhook_all()
-        keyboard.add_hotkey(self.current_hotkey, self.toggle_window)
-        keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
-        keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
-        keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
-        keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
-        keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
-
-    def handle_global_key(self, key):
-        if self.manager.is_visible:
-            print(f"Handling global key: {key}")
-            if key in ['Up', 'Down']:
-                self.manager.navigation.navigate_vertical(type('Event', (), {'keysym': key})())
-            elif key in ['Left', 'Right']:
-                self.manager.navigation.navigate_horizontal(type('Event', (), {'keysym': key})())
-            elif key == 'Return':
-                self.manager.navigation.activate_selected()
-            
-            self.manager.root.update_idletasks()
-            self.manager.root.after(10, self.manager.root.update)
-            self.manager.root.after(20, self.restore_cursor_position)  # Restaurar cursor después de la actualización
-
-    def restore_cursor_position(self):
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-
-
-    def paste_content(self, clipboard_data):
-        try:
-            # Ocultar la ventana de la aplicación
-            self.hide_window()
-            
-            # Guardar la posición actual del cursor
-            current_cursor_pos = win32gui.GetCursorPos()
-            
-            if isinstance(clipboard_data, dict):
-                text = clipboard_data.get('text', '')
-                formatted = clipboard_data.get('formatted')
-            else:
-                text = str(clipboard_data)
-                formatted = None
-
-            if self.manager.paste_with_format and formatted:
-                # Pegar con formato
-                win32clipboard.OpenClipboard()
-                win32clipboard.EmptyClipboard()
-                
-                # Decodificar el contenido formateado de Base64
-                if isinstance(formatted, str):
-                    formatted_data = base64.b64decode(formatted.encode('utf-8'))
-                    
-                    if formatted_data.startswith(b'{\\rtf'):
-                        win32clipboard.SetClipboardData(win32con.CF_RTF, formatted_data)
-                    else:
-                        CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
-                        win32clipboard.SetClipboardData(CF_HTML, formatted_data)
-                
-                win32clipboard.CloseClipboard()
-            else:
-                # Pegar sin formato
-                pyperclip.copy(text)
-            
-            # Esperar un poco para asegurar que el portapapeles se ha actualizado
-            time.sleep(0.05)
-            
-            # Restaurar el foco a la ventana anterior
-            if self.manager.previous_window:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-                time.sleep(0.05)
-                
-                # Restaurar la posición del cursor
-                win32api.SetCursorPos(current_cursor_pos)
-                
-                # Simular la pulsación de teclas Ctrl+V para pegar
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys("^v")
-            
-            # Limpiar la posición original del cursor
-            self.original_cursor_pos = None
-            
-        except Exception as e:
-            print(f"Error en el proceso de pegado: {e}")
-        finally:
-            # Asegurarse de que la posición del cursor se restaure incluso si hay un error
-            if self.original_cursor_pos:
-                win32api.SetCursorPos(self.original_cursor_pos)
-            self.original_cursor_pos = None
-            
-            
-            
+// Archivo: group_content_manager.py
 # group_content_manager.py
 
 import tkinter as tk
@@ -1081,9 +693,8 @@ class GroupContentManager:
 
         # Ajustar la altura inicial
         adjust_dialog_height()
-        
-        
-        
+
+// Archivo: group_manager.py
 # group_manager.py
 
 import tkinter as tk
@@ -1254,7 +865,7 @@ class GroupManager:
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
         self.data_manager.save_data(self.groups, pinned_items, self.clipboard_manager.settings)
-        print("Groups and pinned items saved")
+   #print"Groups and pinned items saved")
         
     def edit_group(self, group_id):
         self.show_edit_group_dialog(group_id)
@@ -1276,7 +887,7 @@ class GroupManager:
                 self.save_groups()
                 if self.groups_window and self.groups_window.winfo_exists():
                     self.refresh_groups()
-                print(f"Item {item_id} added to group {group_id}")
+           #printf"Item {item_id} added to group {group_id}")
                 
                 # Actualizar la vista principal si es necesario
                 if hasattr(self.clipboard_manager, 'refresh_cards'):
@@ -1483,8 +1094,637 @@ class GroupManager:
 
         dialog.focus_set()
         name_entry.focus()
+
+// Archivo: key_manager.py
+# key_manager.py
+
+import traceback
+import win32com
+import win32clipboard
+import keyboard
+import win32gui
+import win32com.client
+import pyperclip
+import time
+import pyautogui
+import win32api
+import win32con
+import ctypes
+import base64
+
+class KeyManager:
+    def __init__(self, manager):
+        self.manager = manager
+        self.hotkey = self.manager.hotkey
+        self.current_hotkey = None
+        self.update_hotkey(None, self.hotkey)
+        self.original_cursor_pos = None
+        self.CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+        print("KeyManager initialized")
+
+    def update_hotkey(self, old_hotkey, new_hotkey):
+        print(f"Updating hotkey from {old_hotkey} to {new_hotkey}")
+        if old_hotkey:
+            try:
+                keyboard.remove_hotkey(old_hotkey)
+                print(f"Removed old hotkey: {old_hotkey}")
+            except KeyError:
+                print(f"Failed to remove previous hotkey: {old_hotkey}")
+
+        if not new_hotkey.lower().startswith('alt+'):
+            new_hotkey = 'alt+' + new_hotkey
         
+        keyboard.add_hotkey(new_hotkey, self.toggle_window)
+        self.current_hotkey = new_hotkey
+        print(f"New hotkey configured: {new_hotkey}")
+
+    def toggle_window(self):
+        print("Toggling window")
+        if not self.manager.is_visible:
+            print("Showing window")
+            self.original_cursor_pos = win32gui.GetCursorPos()
+            self.show_window()
+        else:
+            print("Hiding window")
+            self.hide_window()
+
+    def hide_window(self):
+        print("Hiding window")
+        self.manager.root.withdraw()
+        self.manager.is_visible = False
+        self.restore_focus()
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+        self.setup_global_keys()
+
+    def show_window(self):
+        print("In show_window function")
+        try:
+            self.manager.previous_window = win32gui.GetForegroundWindow()
+            self.manager.root.deiconify()
+            self.manager.root.lift()
+            self.manager.root.attributes('-topmost', True)
+            self.manager.is_visible = True
+            self.manager.navigation.initialize_focus()
+            self.setup_global_keys()
+            
+            self.manager.root.update_idletasks()
+            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
+            self.manager.root.focus_force()
+            print("Window shown successfully")
+        except Exception as e:
+            print(f"Error showing window: {e}")
+
+    def restore_focus(self):
+        print("Restoring focus")
+        if self.manager.previous_window:
+            try:
+                win32gui.SetForegroundWindow(self.manager.previous_window)
+                print("Focus restored to previous window")
+            except Exception as e:
+                print(f"Error restoring focus: {e}")
+                try:
+                    self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
+                    print("Attempting to restore focus after delay")
+                except:
+                    print("Failed to restore focus after delay")
+
+    def setup_global_keys(self):
+        print("Setting up global keys")
+        keyboard.unhook_all()
+        keyboard.add_hotkey(self.current_hotkey, self.toggle_window)
+        keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
+        keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
+        keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
+        keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
+        keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
+        print("Global keys set up")
+
+    def handle_global_key(self, key):
+        print(f"Handling global key: {key}")
+        if self.manager.is_visible:
+            if key in ['Up', 'Down']:
+                self.manager.navigation.navigate_vertical(type('Event', (), {'keysym': key})())
+            elif key in ['Left', 'Right']:
+                self.manager.navigation.navigate_horizontal(type('Event', (), {'keysym': key})())
+            elif key == 'Return':
+                self.manager.navigation.activate_selected()
+            
+            self.manager.root.update_idletasks()
+            self.manager.root.after(10, self.manager.root.update)
+            self.manager.root.after(20, self.restore_cursor_position)
+
+    def restore_cursor_position(self):
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+            print("Cursor position restored")
+
+    def paste_content(self, clipboard_data):
+        print("Starting paste_content method")
+        try:
+            self.hide_window()
+            time.sleep(0.1)
+            print("Window hidden")
+
+            self.activate_target_window()
+            print("Target window activated")
+            
+            if isinstance(clipboard_data, dict):
+                text = clipboard_data.get('text', '')
+                formatted = clipboard_data.get('formatted')
+            else:
+                text = str(clipboard_data)
+                formatted = None
+
+            print(f"Clipboard data - Text: {text[:50]}...")
+            print(f"Formatted data available: {'Yes' if formatted else 'No'}")
+            print(f"Paste with format: {self.manager.paste_with_format}")
+
+            # Guardar el contenido actual del portapapeles
+            original_clipboard = self.get_clipboard_content()
+
+            try:
+                self.set_clipboard_content(text, formatted)
+                self.perform_paste()
+            except Exception as e:
+                print(f"Error during paste operation: {e}")
+                print(traceback.format_exc())
+                # Intento alternativo de pegado
+                self.fallback_paste(text)
+            finally:
+                # Restaurar el contenido original del portapapeles
+                self.set_clipboard_content(original_clipboard)
+            
+        except Exception as e:
+            print(f"Error in paste process: {e}")
+            print(traceback.format_exc())
+        finally:
+            if self.original_cursor_pos:
+                win32api.SetCursorPos(self.original_cursor_pos)
+                print(f"Cursor position restored to original: {self.original_cursor_pos}")
+            self.original_cursor_pos = None
+
+    def get_clipboard_content(self):
+        for _ in range(5):  # Intentar hasta 5 veces
+            try:
+                win32clipboard.OpenClipboard()
+                try:
+                    if win32clipboard.IsClipboardFormatAvailable(win32con.CF_UNICODETEXT):
+                        return win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
+                    return ""
+                finally:
+                    win32clipboard.CloseClipboard()
+            except win32clipboard.error:
+                print("Error accessing clipboard, retrying...")
+                time.sleep(0.1)
+        print("Failed to access clipboard after multiple attempts")
+        return ""
+
+    def set_clipboard_content(self, text, formatted=None):
+        for _ in range(5):  # Intentar hasta 5 veces
+            try:
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                try:
+                    if self.manager.paste_with_format and formatted:
+                        if isinstance(formatted, str) and formatted.startswith('<html>'):
+                            cf_html = win32clipboard.RegisterClipboardFormat("HTML Format")
+                            win32clipboard.SetClipboardData(cf_html, formatted.encode('utf-8'))
+                        elif isinstance(formatted, bytes):
+                            win32clipboard.SetClipboardData(win32con.CF_RTF, formatted)
+                    else:
+                        win32clipboard.SetClipboardText(text, win32con.CF_UNICODETEXT)
+                    return  # Si llegamos aquí, la operación fue exitosa
+                finally:
+                    win32clipboard.CloseClipboard()
+            except win32clipboard.error:
+                print("Error setting clipboard content, retrying...")
+                time.sleep(0.1)
+        print("Failed to set clipboard content after multiple attempts")
+
+    def perform_paste(self):
+        shell = win32com.client.Dispatch("WScript.Shell")
+        shell.SendKeys('^v')
+        time.sleep(0.1)
+
+    def fallback_paste(self, text):
+        print("Attempting fallback paste method")
+        shell = win32com.client.Dispatch("WScript.Shell")
+        for char in text:
+            shell.SendKeys(char, 0)
+            time.sleep(0.01)
+
+    def activate_target_window(self):
+        print("Activating target window")
+        target_window = win32gui.GetForegroundWindow()
+        win32gui.SetForegroundWindow(target_window)
+        time.sleep(0.2)  # Increased delay to ensure window activation
+        print("Target window activated")
         
+print("key_manager.py loaded")
+
+// Archivo: main.py
+# main.py
+import keyboard
+import sys
+import tkinter as tk
+from structure import ClipboardManager
+
+def main():
+    root = tk.Tk()
+    show_settings = "--show-settings" in sys.argv
+    app = ClipboardManager(root, show_settings)
+    # Aplicar las configuraciones iniciales
+    root.geometry(f"{app.settings_manager.settings['width']}x{app.settings_manager.settings['height']}+0+0")
+    
+    # if show_settings:
+    #     root.after(100, app.settings_manager.show_settings_window)
+    
+    # Configurar el atajo de teclado global
+    keyboard.add_hotkey(app.hotkey, app.key_manager.toggle_window)
+    
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
+
+// Archivo: main_screen_navigation.py
+# main_screen_navigation.py
+
+import tkinter as tk
+
+class MainScreenNavigation:
+    def __init__(self, manager):
+        self.manager = manager
+        self.navigation_order = ['top_buttons', 'main_buttons', 'cards']   
+
+    def navigate_vertical(self, event):
+   #printf"MainScreenNavigation: Navigating vertically {event.keysym}")
+        current_type = self.manager.current_selection['type']
+        current_index = self.manager.current_selection['index']
+   #printf"Before navigation: type={current_type}, index={current_index}")
+        
+        if event.keysym == 'Up':
+            self.move_up(current_type, current_index)
+        elif event.keysym == 'Down':
+            self.move_down(current_type, current_index)
+
+        self.update_highlights()
+        self.ensure_visible()
+   #printf"After navigation: type={self.manager.current_selection['type']}, index={self.manager.current_selection['index']}")
+        self.update_highlights()
+
+    def move_up(self, current_type, current_index):
+        if current_type in ['cards', 'icons']:
+            if current_index > 0:
+                self.manager.current_selection['index'] = current_index - 1
+            else:
+                self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
+        elif current_type == 'main_buttons':
+            self.manager.current_selection = {'type': 'top_buttons', 'index': 0}
+        elif current_type == 'top_buttons':
+            # Si ya estamos en los botones superiores, no hacemos nada
+            pass
+   #printf"After move_up: {self.manager.current_selection}")
+        
+    def move_down(self, current_type, current_index):
+        if current_type == 'top_buttons':
+            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
+        elif current_type == 'main_buttons':
+            if self.get_cards_count() > 0:
+                self.manager.current_selection = {'type': 'cards', 'index': 0}
+        elif current_type == 'cards':
+            if current_index < self.get_cards_count() - 1:
+                self.manager.current_selection['index'] = current_index + 1
+   #printf"After move_down: {self.manager.current_selection}")
+        
+    def navigate_horizontal(self, event):
+   #printf"MainScreenNavigation: Navigating horizontally {event.keysym}")  
+        current_type = self.manager.current_selection['type']
+        current_index = self.manager.current_selection['index']
+
+        if event.keysym == 'Left':
+            self.move_left(current_type, current_index)
+        elif event.keysym == 'Right':
+            self.move_right(current_type, current_index)
+
+        self.update_highlights()
+
+    def move_left(self, current_type, current_index):
+        if current_type in ['top_buttons', 'main_buttons']:
+            self.manager.current_selection['index'] = (current_index - 1) % self.get_button_count(current_type)
+        elif current_type == 'icons':
+            if current_index % 3 > 0:
+                self.manager.current_selection['index'] = current_index - 1
+            else:
+                self.manager.current_selection = {'type': 'cards', 'index': current_index // 3}
+
+    def move_right(self, current_type, current_index):
+        if current_type in ['top_buttons', 'main_buttons']:
+            self.manager.current_selection['index'] = (current_index + 1) % self.get_button_count(current_type)
+        elif current_type == 'cards':
+            self.manager.current_selection = {'type': 'icons', 'index': current_index * 3}
+        elif current_type == 'icons':
+            if current_index % 3 < 2:
+                self.manager.current_selection['index'] = current_index + 1
+
+    def activate_selected(self, event=None):
+        current_type = self.manager.current_selection['type']
+        current_index = self.manager.current_selection['index']
+
+        if current_type == 'main_buttons':
+            self.activate_main_button(current_index)
+        elif current_type == 'top_buttons':
+            self.activate_top_button(current_index)
+        elif current_type == 'cards':
+            self.activate_card(current_index)
+        elif current_type == 'icons':
+            self.activate_icon(current_index)
+
+    def activate_main_button(self, index):
+        if index == 0:  # Botón Grupos
+            self.manager.show_groups()
+        elif index == 1:  # Botón Pegar (con/sin formato)
+            self.manager.functions.toggle_paste_format()
+        elif index == 2:  # Botón Borrar Todo
+            self.manager.functions.clear_history()
+
+    def activate_top_button(self, index):
+        if index == 0:  # Botón Cambiar tema
+            self.manager.theme_manager.toggle_theme()
+        elif index == 1:  # Botón Configuración
+            self.manager.show_settings()
+        elif index == 2:  # Botón Cerrar app
+            self.manager.functions.exit_app()
+
+    def activate_card(self, index):
+        items = list(self.manager.clipboard_items.items())
+        if index < len(items):
+            item_id, item_data = items[index]
+            clipboard_data = item_data['text']
+            self.manager.key_manager.paste_content(clipboard_data)
+            
+    def activate_icon(self, index):
+        items = list(self.manager.clipboard_items.keys())
+        card_index = index // 3
+        icon_position = index % 3
+        
+        if card_index < len(items):
+            item_id = items[card_index]
+            if icon_position == 0:  # Arrow
+                self.manager.functions.on_arrow_click(item_id)
+            elif icon_position == 1:  # Pin
+                self.manager.functions.toggle_pin(item_id)
+            elif icon_position == 2:  # Delete
+                self.manager.functions.delete_item(item_id)
+
+    def initialize_focus(self):
+        if self.get_cards_count() > 0:
+            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        else:
+            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
+        
+        self.manager.root.focus_force()
+        self.manager.root.update_idletasks()
+        self.update_highlights()
+    
+    def update_highlights(self):
+   #print"Updating highlights")
+        self.clear_all_highlights()
+        
+        current_type = self.manager.current_selection['type']
+        current_index = self.manager.current_selection['index']
+        
+        highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
+        icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
+        
+        if current_type == 'main_buttons':
+            buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
+            if 0 <= current_index < len(buttons):
+                buttons[current_index].configure(bg=highlight_color)
+        
+        elif current_type == 'top_buttons':
+            top_buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
+            if 0 <= current_index < len(top_buttons):
+                top_buttons[current_index].configure(bg=highlight_color)
+        
+        elif current_type == 'cards':
+            cards = self.manager.cards_frame.winfo_children()
+            if current_index < len(cards):
+                self.highlight_entire_card(cards[current_index], highlight_color)
+        
+        elif current_type == 'icons':
+            card_index = current_index // 3
+            icon_position = current_index % 3
+            cards = self.manager.cards_frame.winfo_children()
+            
+            if card_index < len(cards):
+                card = cards[card_index]
+                icons_frame = self.find_icons_frame(card)
+                
+                if icons_frame and icon_position < len(icons_frame.winfo_children()):
+                    icons = icons_frame.winfo_children()
+                    if 0 <= icon_position < len(icons):
+                        self.highlight_entire_card(card, highlight_color)
+                        icons[icon_position].configure(bg=icon_highlight_color)
+                        
+   #printf"Highlighted: {current_type}, index: {current_index}")
+        self.manager.root.update_idletasks()
+        self.manager.root.after(10, self.manager.root.update)
+
+    def highlight_entire_card(self, card, color):
+        card.configure(bg=color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, (tk.Label, tk.Button)):
+                        subchild.configure(bg=color)
+            elif isinstance(child, (tk.Label, tk.Button)):
+                child.configure(bg=color)
+
+    def clear_all_highlights(self):
+        theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
+        base_color = theme['card_bg']
+        button_color = theme['button_bg']
+        
+        buttons = [self.manager.button1, self.manager.button2, self.manager.button3,
+                self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
+        for button in buttons:
+            button.configure(bg=button_color)
+        
+        for card in self.manager.cards_frame.winfo_children():
+            self.reset_card_colors(card, base_color, button_color)
+
+    def reset_card_colors(self, card, base_color, button_color):
+        card.configure(bg=base_color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=base_color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, tk.Label):
+                        subchild.configure(bg=base_color)
+                    elif isinstance(subchild, tk.Button):
+                        subchild.configure(bg=button_color)
+            elif isinstance(child, tk.Label):
+                child.configure(bg=base_color)
+            elif isinstance(child, tk.Button):
+                child.configure(bg=button_color)
+
+    def ensure_visible(self):
+        current_type = self.manager.current_selection['type']
+        current_index = self.manager.current_selection['index']
+        
+        if current_type == 'cards':
+            cards = self.manager.cards_frame.winfo_children()
+            if current_index < len(cards):
+                widget = cards[current_index]
+                bbox = self.manager.canvas.bbox("all")
+                if bbox:
+                    widget_y = widget.winfo_y()
+                    canvas_height = self.manager.canvas.winfo_height()
+                    if widget_y > 0:
+                        self.manager.canvas.yview_moveto(widget_y / bbox[3])
+
+    def get_cards_count(self):
+        return len(self.manager.cards_frame.winfo_children())
+
+    def get_button_count(self, button_type):
+        if button_type == 'top_buttons':
+            return 3  # Asumiendo que siempre hay 3 botones superiores
+        elif button_type == 'main_buttons':
+            return 3  # Asumiendo que siempre hay 3 botones principales
+
+    def find_icons_frame(self, card):
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
+                return child
+        return None
+
+// Archivo: navigation.py
+# navigation.py
+
+from main_screen_navigation import MainScreenNavigation
+# from groups_screen_navigation import GroupsScreenNavigation
+# from settings_screen_navigation import SettingsScreenNavigation
+
+class Navigation:
+    def __init__(self, manager):
+        self.manager = manager
+        self.strategies = {
+            'main': MainScreenNavigation(manager),
+            # 'groups': GroupsScreenNavigation(manager),
+            # 'settings': SettingsScreenNavigation(manager)
+        }
+        self.current_strategy = self.strategies['main']
+
+    def set_strategy(self, screen_type):
+        if screen_type in self.strategies:
+            self.current_strategy = self.strategies[screen_type]
+       #printf"Estrategia de navegación cambiada a: {screen_type}")
+        else:
+            print(f"Estrategia de navegación no reconocida: {screen_type}")
+
+    def navigate_vertical(self, event):
+   #printf"Navigating vertically: {event.keysym}")  # Añade este print para depuración
+        self.current_strategy.navigate_vertical(event)
+
+    def navigate_horizontal(self, event):
+   #printf"Navigating horizontally: {event.keysym}")  # Añade este print para depuración
+        self.current_strategy.navigate_horizontal(event)
+
+    def activate_selected(self, event=None):
+   #print"Activating selected")  # Añade este print para depuración
+        self.current_strategy.activate_selected(event)
+
+    def update_highlights(self):
+        self.current_strategy.update_highlights()
+
+
+    def get_cards_count(self):
+        return len(self.manager.cards_frame.winfo_children()) if hasattr(self.manager, 'cards_frame') else 0
+
+    def initialize_focus(self):
+        if self.get_cards_count() > 0:
+            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        else:
+            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
+        
+        self.update_highlights()
+        self.manager.root.update_idletasks()
+
+    def handle_focus(self, event=None):
+        if self.manager.is_visible:
+            self.manager.root.focus_force()
+
+    def check_window_state(self):
+        try:
+            actual_visible = self.manager.root.winfo_viewable()
+            if actual_visible != self.manager.is_visible:
+           #print'**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
+                self.manager.is_visible = actual_visible
+        except Exception as e:
+            print(f"Error al verificar estado de la ventana: {e}")
+
+    def update_active_window(self):
+        import win32gui
+        self.manager.last_active_window = win32gui.GetForegroundWindow()
+
+    def get_current_selection(self):
+        return self.manager.current_selection
+
+    def set_current_selection(self, selection_type, index):
+        self.manager.current_selection = {'type': selection_type, 'index': index}
+        self.update_highlights()
+
+    def get_clipboard_items(self):
+        return self.manager.clipboard_items
+
+    def get_cards_frame(self):
+        return self.manager.cards_frame
+
+    def get_canvas(self):
+        return self.manager.canvas
+
+    def is_dark_mode(self):
+        return self.manager.is_dark_mode
+
+    def get_theme_colors(self):
+        return self.manager.theme_manager.colors
+
+// Archivo: navigation_strategies.py
+# navigation_strategies.py
+
+from abc import ABC, abstractmethod
+
+class NavigationStrategy(ABC):
+    @abstractmethod
+    def navigate_vertical(self, event):
+        pass
+
+    @abstractmethod
+    def navigate_horizontal(self, event):
+        pass
+
+    @abstractmethod
+    def activate_selected(self, event=None):
+        pass
+
+    @abstractmethod
+    def update_highlights(self):
+        pass
+
+    @abstractmethod
+    def initialize_focus(self):
+        pass
+
+# Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
+# y SettingsScreenNavigation ahora están en archivos separados.
+
+// Archivo: pruebas
+
+
+// Archivo: settings_manager.py
 # settings_manager.py
 
 import json
@@ -1662,9 +1902,8 @@ class SettingsManager:
         x = self.settings_window.winfo_x() + deltax
         y = self.settings_window.winfo_y() + deltay
         self.settings_window.geometry(f"+{x}+{y}")
-        
-        
-        
+
+// Archivo: structure.py
 # structure.py
 
 import tkinter as tk
@@ -1842,7 +2081,21 @@ class ClipboardManager:
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
         self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
-
+        
+        self.canvas.bind('<Button-1>', self.on_canvas_click)
+        
+    def on_canvas_click(self, event):
+        # Obtener el widget clickeado
+        clicked_widget = event.widget.winfo_containing(event.x_root, event.y_root)
+        
+        # Verificar si el clic fue en una tarjeta
+        for index, card in enumerate(self.cards_frame.winfo_children()):
+            if clicked_widget == card or clicked_widget.master == card:
+                # Evitar activar si se hizo clic en los iconos
+                if not isinstance(clicked_widget, tk.Button):
+                    self.navigation.activate_card(index)
+                return
+            
     def show_groups(self):
         self.group_manager.show_groups_window()
         self.navigation.set_strategy('groups')
@@ -1897,351 +2150,156 @@ class ClipboardManager:
 
     def on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
-        
-# navigation.py
 
-from main_screen_navigation import MainScreenNavigation
-# from groups_screen_navigation import GroupsScreenNavigation
-# from settings_screen_navigation import SettingsScreenNavigation
-
-class Navigation:
-    def __init__(self, manager):
-        self.manager = manager
-        self.strategies = {
-            'main': MainScreenNavigation(manager),
-            # 'groups': GroupsScreenNavigation(manager),
-            # 'settings': SettingsScreenNavigation(manager)
-        }
-        self.current_strategy = self.strategies['main']
-
-    def set_strategy(self, screen_type):
-        if screen_type in self.strategies:
-            self.current_strategy = self.strategies[screen_type]
-            print(f"Estrategia de navegación cambiada a: {screen_type}")
-        else:
-            print(f"Estrategia de navegación no reconocida: {screen_type}")
-
-    def navigate_vertical(self, event):
-        print(f"Navigating vertically: {event.keysym}")  # Añade este print para depuración
-        self.current_strategy.navigate_vertical(event)
-
-    def navigate_horizontal(self, event):
-        print(f"Navigating horizontally: {event.keysym}")  # Añade este print para depuración
-        self.current_strategy.navigate_horizontal(event)
-
-    def activate_selected(self, event=None):
-        print("Activating selected")  # Añade este print para depuración
-        self.current_strategy.activate_selected(event)
-
-    def update_highlights(self):
-        self.current_strategy.update_highlights()
-
-
-    def get_cards_count(self):
-        return len(self.manager.cards_frame.winfo_children()) if hasattr(self.manager, 'cards_frame') else 0
-
-    def initialize_focus(self):
-        if self.get_cards_count() > 0:
-            self.manager.current_selection = {'type': 'cards', 'index': 0}
-        else:
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        
-        self.update_highlights()
-        self.manager.root.update_idletasks()
-
-    def handle_focus(self, event=None):
-        if self.manager.is_visible:
-            self.manager.root.focus_force()
-
-    def check_window_state(self):
-        try:
-            actual_visible = self.manager.root.winfo_viewable()
-            if actual_visible != self.manager.is_visible:
-                print('**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
-                self.manager.is_visible = actual_visible
-        except Exception as e:
-            print(f"Error al verificar estado de la ventana: {e}")
-
-    def update_active_window(self):
-        import win32gui
-        self.manager.last_active_window = win32gui.GetForegroundWindow()
-
-    def get_current_selection(self):
-        return self.manager.current_selection
-
-    def set_current_selection(self, selection_type, index):
-        self.manager.current_selection = {'type': selection_type, 'index': index}
-        self.update_highlights()
-
-    def get_clipboard_items(self):
-        return self.manager.clipboard_items
-
-    def get_cards_frame(self):
-        return self.manager.cards_frame
-
-    def get_canvas(self):
-        return self.manager.canvas
-
-    def is_dark_mode(self):
-        return self.manager.is_dark_mode
-
-    def get_theme_colors(self):
-        return self.manager.theme_manager.colors
-    
-    
-# main_screen_navigation.py
+// Archivo: theme_manager.py
+#theme_manager.py
 
 import tkinter as tk
+from tkinter import ttk
 
-class MainScreenNavigation:
+class ThemeManager:
     def __init__(self, manager):
         self.manager = manager
-        self.navigation_order = ['top_buttons', 'main_buttons', 'cards']   
+        self.colors = {
+            'dark': {
+                'bg': '#1e1e1e',
+                'fg': '#ffffff',
+                'button_bg': '#333333',
+                'button_fg': '#ffffff',
+                'listbox_bg': '#2d2d2d',
+                'listbox_fg': '#ffffff',
+                'active_bg': '#4E4E4E',  # Añadido
+                'active_fg': '#FFFFFF',  # Añadido
+                'card_bg': '#333333'
+            },
+            'light': {
+                'bg': '#f0f0f0',
+                'fg': '#000000',
+                'button_bg': '#e0e0e0',
+                'button_fg': '#000000',
+                'listbox_bg': '#ffffff',
+                'listbox_fg': '#000000',
+                'active_bg': '#D0D0D0',  # Añadido
+                'active_fg': '#000000',  # Añadido
+                'card_bg': '#ffffff'
+            }
+        }
 
-    def navigate_vertical(self, event):
-        print(f"MainScreenNavigation: Navigating vertically {event.keysym}")
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        print(f"Before navigation: type={current_type}, index={current_index}")
+    def toggle_theme(self):
+        self.manager.is_dark_mode = not self.manager.is_dark_mode
+        self.manager.theme_button.config(text="🌙" if self.manager.is_dark_mode else "☀️")
+        self.apply_theme()
+
+    def apply_theme(self):
+        theme = self.colors['dark'] if self.manager.is_dark_mode else self.colors['light']
         
-        if event.keysym == 'Up':
-            self.move_up(current_type, current_index)
-        elif event.keysym == 'Down':
-            self.move_down(current_type, current_index)
-
-        self.update_highlights()
-        self.ensure_visible()
-        print(f"After navigation: type={self.manager.current_selection['type']}, index={self.manager.current_selection['index']}")
-        self.update_highlights()
-
-    def move_up(self, current_type, current_index):
-        if current_type in ['cards', 'icons']:
-            if current_index > 0:
-                self.manager.current_selection['index'] = current_index - 1
-            else:
-                self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        elif current_type == 'main_buttons':
-            self.manager.current_selection = {'type': 'top_buttons', 'index': 0}
-        elif current_type == 'top_buttons':
-            # Si ya estamos en los botones superiores, no hacemos nada
-            pass
-        print(f"After move_up: {self.manager.current_selection}")
+        self.manager.root.configure(bg=theme['bg'])
+        self.manager.main_frame.configure(style='Main.TFrame')
+        self.manager.title_frame.configure(bg=theme['bg'])
+        self.manager.title_label.configure(bg=theme['bg'], fg=theme['fg'])
         
-    def move_down(self, current_type, current_index):
-        if current_type == 'top_buttons':
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        elif current_type == 'main_buttons':
-            if self.get_cards_count() > 0:
-                self.manager.current_selection = {'type': 'cards', 'index': 0}
-        elif current_type == 'cards':
-            if current_index < self.get_cards_count() - 1:
-                self.manager.current_selection['index'] = current_index + 1
-        print(f"After move_down: {self.manager.current_selection}")
+        self.manager.clear_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+        self.manager.theme_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
         
-    def navigate_horizontal(self, event):
-        print(f"MainScreenNavigation: Navigating horizontally {event.keysym}")  
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
+        self.manager.close_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
 
-        if event.keysym == 'Left':
-            self.move_left(current_type, current_index)
-        elif event.keysym == 'Right':
-            self.move_right(current_type, current_index)
+        self.manager.button1.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
 
-        self.update_highlights()
+        self.manager.button2.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
 
-    def move_left(self, current_type, current_index):
-        if current_type in ['top_buttons', 'main_buttons']:
-            self.manager.current_selection['index'] = (current_index - 1) % self.get_button_count(current_type)
-        elif current_type == 'icons':
-            if current_index % 3 > 0:
-                self.manager.current_selection['index'] = current_index - 1
-            else:
-                self.manager.current_selection = {'type': 'cards', 'index': current_index // 3}
+        self.manager.button3.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
 
-    def move_right(self, current_type, current_index):
-        if current_type in ['top_buttons', 'main_buttons']:
-            self.manager.current_selection['index'] = (current_index + 1) % self.get_button_count(current_type)
-        elif current_type == 'cards':
-            self.manager.current_selection = {'type': 'icons', 'index': current_index * 3}
-        elif current_type == 'icons':
-            if current_index % 3 < 2:
-                self.manager.current_selection['index'] = current_index + 1
-
-    def activate_selected(self, event=None):
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-
-        if current_type == 'main_buttons':
-            self.activate_main_button(current_index)
-        elif current_type == 'top_buttons':
-            self.activate_top_button(current_index)
-        elif current_type == 'cards':
-            self.activate_card(current_index)
-        elif current_type == 'icons':
-            self.activate_icon(current_index)
-
-    def activate_main_button(self, index):
-        if index == 0:  # Botón Grupos
-            self.manager.show_groups()
-        elif index == 1:  # Botón Pegar (con/sin formato)
-            self.manager.functions.toggle_paste_format()
-        elif index == 2:  # Botón Borrar Todo
-            self.manager.functions.clear_history()
-
-    def activate_top_button(self, index):
-        if index == 0:  # Botón Cambiar tema
-            self.manager.theme_manager.toggle_theme()
-        elif index == 1:  # Botón Configuración
-            self.manager.show_settings()
-        elif index == 2:  # Botón Cerrar app
-            self.manager.functions.exit_app()
-
-    def activate_card(self, index):
-        items = list(self.manager.clipboard_items.items())
-        if index < len(items):
-            item_id, item_data = items[index]
-            clipboard_data = item_data['text']
-            self.manager.key_manager.paste_content(clipboard_data)
-
-    def activate_icon(self, index):
-        items = list(self.manager.clipboard_items.keys())
-        card_index = index // 3
-        icon_position = index % 3
+        self.manager.canvas.configure(bg=theme['bg'])
+        self.manager.cards_frame.configure(bg=theme['bg'])
         
-        if card_index < len(items):
-            item_id = items[card_index]
-            if icon_position == 0:  # Arrow
-                self.manager.functions.on_arrow_click(item_id)
-            elif icon_position == 1:  # Pin
-                self.manager.functions.toggle_pin(item_id)
-            elif icon_position == 2:  # Delete
-                self.manager.functions.delete_item(item_id)
+        self.manager.functions.refresh_cards()
 
-    def initialize_focus(self):
-        if self.get_cards_count() > 0:
-            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        style = ttk.Style()  
+        style.theme_use('clam')  
+        style.configure('Main.TFrame', background=theme['bg'])
+
+// Archivo: utils.py
+# utils.py
+
+import time
+
+def measure_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__} tomó {(end_time - start_time) * 1000:.2f} ms")
+        return result
+    return wrapper
+
+def process_text(text_data, cant_lineas):
+    """
+    Procesa el texto para mostrarlo de forma limpia y ordenada
+    """
+    # Comprueba si text_data es un diccionario y extrae el texto
+    if isinstance(text_data, dict):
+        text = text_data.get('text', '')
+    else:
+        text = str(text_data)
+
+    # Eliminamos espacios extras y tabulaciones al inicio y final
+    text = text.strip()
+    
+    # Dividimos el texto en líneas
+    lines = text.splitlines()
+    
+    # Eliminamos líneas vacías consecutivas y espacios extras
+    clean_lines = []
+    prev_empty = False
+    for line in lines:
+        line = line.strip()
+        
+        # Si la línea está vacía
+        if not line:
+            if not prev_empty:  # Solo mantenemos una línea vacía
+                clean_lines.append('')
+                prev_empty = True
         else:
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        
-        self.manager.root.focus_force()
-        self.manager.root.update_idletasks()
-        self.update_highlights()
+            clean_lines.append(line)
+            prev_empty = False
     
-    def update_highlights(self):
-        print("Updating highlights")
-        self.clear_all_highlights()
-        
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        
-        highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
-        icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
-        
-        if current_type == 'main_buttons':
-            buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-        
-        elif current_type == 'top_buttons':
-            top_buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
-            if 0 <= current_index < len(top_buttons):
-                top_buttons[current_index].configure(bg=highlight_color)
-        
-        elif current_type == 'cards':
-            cards = self.manager.cards_frame.winfo_children()
-            if current_index < len(cards):
-                self.highlight_entire_card(cards[current_index], highlight_color)
-        
-        elif current_type == 'icons':
-            card_index = current_index // 3
-            icon_position = current_index % 3
-            cards = self.manager.cards_frame.winfo_children()
-            
-            if card_index < len(cards):
-                card = cards[card_index]
-                icons_frame = self.find_icons_frame(card)
-                
-                if icons_frame and icon_position < len(icons_frame.winfo_children()):
-                    icons = icons_frame.winfo_children()
-                    if 0 <= icon_position < len(icons):
-                        self.highlight_entire_card(card, highlight_color)
-                        icons[icon_position].configure(bg=icon_highlight_color)
-                        
-        print(f"Highlighted: {current_type}, index: {current_index}")
-        self.manager.root.update_idletasks()
-        self.manager.root.after(10, self.manager.root.update)
-
-    def highlight_entire_card(self, card, color):
-        card.configure(bg=color)
-        for child in card.winfo_children():
-            if isinstance(child, tk.Frame):
-                child.configure(bg=color)
-                for subchild in child.winfo_children():
-                    if isinstance(subchild, (tk.Label, tk.Button)):
-                        subchild.configure(bg=color)
-            elif isinstance(child, (tk.Label, tk.Button)):
-                child.configure(bg=color)
-
-    def clear_all_highlights(self):
-        theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
-        base_color = theme['card_bg']
-        button_color = theme['button_bg']
-        
-        buttons = [self.manager.button1, self.manager.button2, self.manager.button3,
-                self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
-        for button in buttons:
-            button.configure(bg=button_color)
-        
-        for card in self.manager.cards_frame.winfo_children():
-            self.reset_card_colors(card, base_color, button_color)
-
-    def reset_card_colors(self, card, base_color, button_color):
-        card.configure(bg=base_color)
-        for child in card.winfo_children():
-            if isinstance(child, tk.Frame):
-                child.configure(bg=base_color)
-                for subchild in child.winfo_children():
-                    if isinstance(subchild, tk.Label):
-                        subchild.configure(bg=base_color)
-                    elif isinstance(subchild, tk.Button):
-                        subchild.configure(bg=button_color)
-            elif isinstance(child, tk.Label):
-                child.configure(bg=base_color)
-            elif isinstance(child, tk.Button):
-                child.configure(bg=button_color)
-
-    def ensure_visible(self):
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        
-        if current_type == 'cards':
-            cards = self.manager.cards_frame.winfo_children()
-            if current_index < len(cards):
-                widget = cards[current_index]
-                bbox = self.manager.canvas.bbox("all")
-                if bbox:
-                    widget_y = widget.winfo_y()
-                    canvas_height = self.manager.canvas.winfo_height()
-                    if widget_y > 0:
-                        self.manager.canvas.yview_moveto(widget_y / bbox[3])
-
-    def get_cards_count(self):
-        return len(self.manager.cards_frame.winfo_children())
-
-    def get_button_count(self, button_type):
-        if button_type == 'top_buttons':
-            return 3  # Asumiendo que siempre hay 3 botones superiores
-        elif button_type == 'main_buttons':
-            return 3  # Asumiendo que siempre hay 3 botones principales
-
-    def find_icons_frame(self, card):
-        for child in card.winfo_children():
-            if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
-                return child
-        return None
+    # Tomamos solo las primeras 'cant_lineas' para la vista previa
+    preview_lines = clean_lines[:cant_lineas]
     
-    
-    
-
+    # Si hay más líneas, indicamos cuántas más hay
+    if len(clean_lines) > cant_lineas:
+        remaining_lines = len(clean_lines) - cant_lineas
+        preview_lines.append(f"+ {remaining_lines} líneas más")
+        
+    # Unimos las líneas con saltos de línea
+    return '\n'.join(preview_lines)

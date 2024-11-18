@@ -21,7 +21,7 @@ class Functions:
         self.line_height = 18  # Altura estimada de una línea de texto
 
 
-    @measure_time
+    # @measure_time
     def create_card(self, item_id, item_data, index):
         card_width = self.manager.window_width - 4  # Ajuste para el padding
         card_height = max(self.min_card_height, self.calculate_card_height(item_data['text']))
@@ -91,7 +91,7 @@ class Functions:
         content_height = min(lines * self.line_height, 4 * self.line_height)  # Máximo 4 líneas
         return min(max(content_height + 4, self.min_card_height), self.max_card_height)
     
-    @measure_time
+    # @measure_time
     def refresh_cards(self):
         if not hasattr(self.manager, 'cards_frame') or not self.manager.cards_frame.winfo_exists():
             print("cards_frame no existe o ha sido destruido")
@@ -175,7 +175,7 @@ class Functions:
     def on_mousewheel(self, event):
         self.manager.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    @measure_time
+    # @measure_time
     def monitor_clipboard(self):
         while True:
             try:
@@ -193,7 +193,7 @@ class Functions:
                         self.manager.root.after(0, self.add_clipboard_item, new_id, new_item)
             except Exception as e:
                 print(f"Error en monitor_clipboard: {e}")
-            time.sleep(0.5)
+            # time.sleep(0.5)
             
     def add_clipboard_item(self, new_id, new_item):
         self.manager.clipboard_items[new_id] = new_item
@@ -233,21 +233,21 @@ class Functions:
             
             return {'text': text, 'formatted': formatted} if text else None
         except Exception as e:
-            print(f"Error al obtener texto del portapapeles: {e}")
+            # print(f"Error al obtener texto del portapapeles: {e}")
             return None
         
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()
     
-    @measure_time    
+    # @measure_time    
     def toggle_paste_format(self):
         self.manager.paste_with_format = not self.manager.paste_with_format
         new_text = "Con formato" if self.manager.paste_with_format else "Sin formato"
         self.manager.button2.config(text=new_text)
         self.manager.navigation.update_highlights()
         
-    @measure_time
+    # @measure_time
     def recalculate_card_heights(self):
         for card in self.manager.cards_frame.winfo_children():
             if hasattr(card, 'item_id'):

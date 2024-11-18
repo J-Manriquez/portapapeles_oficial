@@ -17,7 +17,7 @@ class DataManager:
         }
         with open(self.file_path, 'w') as f:
             json.dump(data, f, indent=4)
-        print(f"All data saved to {self.file_path}")
+   #printf"All data saved to {self.file_path}")
 
     def load_data(self):
         if not os.path.exists(self.file_path):

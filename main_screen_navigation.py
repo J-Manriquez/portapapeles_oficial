@@ -8,10 +8,10 @@ class MainScreenNavigation:
         self.navigation_order = ['top_buttons', 'main_buttons', 'cards']   
 
     def navigate_vertical(self, event):
-        print(f"MainScreenNavigation: Navigating vertically {event.keysym}")
+   #printf"MainScreenNavigation: Navigating vertically {event.keysym}")
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
-        print(f"Before navigation: type={current_type}, index={current_index}")
+   #printf"Before navigation: type={current_type}, index={current_index}")
         
         if event.keysym == 'Up':
             self.move_up(current_type, current_index)
@@ -20,7 +20,7 @@ class MainScreenNavigation:
 
         self.update_highlights()
         self.ensure_visible()
-        print(f"After navigation: type={self.manager.current_selection['type']}, index={self.manager.current_selection['index']}")
+   #printf"After navigation: type={self.manager.current_selection['type']}, index={self.manager.current_selection['index']}")
         self.update_highlights()
 
     def move_up(self, current_type, current_index):
@@ -34,7 +34,7 @@ class MainScreenNavigation:
         elif current_type == 'top_buttons':
             # Si ya estamos en los botones superiores, no hacemos nada
             pass
-        print(f"After move_up: {self.manager.current_selection}")
+   #printf"After move_up: {self.manager.current_selection}")
         
     def move_down(self, current_type, current_index):
         if current_type == 'top_buttons':
@@ -45,10 +45,10 @@ class MainScreenNavigation:
         elif current_type == 'cards':
             if current_index < self.get_cards_count() - 1:
                 self.manager.current_selection['index'] = current_index + 1
-        print(f"After move_down: {self.manager.current_selection}")
+   #printf"After move_down: {self.manager.current_selection}")
         
     def navigate_horizontal(self, event):
-        print(f"MainScreenNavigation: Navigating horizontally {event.keysym}")  
+   #printf"MainScreenNavigation: Navigating horizontally {event.keysym}")  
         current_type = self.manager.current_selection['type']
         current_index = self.manager.current_selection['index']
 
@@ -138,7 +138,7 @@ class MainScreenNavigation:
         self.update_highlights()
     
     def update_highlights(self):
-        print("Updating highlights")
+   #print"Updating highlights")
         self.clear_all_highlights()
         
         current_type = self.manager.current_selection['type']
@@ -177,7 +177,7 @@ class MainScreenNavigation:
                         self.highlight_entire_card(card, highlight_color)
                         icons[icon_position].configure(bg=icon_highlight_color)
                         
-        print(f"Highlighted: {current_type}, index: {current_index}")
+   #printf"Highlighted: {current_type}, index: {current_index}")
         self.manager.root.update_idletasks()
         self.manager.root.after(10, self.manager.root.update)
 

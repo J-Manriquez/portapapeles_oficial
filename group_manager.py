@@ -168,7 +168,7 @@ class GroupManager:
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
         self.data_manager.save_data(self.groups, pinned_items, self.clipboard_manager.settings)
-        print("Groups and pinned items saved")
+   #print"Groups and pinned items saved")
         
     def edit_group(self, group_id):
         self.show_edit_group_dialog(group_id)
@@ -190,7 +190,7 @@ class GroupManager:
                 self.save_groups()
                 if self.groups_window and self.groups_window.winfo_exists():
                     self.refresh_groups()
-                print(f"Item {item_id} added to group {group_id}")
+           #printf"Item {item_id} added to group {group_id}")
                 
                 # Actualizar la vista principal si es necesario
                 if hasattr(self.clipboard_manager, 'refresh_cards'):
