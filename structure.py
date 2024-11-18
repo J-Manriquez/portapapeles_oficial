@@ -56,7 +56,7 @@ class ClipboardManager:
         self.current_selection = {'type': 'button', 'index': 0}
         self.is_dark_mode = True
         
-        self.paste_with_format = True
+        self.paste_with_format = False
         
         self.previous_window = None
         self.last_active_window = None
@@ -185,6 +185,10 @@ class ClipboardManager:
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
         self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
 
+    def scrollbar_set(self, start, end):
+        # Este método se llama cuando el canvas actualiza su región de scroll
+        self.canvas.yview_moveto(float(start))
+
     def show_groups(self):
         self.group_manager.show_groups_window()
         self.navigation.set_strategy('groups')
@@ -239,3 +243,10 @@ class ClipboardManager:
 
     def on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+    def on_scroll(self, *args):
+        # Este método se llama cuando se realiza un scroll
+        if len(args) == 3 and isinstance(args[2], str):
+            self.canvas.yview_moveto(args[0])
+        elif len(args) == 2 and isinstance(args[0], str):
+            self.canvas.yview_scroll(int(args[1]), args[0])
