@@ -1,9 +1,6 @@
-# data_manager.py
 
 import json
 import os
-import base64
-
 
 class DataManager:
     def __init__(self, file_path='clipboard_data.json'):
@@ -40,29 +37,73 @@ class DataManager:
         
         return groups, pinned_items, settings
 
-    def encode_pinned_items(self, pinned_items):
-        encoded_items = {}
-        for item_id, item_data in pinned_items.items():
-            encoded_item = item_data.copy()
-            if isinstance(item_data['text'], dict) and 'formatted' in item_data['text']:
-                formatted_data = item_data['text']['formatted']
-                if isinstance(formatted_data, str):
-                    # Si ya es una cadena, la codificamos directamente
-                    encoded_item['text']['formatted'] = base64.b64encode(formatted_data.encode('utf-8')).decode('utf-8')
-                elif isinstance(formatted_data, bytes):
-                    # Si ya es bytes, la codificamos directamente
-                    encoded_item['text']['formatted'] = base64.b64encode(formatted_data).decode('utf-8')
-                else:
-                    # Si no es ni str ni bytes, convertimos a str y luego codificamos
-                    encoded_item['text']['formatted'] = base64.b64encode(str(formatted_data).encode('utf-8')).decode('utf-8')
-            encoded_items[item_id] = encoded_item
-        return encoded_items
-
     def decode_pinned_items(self, encoded_items):
         decoded_items = {}
         for item_id, item_data in encoded_items.items():
             decoded_item = item_data.copy()
-            if isinstance(item_data['text'], dict) and 'formatted' in item_data['text']:
-                decoded_item['text']['formatted'] = base64.b64decode(item_data['text']['formatted'].encode('utf-8'))
+            if isinstance(item_data['text'], dict) and 'format' in item_data['text']:
+                decoded_item['text'] = self.decode_formatted_text(item_data['text'])
             decoded_items[item_id] = decoded_item
         return decoded_items
+    
+    def encode_pinned_items(self, pinned_items):
+        encoded_items = {}
+        for item_id, item_data in pinned_items.items():
+            encoded_item = item_data.copy()
+            if isinstance(item_data['text'], dict):
+                encoded_item['text'] = self.encode_formatted_text(item_data['text'])
+            else:
+                # Si el texto no es un diccionario, lo tratamos como texto simple
+                encoded_item['text'] = self.encode_formatted_text({'text': item_data['text'], 'formatted': {}})
+            encoded_items[item_id] = encoded_item
+        return encoded_items
+
+    def encode_formatted_text(self, text_data):
+        if isinstance(text_data, str):
+            # Si text_data es una cadena, la tratamos como texto simple
+            return {
+                'text': text_data,
+                'format': {}
+            }
+        elif isinstance(text_data, dict):
+            # Si text_data es un diccionario, asumimos que tiene la estructura esperada
+            text = text_data.get('text', '')
+            formatted = text_data.get('formatted', {})
+            
+            if isinstance(formatted, dict):
+                return {
+                    'text': text,
+                    'format': {
+                        'font': formatted.get('font'),
+                        'size': formatted.get('size'),
+                        'color': formatted.get('color'),
+                        'bold': formatted.get('bold'),
+                        'italic': formatted.get('italic'),
+                        'rtf': formatted.get('rtf'),
+                        'html': formatted.get('html'),
+                        'underline': formatted.get('underline'),
+                        'strikethrough': formatted.get('strikethrough'),
+                        'superscript': formatted.get('superscript'),
+                        'subscript': formatted.get('subscript'),
+                        'background_color': formatted.get('background_color'),
+                        'alignment': formatted.get('alignment'),
+                    }
+                }
+            else:
+                # Si 'formatted' no es un diccionario, devolvemos un formato vacío
+                return {
+                    'text': text,
+                    'format': {}
+                }
+        else:
+            # Para cualquier otro tipo, convertimos a string y devolvemos sin formato
+            return {
+                'text': str(text_data),
+                'format': {}
+            }
+                    
+    def decode_formatted_text(self, encoded_text):
+        return {
+            'text': encoded_text['text'],
+            'formatted': encoded_text['format']
+        }

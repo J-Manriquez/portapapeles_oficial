@@ -1,6 +1,6 @@
 # key_manager.py
 import win32com
-import win32clipboard  # type: ignore
+import win32clipboard
 import keyboard
 import win32gui
 import win32com.client
@@ -10,8 +10,8 @@ import pyautogui
 import win32api
 import win32con
 import ctypes
-import base64
-
+import re
+from bs4 import BeautifulSoup
 
 # Definir CF_HTML ya que no está en win32con
 CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
@@ -31,7 +31,6 @@ class KeyManager:
             except KeyError:
                 print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
 
-        # Asegúrate de que el nuevo atajo incluya 'alt+'
         if not new_hotkey.lower().startswith('alt+'):
             new_hotkey = 'alt+' + new_hotkey
         
@@ -55,7 +54,7 @@ class KeyManager:
         self.restore_focus()
         if self.original_cursor_pos:
             win32api.SetCursorPos(self.original_cursor_pos)
-        self.setup_global_keys()  # Asegurarse de que los atajos globales sigan funcionando
+        self.setup_global_keys()
 
     def show_window(self):
         print("In show_window function")
@@ -68,7 +67,6 @@ class KeyManager:
             self.manager.navigation.initialize_focus()
             self.setup_global_keys()
             
-            # Forzar la actualización de la ventana
             self.manager.root.update_idletasks()
             self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
             self.manager.root.focus_force()
@@ -108,70 +106,94 @@ class KeyManager:
             
             self.manager.root.update_idletasks()
             self.manager.root.after(10, self.manager.root.update)
-            self.manager.root.after(20, self.restore_cursor_position)  # Restaurar cursor después de la actualización
+            self.manager.root.after(20, self.restore_cursor_position)
 
     def restore_cursor_position(self):
         if self.original_cursor_pos:
             win32api.SetCursorPos(self.original_cursor_pos)
 
-
     def paste_content(self, clipboard_data):
         try:
-            # Ocultar la ventana de la aplicación
             self.hide_window()
-            
-            # Guardar la posición actual del cursor
             current_cursor_pos = win32gui.GetCursorPos()
             
             if isinstance(clipboard_data, dict):
                 text = clipboard_data.get('text', '')
-                formatted = clipboard_data.get('formatted')
+                format_info = clipboard_data.get('formatted', {})
             else:
                 text = str(clipboard_data)
-                formatted = None
+                format_info = {}
 
-            if self.manager.paste_with_format and formatted:
-                # Pegar con formato
+            if self.manager.paste_with_format and format_info:
+                formatted_content = self.apply_format_to_text(text, format_info)
                 win32clipboard.OpenClipboard()
                 win32clipboard.EmptyClipboard()
-                
-                # Decodificar el contenido formateado de Base64
-                if isinstance(formatted, str):
-                    formatted_data = base64.b64decode(formatted.encode('utf-8'))
-                    
-                    if formatted_data.startswith(b'{\\rtf'):
-                        win32clipboard.SetClipboardData(win32con.CF_RTF, formatted_data)
-                    else:
-                        CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
-                        win32clipboard.SetClipboardData(CF_HTML, formatted_data)
-                
+                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, formatted_content)
                 win32clipboard.CloseClipboard()
             else:
-                # Pegar sin formato
                 pyperclip.copy(text)
             
-            # Esperar un poco para asegurar que el portapapeles se ha actualizado
             time.sleep(0.05)
             
-            # Restaurar el foco a la ventana anterior
             if self.manager.previous_window:
                 win32gui.SetForegroundWindow(self.manager.previous_window)
                 time.sleep(0.05)
                 
-                # Restaurar la posición del cursor
                 win32api.SetCursorPos(current_cursor_pos)
                 
-                # Simular la pulsación de teclas Ctrl+V para pegar
                 shell = win32com.client.Dispatch("WScript.Shell")
                 shell.SendKeys("^v")
             
-            # Limpiar la posición original del cursor
             self.original_cursor_pos = None
             
         except Exception as e:
             print(f"Error en el proceso de pegado: {e}")
         finally:
-            # Asegurarse de que la posición del cursor se restaure incluso si hay un error
             if self.original_cursor_pos:
                 win32api.SetCursorPos(self.original_cursor_pos)
             self.original_cursor_pos = None
+
+    def apply_format_to_text(self, text, format_info):
+        if 'rtf' in format_info:
+            return self.apply_rtf_format(text, format_info)
+        elif 'html' in format_info:
+            return self.apply_html_format(text, format_info)
+        else:
+            return text
+
+    def apply_rtf_format(self, text, format_info):
+        rtf = r"{\rtf1\ansi\deff0"
+        if format_info.get('font'):
+            rtf += r"{\fonttbl{\f0\fnil " + format_info['font'] + r";}}"
+        if format_info.get('color'):
+            rtf += r"{\colortbl;\red" + str(format_info['color'][0]) + r"\green" + str(format_info['color'][1]) + r"\blue" + str(format_info['color'][2]) + r";}"
+        rtf += r"\f0"
+        if format_info.get('size'):
+            rtf += r"\fs" + str(int(format_info['size'] * 2))
+        if format_info.get('bold'):
+            rtf += r"\b"
+        if format_info.get('italic'):
+            rtf += r"\i"
+        rtf += " " + text.replace("\n", r"\par ") + r"}"
+        return rtf
+
+    def apply_html_format(self, text, format_info):
+        html = "<div style='"
+        if format_info.get('font'):
+            html += f"font-family: {format_info['font']}; "
+        if format_info.get('size'):
+            html += f"font-size: {format_info['size']}pt; "
+        if format_info.get('color'):
+            html += f"color: rgb{format_info['color']}; "
+        html += "'>"
+        if format_info.get('bold'):
+            html += "<strong>"
+        if format_info.get('italic'):
+            html += "<em>"
+        html += text
+        if format_info.get('italic'):
+            html += "</em>"
+        if format_info.get('bold'):
+            html += "</strong>"
+        html += "</div>"
+        return html

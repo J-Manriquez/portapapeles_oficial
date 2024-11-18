@@ -1,4 +1,4 @@
-# data_manager.py
+// Archivo: data_manager.py
 
 import json
 import os
@@ -10,7 +10,7 @@ class DataManager:
     def save_data(self, groups, pinned_items, settings):
         data = {
             'groups': groups,
-            'pinned_items': pinned_items,
+            'pinned_items': self.encode_pinned_items(pinned_items),
             'settings': settings
         }
         with open(self.file_path, 'w') as f:
@@ -29,22 +29,76 @@ class DataManager:
             data = json.load(f)
         
         groups = data.get('groups', {})
-        for group in groups.values():
-            if 'items' in group:
-                group['items'] = [item if isinstance(item, dict) else {'id': item, 'text': 'Unknown'} for item in group['items']]
-        
+        pinned_items = self.decode_pinned_items(data.get('pinned_items', {}))
         settings = data.get('settings', {
             'height': 400,
             'width': 295,
             'hotkey': 'v'
         })
         
-        return groups, data.get('pinned_items', {}), settings
+        return groups, pinned_items, settings
 
+    def decode_pinned_items(self, encoded_items):
+        decoded_items = {}
+        for item_id, item_data in encoded_items.items():
+            decoded_item = item_data.copy()
+            if isinstance(item_data['text'], dict) and 'format' in item_data['text']:
+                decoded_item['text'] = self.decode_formatted_text(item_data['text'])
+            decoded_items[item_id] = decoded_item
+        return decoded_items
+    
+    def encode_pinned_items(self, pinned_items):
+        encoded_items = {}
+        for item_id, item_data in pinned_items.items():
+            encoded_item = item_data.copy()
+            if isinstance(item_data['text'], dict):
+                encoded_item['text'] = self.encode_formatted_text(item_data['text'])
+            else:
+                # Si el texto no es un diccionario, lo tratamos como texto simple
+                encoded_item['text'] = self.encode_formatted_text({'text': item_data['text'], 'formatted': {}})
+            encoded_items[item_id] = encoded_item
+        return encoded_items
 
+    def encode_formatted_text(self, text_data):
+        if isinstance(text_data, str):
+            # Si text_data es una cadena, la tratamos como texto simple
+            return {
+                'text': text_data,
+                'format': {}
+            }
+        else:
+            # Si text_data es un diccionario, asumimos que tiene la estructura esperada
+            formatted = text_data.get('formatted', {})
+            return {
+                'text': text_data.get('text', ''),
+                'format': {
+                    'font': formatted.get('font'),
+                    'size': formatted.get('size'),
+                    'color': formatted.get('color'),
+                    'bold': formatted.get('bold'),
+                    'italic': formatted.get('italic'),
+                    'rtf': formatted.get('rtf'),
+                    'html': formatted.get('html'),
+                    'underline': formatted.get('underline'),
+                    'strikethrough': formatted.get('strikethrough'),
+                    'superscript': formatted.get('superscript'),
+                    'subscript': formatted.get('subscript'),
+                    'background_color': formatted.get('background_color'),
+                    'alignment': formatted.get('alignment'),
+                }
+            }
+                    
+    def decode_formatted_text(self, encoded_text):
+        return {
+            'text': encoded_text['text'],
+            'formatted': encoded_text['format']
+        }
 
+// Archivo: functions.py
 # functions.py
 
+import base64
+import re
 import tkinter as tk
 import uuid
 import win32con # type: ignore
@@ -52,6 +106,7 @@ import win32clipboard # type: ignore
 import win32gui # type: ignore
 import time
 import sys
+from bs4 import BeautifulSoup
 from utils import measure_time, process_text
 
 # Definir CF_HTML ya que no está en win32con
@@ -240,6 +295,12 @@ class Functions:
             time.sleep(0.5)
             
     def add_clipboard_item(self, new_id, new_item):
+        # Asegúrate de que new_item['text'] siempre sea un diccionario
+        if isinstance(new_item['text'], str):
+            new_item['text'] = {'text': new_item['text'], 'formatted': {}}
+        elif not isinstance(new_item['text'], dict):
+            new_item['text'] = {'text': str(new_item['text']), 'formatted': {}}
+
         self.manager.clipboard_items[new_id] = new_item
         if len(self.manager.clipboard_items) > 20:
             unpinned_items = [k for k, v in self.manager.clipboard_items.items() if not v['pinned']]
@@ -259,22 +320,83 @@ class Functions:
                 format_id = win32clipboard.EnumClipboardFormats(format_id)
             
             text = None
-            formatted = None
+            format_info = {}
             
             if win32con.CF_UNICODETEXT in formats:
                 text = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
             
             if win32con.CF_RTF in formats:
-                formatted = win32clipboard.GetClipboardData(win32con.CF_RTF)
+                rtf_data = win32clipboard.GetClipboardData(win32con.CF_RTF)
+                format_info = self.extract_format_info_from_rtf(rtf_data)
             elif CF_HTML in formats:
-                formatted = win32clipboard.GetClipboardData(CF_HTML)
+                html_data = win32clipboard.GetClipboardData(CF_HTML)
+                format_info = self.extract_format_info_from_html(html_data)
             
             win32clipboard.CloseClipboard()
             
-            return {'text': text, 'formatted': formatted} if text else None
+            if text:
+                if format_info:
+                    return {'text': text, 'formatted': format_info}
+                else:
+                    return text  # Retorna solo el texto si no hay información de formato
+            return None
         except Exception as e:
             print(f"Error al obtener texto del portapapeles: {e}")
             return None
+        
+    def extract_format_info_from_rtf(self, rtf_data):
+        format_info = {'rtf': True}
+        
+        # Extraer información de fuente
+        font_match = re.search(r'\\fonttbl.*?{\\f0\\fnil (.*?);}', rtf_data)
+        if font_match:
+            format_info['font'] = font_match.group(1)
+
+        # Extraer información de tamaño
+        size_match = re.search(r'\\fs(\d+)', rtf_data)
+        if size_match:
+            format_info['size'] = int(size_match.group(1)) / 2  # RTF usa el doble del tamaño real
+
+        # Extraer información de color
+        color_match = re.search(r'\\red(\d+)\\green(\d+)\\blue(\d+)', rtf_data)
+        if color_match:
+            format_info['color'] = (int(color_match.group(1)), int(color_match.group(2)), int(color_match.group(3)))
+
+        # Extraer información de negrita e itálica
+        format_info['bold'] = r'\b' in rtf_data
+        format_info['italic'] = r'\i' in rtf_data
+
+        return format_info
+
+    def extract_format_info_from_html(self, html_data):
+        format_info = {'html': True}
+        soup = BeautifulSoup(html_data, 'html.parser')
+        
+        # Buscar el primer elemento con estilo
+        styled_element = soup.find(style=True)
+        if styled_element:
+            style = styled_element['style']
+            
+            # Extraer información de fuente
+            font_match = re.search(r'font-family:\s*(.*?);', style)
+            if font_match:
+                format_info['font'] = font_match.group(1)
+
+            # Extraer información de tamaño
+            size_match = re.search(r'font-size:\s*(\d+)pt', style)
+            if size_match:
+                format_info['size'] = int(size_match.group(1))
+
+            # Extraer información de color
+            color_match = re.search(r'color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)', style)
+            if color_match:
+                format_info['color'] = (int(color_match.group(1)), int(color_match.group(2)), int(color_match.group(3)))
+
+        # Extraer información de negrita e itálica
+        format_info['bold'] = bool(soup.find(['strong', 'b']))
+        format_info['italic'] = bool(soup.find(['em', 'i']))
+
+        return format_info
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()
@@ -365,9 +487,8 @@ class Functions:
         self.manager.group_manager.add_item_to_group(item_id, group_id)
         dialog.destroy()
         # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
-        
-        
-        
+
+// Archivo: group_content_manager.py
 # group_content_manager.py
 
 import tkinter as tk
@@ -662,9 +783,8 @@ class GroupContentManager:
 
         # Ajustar la altura inicial
         adjust_dialog_height()
-        
-        
-        
+
+// Archivo: group_manager.py
 # group_manager.py
 
 import tkinter as tk
@@ -834,6 +954,13 @@ class GroupManager:
             
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
+        # Asegúrate de que cada item pinned tenga la estructura correcta
+        for item_id, item_data in pinned_items.items():
+            if isinstance(item_data['text'], str):
+                pinned_items[item_id]['text'] = {'text': item_data['text'], 'formatted': {}}
+            elif not isinstance(item_data['text'], dict):
+                pinned_items[item_id]['text'] = {'text': str(item_data['text']), 'formatted': {}}
+        
         self.data_manager.save_data(self.groups, pinned_items, self.clipboard_manager.settings)
         print("Groups and pinned items saved")
         
@@ -1064,165 +1191,209 @@ class GroupManager:
 
         dialog.focus_set()
         name_entry.focus()
-        
-    
-            
-#theme_manager.py
 
-import tkinter as tk
-from tkinter import ttk
+// Archivo: key_manager.py
+# key_manager.py
+import win32com
+import win32clipboard
+import keyboard
+import win32gui
+import win32com.client
+import pyperclip
+import time
+import pyautogui
+import win32api
+import win32con
+import ctypes
+import re
+from bs4 import BeautifulSoup
 
-class ThemeManager:
+# Definir CF_HTML ya que no está en win32con
+CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+
+class KeyManager:
     def __init__(self, manager):
         self.manager = manager
-        self.colors = {
-            'dark': {
-                'bg': '#1e1e1e',
-                'fg': '#ffffff',
-                'button_bg': '#333333',
-                'button_fg': '#ffffff',
-                'listbox_bg': '#2d2d2d',
-                'listbox_fg': '#ffffff',
-                'active_bg': '#4E4E4E',  # Añadido
-                'active_fg': '#FFFFFF',  # Añadido
-                'card_bg': '#333333'
-            },
-            'light': {
-                'bg': '#f0f0f0',
-                'fg': '#000000',
-                'button_bg': '#e0e0e0',
-                'button_fg': '#000000',
-                'listbox_bg': '#ffffff',
-                'listbox_fg': '#000000',
-                'active_bg': '#D0D0D0',  # Añadido
-                'active_fg': '#000000',  # Añadido
-                'card_bg': '#ffffff'
-            }
-        }
+        self.hotkey = self.manager.hotkey
+        self.current_hotkey = None
+        self.update_hotkey(None, self.hotkey)
+        self.original_cursor_pos = None
 
-    def toggle_theme(self):
-        self.manager.is_dark_mode = not self.manager.is_dark_mode
-        self.manager.theme_button.config(text="🌙" if self.manager.is_dark_mode else "☀️")
-        self.apply_theme()
+    def update_hotkey(self, old_hotkey, new_hotkey):
+        if old_hotkey:
+            try:
+                keyboard.remove_hotkey(old_hotkey)
+            except KeyError:
+                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
 
-    def apply_theme(self):
-        theme = self.colors['dark'] if self.manager.is_dark_mode else self.colors['light']
+        if not new_hotkey.lower().startswith('alt+'):
+            new_hotkey = 'alt+' + new_hotkey
         
-        self.manager.root.configure(bg=theme['bg'])
-        self.manager.main_frame.configure(style='Main.TFrame')
-        self.manager.title_frame.configure(bg=theme['bg'])
-        self.manager.title_label.configure(bg=theme['bg'], fg=theme['fg'])
-        
-        self.manager.clear_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-        self.manager.theme_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-        
-        self.manager.close_button.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
+        keyboard.add_hotkey(new_hotkey, self.toggle_window)
+        self.current_hotkey = new_hotkey
+        print(f"Nuevo atajo configurado: {new_hotkey}")
 
-        self.manager.button1.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button2.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.button3.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
-        )
-
-        self.manager.canvas.configure(bg=theme['bg'])
-        self.manager.cards_frame.configure(bg=theme['bg'])
-        
-        self.manager.functions.refresh_cards()
-
-        style = ttk.Style()  
-        style.theme_use('clam')  
-        style.configure('Main.TFrame', background=theme['bg'])
-        
-        
-        
-# utils.py
-
-import time
-
-def measure_time(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        print(f"{func.__name__} tomó {(end_time - start_time) * 1000:.2f} ms")
-        return result
-    return wrapper
-
-def process_text(text_data, cant_lineas):
-    """
-    Procesa el texto para mostrarlo de forma limpia y ordenada
-    """
-    # Comprueba si text_data es un diccionario y extrae el texto
-    if isinstance(text_data, dict):
-        text = text_data.get('text', '')
-    else:
-        text = str(text_data)
-
-    # Eliminamos espacios extras y tabulaciones al inicio y final
-    text = text.strip()
-    
-    # Dividimos el texto en líneas
-    lines = text.splitlines()
-    
-    # Eliminamos líneas vacías consecutivas y espacios extras
-    clean_lines = []
-    prev_empty = False
-    for line in lines:
-        line = line.strip()
-        
-        # Si la línea está vacía
-        if not line:
-            if not prev_empty:  # Solo mantenemos una línea vacía
-                clean_lines.append('')
-                prev_empty = True
+    def toggle_window(self):
+        print("Toggling window")
+        if not self.manager.is_visible:
+            print("Showing window")
+            self.original_cursor_pos = win32gui.GetCursorPos()
+            self.show_window()
         else:
-            clean_lines.append(line)
-            prev_empty = False
-    
-    # Tomamos solo las primeras 'cant_lineas' para la vista previa
-    preview_lines = clean_lines[:cant_lineas]
-    
-    # Si hay más líneas, indicamos cuántas más hay
-    if len(clean_lines) > cant_lineas:
-        remaining_lines = len(clean_lines) - cant_lineas
-        preview_lines.append(f"+ {remaining_lines} líneas más")
-        
-    # Unimos las líneas con saltos de línea
-    return '\n'.join(preview_lines)
+            print("Hiding window")
+            self.hide_window()
 
+    def hide_window(self):
+        self.manager.root.withdraw()
+        self.manager.is_visible = False
+        self.restore_focus()
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+        self.setup_global_keys()
 
-# --------------------------------------------------------------------
+    def show_window(self):
+        print("In show_window function")
+        try:
+            self.manager.previous_window = win32gui.GetForegroundWindow()
+            self.manager.root.deiconify()
+            self.manager.root.lift()
+            self.manager.root.attributes('-topmost', True)
+            self.manager.is_visible = True
+            self.manager.navigation.initialize_focus()
+            self.setup_global_keys()
+            
+            self.manager.root.update_idletasks()
+            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
+            self.manager.root.focus_force()
+            
+        except Exception as e:
+            print(f"Error al mostrar la ventana: {e}")
 
+    def restore_focus(self):
+        if self.manager.previous_window:
+            try:
+                win32gui.SetForegroundWindow(self.manager.previous_window)
+            except Exception as e:
+                print(f"Error al restaurar el foco: {e}")
+                try:
+                    self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
+                except:
+                    pass
+
+    def setup_global_keys(self):
+        keyboard.unhook_all()
+        keyboard.add_hotkey(self.current_hotkey, self.toggle_window)
+        keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
+        keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
+        keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
+        keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
+        keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
+
+    def handle_global_key(self, key):
+        if self.manager.is_visible:
+            print(f"Handling global key: {key}")
+            if key in ['Up', 'Down']:
+                self.manager.navigation.navigate_vertical(type('Event', (), {'keysym': key})())
+            elif key in ['Left', 'Right']:
+                self.manager.navigation.navigate_horizontal(type('Event', (), {'keysym': key})())
+            elif key == 'Return':
+                self.manager.navigation.activate_selected()
+            
+            self.manager.root.update_idletasks()
+            self.manager.root.after(10, self.manager.root.update)
+            self.manager.root.after(20, self.restore_cursor_position)
+
+    def restore_cursor_position(self):
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+
+    def paste_content(self, clipboard_data):
+        try:
+            self.hide_window()
+            current_cursor_pos = win32gui.GetCursorPos()
+            
+            if isinstance(clipboard_data, dict):
+                text = clipboard_data.get('text', '')
+                format_info = clipboard_data.get('formatted', {})
+            else:
+                text = str(clipboard_data)
+                format_info = {}
+
+            if self.manager.paste_with_format and format_info:
+                formatted_content = self.apply_format_to_text(text, format_info)
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, formatted_content)
+                win32clipboard.CloseClipboard()
+            else:
+                pyperclip.copy(text)
+            
+            time.sleep(0.05)
+            
+            if self.manager.previous_window:
+                win32gui.SetForegroundWindow(self.manager.previous_window)
+                time.sleep(0.05)
+                
+                win32api.SetCursorPos(current_cursor_pos)
+                
+                shell = win32com.client.Dispatch("WScript.Shell")
+                shell.SendKeys("^v")
+            
+            self.original_cursor_pos = None
+            
+        except Exception as e:
+            print(f"Error en el proceso de pegado: {e}")
+        finally:
+            if self.original_cursor_pos:
+                win32api.SetCursorPos(self.original_cursor_pos)
+            self.original_cursor_pos = None
+
+    def apply_format_to_text(self, text, format_info):
+        if 'rtf' in format_info:
+            return self.apply_rtf_format(text, format_info)
+        elif 'html' in format_info:
+            return self.apply_html_format(text, format_info)
+        else:
+            return text
+
+    def apply_rtf_format(self, text, format_info):
+        rtf = r"{\rtf1\ansi\deff0"
+        if format_info.get('font'):
+            rtf += r"{\fonttbl{\f0\fnil " + format_info['font'] + r";}}"
+        if format_info.get('color'):
+            rtf += r"{\colortbl;\red" + str(format_info['color'][0]) + r"\green" + str(format_info['color'][1]) + r"\blue" + str(format_info['color'][2]) + r";}"
+        rtf += r"\f0"
+        if format_info.get('size'):
+            rtf += r"\fs" + str(int(format_info['size'] * 2))
+        if format_info.get('bold'):
+            rtf += r"\b"
+        if format_info.get('italic'):
+            rtf += r"\i"
+        rtf += " " + text.replace("\n", r"\par ") + r"}"
+        return rtf
+
+    def apply_html_format(self, text, format_info):
+        html = "<div style='"
+        if format_info.get('font'):
+            html += f"font-family: {format_info['font']}; "
+        if format_info.get('size'):
+            html += f"font-size: {format_info['size']}pt; "
+        if format_info.get('color'):
+            html += f"color: rgb{format_info['color']}; "
+        html += "'>"
+        if format_info.get('bold'):
+            html += "<strong>"
+        if format_info.get('italic'):
+            html += "<em>"
+        html += text
+        if format_info.get('italic'):
+            html += "</em>"
+        if format_info.get('bold'):
+            html += "</strong>"
+        html += "</div>"
+        return html
+
+// Archivo: main.py
 # main.py
 import keyboard
 import sys
@@ -1246,542 +1417,8 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-        
-# navigation_strategies.py
 
-from abc import ABC, abstractmethod
-
-class NavigationStrategy(ABC):
-    @abstractmethod
-    def navigate_vertical(self, event):
-        pass
-
-    @abstractmethod
-    def navigate_horizontal(self, event):
-        pass
-
-    @abstractmethod
-    def activate_selected(self, event=None):
-        pass
-
-    @abstractmethod
-    def update_highlights(self):
-        pass
-
-    @abstractmethod
-    def initialize_focus(self):
-        pass
-
-# Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
-# y SettingsScreenNavigation ahora están en archivos separados.
-
-
-# settings_manager.py
-
-import json
-import os
-import sys
-import tkinter as tk
-from tkinter import ttk
-
-class SettingsManager:
-    def __init__(self, master, clipboard_manager):
-        self.master = master
-        self.clipboard_manager = clipboard_manager
-        self.settings_window = None
-        self.settings = None      
-          
-    def initialize_settings(self):
-        # Llama a este método después de que ClipboardManager haya inicializado completamente
-        self.settings = self.clipboard_manager.settings
-        
-    def save_settings(self):
-        groups, pinned_items, _ = self.clipboard_manager.data_manager.load_data()
-        self.clipboard_manager.data_manager.save_data(groups, pinned_items, self.settings)
-        
-    def show_settings_window(self):
-        if self.settings_window is None or not self.settings_window.winfo_exists():
-            self.settings_window = tk.Toplevel(self.master)
-            self.settings_window.title("Configuraciones")
-            
-            window_width = self.settings['width']
-            window_height = self.settings['height']
-
-            # Usa las coordenadas de la ventana principal o una posición predeterminada
-            x = getattr(self.clipboard_manager, 'window_x', 0) + 50
-            y = getattr(self.clipboard_manager, 'window_y', 0) + 50
-            
-            self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-            
-            self.settings_window.overrideredirect(True)
-            self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
-            self.settings_window.attributes('-topmost', True)
-
-            # Barra de título personalizada
-            title_frame = tk.Frame(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
-            title_frame.pack(fill=tk.X, padx=6, pady=(0, 0))
-
-            title_label = tk.Label(title_frame, text="Configuraciones", font=('Segoe UI', 10, 'bold'), 
-                                   bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], 
-                                   fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
-            title_label.pack(side=tk.LEFT, padx=5)
-
-            close_button = tk.Button(title_frame, text="❌", command=self.settings_window.destroy, 
-                                     font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
-                                     bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                                     fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
-            close_button.pack(side=tk.RIGHT)
-
-            # Canvas para scroll y contenedor de configuraciones
-            canvas = tk.Canvas(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
-            canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-            # Scrollbar oculto
-            scrollbar = ttk.Scrollbar(self.settings_window, orient=tk.VERTICAL, command=canvas.yview)
-            canvas.configure(yscrollcommand=scrollbar.set)
-
-            # Frame contenedor dentro del canvas para el scroll
-            self.settings_frame = tk.Frame(canvas, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
-            canvas_window = canvas.create_window((0, 0), window=self.settings_frame, anchor='nw', width=295)
-
-            # Ajustar el ancho del frame contenedor al canvas
-            def on_canvas_resize(event):
-                canvas.itemconfig(canvas_window, width=event.width)
-
-            canvas.bind("<Configure>", on_canvas_resize)
-
-            # Configuración de scroll
-            def on_frame_configure(event):
-                canvas.configure(scrollregion=canvas.bbox("all"))
-
-            self.settings_frame.bind("<Configure>", on_frame_configure)
-
-            # Función para desplazamiento con la rueda del mouse
-            def _on_mousewheel(event):
-                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-            # Crear cards de configuración
-            subtitle = tk.Label(self.settings_frame, text="Tecla de activación", 
-                        font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                        anchor='w')
-            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
-            self.create_setting_card("Alt+", self.settings['hotkey'])
-            
-            subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app", 
-                        font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                        anchor='w')
-            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
-            self.create_setting_card("Alto", str(self.settings['height']))
-            self.create_setting_card("Ancho", str(self.settings['width']))
-
-            # Hacer la ventana arrastrable
-            title_label.bind('<Button-1>', self.start_move)
-            title_label.bind('<B1-Motion>', self.on_move)
-
-        else:
-            self.settings_window.lift()
-            self.settings_window.attributes('-topmost', True)
-            self.settings_window.after_idle(self.settings_window.attributes, '-topmost', False)
-
-    def create_setting_card(self, setting_name, default_value):
-        card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
-        card.pack(fill=tk.X, padx=4, pady=2)
-
-        label = tk.Label(card, text=f"{setting_name}: {default_value}", 
-                         bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
-                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                         anchor='w', padx=5, pady=5)
-        label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        edit_button = tk.Button(card, text="✏️", 
-                                command=lambda: self.toggle_edit_mode(card, label, edit_button, setting_name, default_value),
-                                font=('Segoe UI', 10), bd=0,
-                                bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                                fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
-        edit_button.pack(side=tk.RIGHT, padx=2, pady=2)
-
-    def toggle_edit_mode(self, card, label, button, setting_name, current_value):
-        if button['text'] == "✏️":
-            # Cambiar a modo edición
-            entry = tk.Entry(card, bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                             fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                             insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
-            entry.insert(0, current_value)
-            entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
-            label.pack_forget()
-            button.configure(text="💾")
-        else:
-            # Guardar cambios
-            entry = [child for child in card.winfo_children() if isinstance(child, tk.Entry)][0]
-            new_value = entry.get()
-            label.configure(text=f"{setting_name}: {new_value}")
-            entry.destroy()
-            label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            button.configure(text="✏️")
-            
-            # Actualizar configuraciones
-            if setting_name == "Alto":
-                self.settings['height'] = int(new_value)
-            elif setting_name == "Ancho":
-                self.settings['width'] = int(new_value)
-            elif setting_name == "Alt+":
-                old_hotkey = self.settings['hotkey']
-                new_hotkey = 'alt+' + new_value
-                self.settings['hotkey'] = new_value  # Guarda solo la letra
-                self.clipboard_manager.key_manager.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
-                
-            self.save_settings()
-            self.restart_app()
-            
-    def restart_app(self):
-        python = sys.executable
-        os.execl(python, python, *sys.argv, "--show-settings")
-            
-    def start_move(self, event):
-        self.x = event.x
-        self.y = event.y
-
-    def on_move(self, event):
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.settings_window.winfo_x() + deltax
-        y = self.settings_window.winfo_y() + deltay
-        self.settings_window.geometry(f"+{x}+{y}")
-
-
-# structure.py
-
-import tkinter as tk
-from tkinter import ttk
-import threading
-import win32gui
-import pyautogui
-
-from functions import Functions
-from key_manager import KeyManager
-from navigation import Navigation
-from theme_manager import ThemeManager
-from group_manager import GroupManager
-from data_manager import DataManager
-from settings_manager import SettingsManager
-
-class ClipboardManager:
-    def __init__(self, root, show_settings=False):
-        self.root = root
-        self.root.title("Portapapeles")
-
-        self.data_manager = DataManager()
-        groups, pinned_items, settings = self.data_manager.load_data()
-        
-        self.settings = settings
-        self.settings_manager = SettingsManager(self.root, self)
-        self.settings_manager.initialize_settings()
-
-        self.window_width = settings['width']
-        self.window_height = settings['height']
-        self.window_x = 0
-        self.window_y = 0
-
-        self.root.overrideredirect(True)
-        self.root.attributes('-topmost', True)
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)  # Manejar el cierre de la ventana
-
-        
-        self.root.withdraw()
-        self.is_visible = False
-
-        self.previous_window = None
-
-        self.clipboard_items = pinned_items
-        self.current_clipboard = ""
-        self.selected_index = None
-        self.current_selection = {'type': 'button', 'index': 0}
-        self.is_dark_mode = True
-        
-        self.paste_with_format = True
-        
-        self.previous_window = None
-        self.last_active_window = None
-        self.selected_button = None
-        self.selected_card = None
-        self.selected_icon = None
-        self.total_buttons = 6
-        self.top_buttons = 3
-        self.icons_per_card = 3
-        
-        self.hotkey = f"alt+{settings['hotkey']}"
-
-        self.theme_manager = ThemeManager(self)
-        self.functions = Functions(self)
-        self.key_manager = KeyManager(self)
-        self.group_manager = GroupManager(self.root, self)
-        
-        self.group_manager.groups = groups
-        
-        self.create_gui()
-        self.load_saved_data()
-        
-        self.navigation = Navigation(self)
-        
-        self.theme_manager.apply_theme()
-
-        self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
-        self.monitor_thread.start()
-
-        self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
-        # self.key_manager.setup_global_keys()
-        
-        # self.root.bind("<Map>", self.on_main_window_map)
-        # self.root.bind("<Unmap>", self.on_main_window_unmap)
-        
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        
-        if show_settings:
-            self.root.after(100, self.settings_manager.show_settings_window)
-        
-        self.root.after(1000, self.navigation.check_window_state)
-        self.key_manager.setup_global_keys()
-        
-    def force_update(self):
-        self.root.update_idletasks()
-        self.root.update()
-            
-    def on_close(self):
-        self.root.withdraw()
-        self.is_visible = False
-
-    def create_gui(self):
-        self.main_frame = ttk.Frame(self.root, style='Main.TFrame')
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
-        self.title_frame.pack(fill=tk.X, padx=3, pady=(0,6))
-
-        self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark']['bg'], fg=self.theme_manager.colors['dark']['fg'])
-        self.title_label.pack(side=tk.LEFT, padx=5)
-
-        buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark']['bg'])
-        buttons_frame.pack(side=tk.RIGHT, padx=4)
-
-        self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
-        self.theme_button.pack(side=tk.LEFT)
-
-        self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.show_settings, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
-        self.clear_button.pack(side=tk.LEFT)
-
-        self.close_button = tk.Button(buttons_frame, text="❌", command=self.functions.exit_app, font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
-        self.close_button.pack(side=tk.LEFT)
-
-        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
-        main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
-
-        self.button1 = tk.Button(main_buttons_frame, text="Grupos", 
-                                 command=self.show_groups, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8)
-        self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
-
-        self.button2 = tk.Button(main_buttons_frame, text="Con formato", 
-                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8) 
-        self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
-
-        self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo", 
-                                 command=self.functions.clear_history, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8)                               
-        self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
-
-        self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
-
-        self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-        # Variables para el movimiento de la ventana
-        self._drag_data = {"x": 0, "y": 0, "item": None}
-
-        # Vincular eventos para mover la ventana
-        self.title_label.bind('<Button-1>', self.start_move)
-        self.title_label.bind('<ButtonRelease-1>', self.stop_move)
-        self.title_label.bind('<B1-Motion>', self.on_move)
-        
-        # Vincula eventos de scroll
-        self.canvas.bind('<Configure>', self.on_canvas_configure)
-        self.cards_frame.bind('<Configure>', self.on_frame_configure)
-        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
-
-    def show_groups(self):
-        self.group_manager.show_groups_window()
-        self.navigation.set_strategy('groups')
-
-    def show_settings(self):
-        self.settings_manager.show_settings_window()
-        self.navigation.set_strategy('settings')
-
-    def show_main_screen(self):
-        # Lógica para mostrar la pantalla principal
-        self.navigation.set_strategy('main')
-
-    def load_saved_data(self):
-        groups, pinned_items, _ = self.data_manager.load_data()
-        self.group_manager.groups = groups
-        self.clipboard_items.update(pinned_items)
-        self.functions.refresh_cards()
-
-    def on_main_window_map(self, event):
-        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
-            self.group_manager.groups_window.deiconify()
-
-    def on_main_window_unmap(self, event):
-        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
-            self.group_manager.groups_window.withdraw()
-
-    def start_move(self, event):
-        self._drag_data["x"] = event.x
-        self._drag_data["y"] = event.y
-
-    def stop_move(self, event):
-        self._drag_data["x"] = 0
-        self._drag_data["y"] = 0
-        self._drag_data["item"] = None
-
-    def on_move(self, event):
-        delta_x = event.x - self._drag_data["x"]
-        delta_y = event.y - self._drag_data["y"]
-        x = self.root.winfo_x() + delta_x
-        y = self.root.winfo_y() + delta_y
-        self.root.geometry(f"+{x}+{y}")
-        self.window_x = x
-        self.window_y = y
-
-    def on_canvas_configure(self, event):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        width = event.width
-        self.canvas.itemconfig(self.canvas_window, width=width)
-
-    def on_frame_configure(self, event):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def on_mousewheel(self, event):
-        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
-        
-# navigation.py
-
-from main_screen_navigation import MainScreenNavigation
-# from groups_screen_navigation import GroupsScreenNavigation
-# from settings_screen_navigation import SettingsScreenNavigation
-
-class Navigation:
-    def __init__(self, manager):
-        self.manager = manager
-        self.strategies = {
-            'main': MainScreenNavigation(manager),
-            # 'groups': GroupsScreenNavigation(manager),
-            # 'settings': SettingsScreenNavigation(manager)
-        }
-        self.current_strategy = self.strategies['main']
-
-    def set_strategy(self, screen_type):
-        if screen_type in self.strategies:
-            self.current_strategy = self.strategies[screen_type]
-            print(f"Estrategia de navegación cambiada a: {screen_type}")
-        else:
-            print(f"Estrategia de navegación no reconocida: {screen_type}")
-
-    def navigate_vertical(self, event):
-        print(f"Navigating vertically: {event.keysym}")  # Añade este print para depuración
-        self.current_strategy.navigate_vertical(event)
-
-    def navigate_horizontal(self, event):
-        print(f"Navigating horizontally: {event.keysym}")  # Añade este print para depuración
-        self.current_strategy.navigate_horizontal(event)
-
-    def activate_selected(self, event=None):
-        print("Activating selected")  # Añade este print para depuración
-        self.current_strategy.activate_selected(event)
-
-    def update_highlights(self):
-        self.current_strategy.update_highlights()
-
-
-    def get_cards_count(self):
-        return len(self.manager.cards_frame.winfo_children()) if hasattr(self.manager, 'cards_frame') else 0
-
-    def initialize_focus(self):
-        if self.get_cards_count() > 0:
-            self.manager.current_selection = {'type': 'cards', 'index': 0}
-        else:
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        
-        self.update_highlights()
-        self.manager.root.update_idletasks()
-
-    def handle_focus(self, event=None):
-        if self.manager.is_visible:
-            self.manager.root.focus_force()
-
-    def check_window_state(self):
-        try:
-            actual_visible = self.manager.root.winfo_viewable()
-            if actual_visible != self.manager.is_visible:
-                print('**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
-                self.manager.is_visible = actual_visible
-        except Exception as e:
-            print(f"Error al verificar estado de la ventana: {e}")
-
-    def update_active_window(self):
-        import win32gui
-        self.manager.last_active_window = win32gui.GetForegroundWindow()
-
-    def get_current_selection(self):
-        return self.manager.current_selection
-
-    def set_current_selection(self, selection_type, index):
-        self.manager.current_selection = {'type': selection_type, 'index': index}
-        self.update_highlights()
-
-    def get_clipboard_items(self):
-        return self.manager.clipboard_items
-
-    def get_cards_frame(self):
-        return self.manager.cards_frame
-
-    def get_canvas(self):
-        return self.manager.canvas
-
-    def is_dark_mode(self):
-        return self.manager.is_dark_mode
-
-    def get_theme_colors(self):
-        return self.manager.theme_manager.colors
-    
-    
-    
+// Archivo: main_screen_navigation.py
 # main_screen_navigation.py
 
 import tkinter as tk
@@ -2033,179 +1670,698 @@ class MainScreenNavigation:
             if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
                 return child
         return None
-    
-    
-    
-# key_manager.py
-import win32com
-import win32clipboard  # type: ignore
-import keyboard
-import win32gui
-import win32com.client
-import pyperclip
-import time
-import pyautogui
-import win32api
-import win32con
-import ctypes
 
-# Definir CF_HTML ya que no está en win32con
-CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+// Archivo: navigation.py
+# navigation.py
 
-class KeyManager:
+from main_screen_navigation import MainScreenNavigation
+# from groups_screen_navigation import GroupsScreenNavigation
+# from settings_screen_navigation import SettingsScreenNavigation
+
+class Navigation:
     def __init__(self, manager):
         self.manager = manager
-        self.hotkey = self.manager.hotkey
-        self.current_hotkey = None
-        self.update_hotkey(None, self.hotkey)
-        self.original_cursor_pos = None
+        self.strategies = {
+            'main': MainScreenNavigation(manager),
+            # 'groups': GroupsScreenNavigation(manager),
+            # 'settings': SettingsScreenNavigation(manager)
+        }
+        self.current_strategy = self.strategies['main']
 
-    def update_hotkey(self, old_hotkey, new_hotkey):
-        if old_hotkey:
-            try:
-                keyboard.remove_hotkey(old_hotkey)
-            except KeyError:
-                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
-
-        # Asegúrate de que el nuevo atajo incluya 'alt+'
-        if not new_hotkey.lower().startswith('alt+'):
-            new_hotkey = 'alt+' + new_hotkey
-        
-        keyboard.add_hotkey(new_hotkey, self.toggle_window)
-        self.current_hotkey = new_hotkey
-        print(f"Nuevo atajo configurado: {new_hotkey}")
-
-    def toggle_window(self):
-        print("Toggling window")
-        if not self.manager.is_visible:
-            print("Showing window")
-            self.original_cursor_pos = win32gui.GetCursorPos()
-            self.show_window()
+    def set_strategy(self, screen_type):
+        if screen_type in self.strategies:
+            self.current_strategy = self.strategies[screen_type]
+            print(f"Estrategia de navegación cambiada a: {screen_type}")
         else:
-            print("Hiding window")
-            self.hide_window()
+            print(f"Estrategia de navegación no reconocida: {screen_type}")
 
-    def hide_window(self):
-        self.manager.root.withdraw()
-        self.manager.is_visible = False
-        self.restore_focus()
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-        self.setup_global_keys()  # Asegurarse de que los atajos globales sigan funcionando
+    def navigate_vertical(self, event):
+        print(f"Navigating vertically: {event.keysym}")  # Añade este print para depuración
+        self.current_strategy.navigate_vertical(event)
 
-    def show_window(self):
-        print("In show_window function")
-        try:
-            self.manager.previous_window = win32gui.GetForegroundWindow()
-            self.manager.root.deiconify()
-            self.manager.root.lift()
-            self.manager.root.attributes('-topmost', True)
-            self.manager.is_visible = True
-            self.manager.navigation.initialize_focus()
-            self.setup_global_keys()
-            
-            # Forzar la actualización de la ventana
-            self.manager.root.update_idletasks()
-            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
-            self.manager.root.focus_force()
-            
-        except Exception as e:
-            print(f"Error al mostrar la ventana: {e}")
+    def navigate_horizontal(self, event):
+        print(f"Navigating horizontally: {event.keysym}")  # Añade este print para depuración
+        self.current_strategy.navigate_horizontal(event)
 
-    def restore_focus(self):
-        if self.manager.previous_window:
-            try:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-            except Exception as e:
-                print(f"Error al restaurar el foco: {e}")
-                try:
-                    self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
-                except:
-                    pass
+    def activate_selected(self, event=None):
+        print("Activating selected")  # Añade este print para depuración
+        self.current_strategy.activate_selected(event)
 
-    def setup_global_keys(self):
-        keyboard.unhook_all()
-        keyboard.add_hotkey(self.current_hotkey, self.toggle_window)
-        keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
-        keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
-        keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
-        keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
-        keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
+    def update_highlights(self):
+        self.current_strategy.update_highlights()
 
-    def handle_global_key(self, key):
+
+    def get_cards_count(self):
+        return len(self.manager.cards_frame.winfo_children()) if hasattr(self.manager, 'cards_frame') else 0
+
+    def initialize_focus(self):
+        if self.get_cards_count() > 0:
+            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        else:
+            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
+        
+        self.update_highlights()
+        self.manager.root.update_idletasks()
+
+    def handle_focus(self, event=None):
         if self.manager.is_visible:
-            print(f"Handling global key: {key}")
-            if key in ['Up', 'Down']:
-                self.manager.navigation.navigate_vertical(type('Event', (), {'keysym': key})())
-            elif key in ['Left', 'Right']:
-                self.manager.navigation.navigate_horizontal(type('Event', (), {'keysym': key})())
-            elif key == 'Return':
-                self.manager.navigation.activate_selected()
-            
-            self.manager.root.update_idletasks()
-            self.manager.root.after(10, self.manager.root.update)
-            self.manager.root.after(20, self.restore_cursor_position)  # Restaurar cursor después de la actualización
+            self.manager.root.focus_force()
 
-    def restore_cursor_position(self):
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-
-
-    def paste_content(self, clipboard_data):
+    def check_window_state(self):
         try:
-            # Ocultar la ventana de la aplicación
-            self.hide_window()
-            
-            # Guardar la posición actual del cursor
-            current_cursor_pos = win32gui.GetCursorPos()
-            
-            if isinstance(clipboard_data, dict):
-                text = clipboard_data.get('text', '')
-                formatted = clipboard_data.get('formatted')
-            else:
-                text = str(clipboard_data)
-                formatted = None
-
-            if self.manager.paste_with_format and formatted:
-                # Pegar con formato
-                win32clipboard.OpenClipboard()
-                win32clipboard.EmptyClipboard()
-                if isinstance(formatted, str) and formatted.startswith('{\\rtf'):
-                    win32clipboard.SetClipboardData(win32con.CF_RTF, formatted.encode('utf-8'))
-                elif isinstance(formatted, str):
-                    CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
-                    win32clipboard.SetClipboardData(CF_HTML, formatted.encode('utf-8'))
-                win32clipboard.CloseClipboard()
-            else:
-                # Pegar sin formato
-                pyperclip.copy(text)
-            
-            # Esperar un poco para asegurar que el portapapeles se ha actualizado
-            time.sleep(0.05)
-            
-            # Restaurar el foco a la ventana anterior
-            if self.manager.previous_window:
-                win32gui.SetForegroundWindow(self.manager.previous_window)
-                time.sleep(0.05)
-                
-                # Restaurar la posición del cursor
-                win32api.SetCursorPos(current_cursor_pos)
-                
-                # Simular la pulsación de teclas Ctrl+V para pegar
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys("^v")
-            
-            # Limpiar la posición original del cursor
-            self.original_cursor_pos = None
-            
+            actual_visible = self.manager.root.winfo_viewable()
+            if actual_visible != self.manager.is_visible:
+                print('**********'f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
+                self.manager.is_visible = actual_visible
         except Exception as e:
-            print(f"Error en el proceso de pegado: {e}")
-        finally:
-            # Asegurarse de que la posición del cursor se restaure incluso si hay un error
-            if self.original_cursor_pos:
-                win32api.SetCursorPos(self.original_cursor_pos)
-            self.original_cursor_pos = None
+            print(f"Error al verificar estado de la ventana: {e}")
+
+    def update_active_window(self):
+        import win32gui
+        self.manager.last_active_window = win32gui.GetForegroundWindow()
+
+    def get_current_selection(self):
+        return self.manager.current_selection
+
+    def set_current_selection(self, selection_type, index):
+        self.manager.current_selection = {'type': selection_type, 'index': index}
+        self.update_highlights()
+
+    def get_clipboard_items(self):
+        return self.manager.clipboard_items
+
+    def get_cards_frame(self):
+        return self.manager.cards_frame
+
+    def get_canvas(self):
+        return self.manager.canvas
+
+    def is_dark_mode(self):
+        return self.manager.is_dark_mode
+
+    def get_theme_colors(self):
+        return self.manager.theme_manager.colors
+
+// Archivo: navigation_strategies.py
+# navigation_strategies.py
+
+from abc import ABC, abstractmethod
+
+class NavigationStrategy(ABC):
+    @abstractmethod
+    def navigate_vertical(self, event):
+        pass
+
+    @abstractmethod
+    def navigate_horizontal(self, event):
+        pass
+
+    @abstractmethod
+    def activate_selected(self, event=None):
+        pass
+
+    @abstractmethod
+    def update_highlights(self):
+        pass
+
+    @abstractmethod
+    def initialize_focus(self):
+        pass
+
+# Nota: Las implementaciones concretas de MainScreenNavigation, GroupsScreenNavigation,
+# y SettingsScreenNavigation ahora están en archivos separados.
+
+// Archivo: settings_manager.py
+# settings_manager.py
+
+import json
+import os
+import sys
+import tkinter as tk
+from tkinter import ttk
+
+class SettingsManager:
+    def __init__(self, master, clipboard_manager):
+        self.master = master
+        self.clipboard_manager = clipboard_manager
+        self.settings_window = None
+        self.settings = None      
+          
+    def initialize_settings(self):
+        # Llama a este método después de que ClipboardManager haya inicializado completamente
+        self.settings = self.clipboard_manager.settings
+        
+    def save_settings(self):
+        groups, pinned_items, _ = self.clipboard_manager.data_manager.load_data()
+        self.clipboard_manager.data_manager.save_data(groups, pinned_items, self.settings)
+        
+    def show_settings_window(self):
+        if self.settings_window is None or not self.settings_window.winfo_exists():
+            self.settings_window = tk.Toplevel(self.master)
+            self.settings_window.title("Configuraciones")
             
+            window_width = self.settings['width']
+            window_height = self.settings['height']
+
+            # Usa las coordenadas de la ventana principal o una posición predeterminada
+            x = getattr(self.clipboard_manager, 'window_x', 0) + 50
+            y = getattr(self.clipboard_manager, 'window_y', 0) + 50
             
+            self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
+            self.settings_window.overrideredirect(True)
+            self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            self.settings_window.attributes('-topmost', True)
+
+            # Barra de título personalizada
+            title_frame = tk.Frame(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            title_frame.pack(fill=tk.X, padx=6, pady=(0, 0))
+
+            title_label = tk.Label(title_frame, text="Configuraciones", font=('Segoe UI', 10, 'bold'), 
+                                   bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], 
+                                   fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+            title_label.pack(side=tk.LEFT, padx=5)
+
+            close_button = tk.Button(title_frame, text="❌", command=self.settings_window.destroy, 
+                                     font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
+                                     bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                                     fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+            close_button.pack(side=tk.RIGHT)
+
+            # Canvas para scroll y contenedor de configuraciones
+            canvas = tk.Canvas(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
+            canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+            # Scrollbar oculto
+            scrollbar = ttk.Scrollbar(self.settings_window, orient=tk.VERTICAL, command=canvas.yview)
+            canvas.configure(yscrollcommand=scrollbar.set)
+
+            # Frame contenedor dentro del canvas para el scroll
+            self.settings_frame = tk.Frame(canvas, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            canvas_window = canvas.create_window((0, 0), window=self.settings_frame, anchor='nw', width=295)
+
+            # Ajustar el ancho del frame contenedor al canvas
+            def on_canvas_resize(event):
+                canvas.itemconfig(canvas_window, width=event.width)
+
+            canvas.bind("<Configure>", on_canvas_resize)
+
+            # Configuración de scroll
+            def on_frame_configure(event):
+                canvas.configure(scrollregion=canvas.bbox("all"))
+
+            self.settings_frame.bind("<Configure>", on_frame_configure)
+
+            # Función para desplazamiento con la rueda del mouse
+            def _on_mousewheel(event):
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+            # Crear cards de configuración
+            subtitle = tk.Label(self.settings_frame, text="Tecla de activación", 
+                        font=('Segoe UI', 10, 'bold'),
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Alt+", self.settings['hotkey'])
             
+            subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app", 
+                        font=('Segoe UI', 10, 'bold'),
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Alto", str(self.settings['height']))
+            self.create_setting_card("Ancho", str(self.settings['width']))
+
+            # Hacer la ventana arrastrable
+            title_label.bind('<Button-1>', self.start_move)
+            title_label.bind('<B1-Motion>', self.on_move)
+
+        else:
+            self.settings_window.lift()
+            self.settings_window.attributes('-topmost', True)
+            self.settings_window.after_idle(self.settings_window.attributes, '-topmost', False)
+
+    def create_setting_card(self, setting_name, default_value):
+        card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
+        card.pack(fill=tk.X, padx=4, pady=2)
+
+        label = tk.Label(card, text=f"{setting_name}: {default_value}", 
+                         bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
+                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                         anchor='w', padx=5, pady=5)
+        label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        edit_button = tk.Button(card, text="✏️", 
+                                command=lambda: self.toggle_edit_mode(card, label, edit_button, setting_name, default_value),
+                                font=('Segoe UI', 10), bd=0,
+                                bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                                fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+        edit_button.pack(side=tk.RIGHT, padx=2, pady=2)
+
+    def toggle_edit_mode(self, card, label, button, setting_name, current_value):
+        if button['text'] == "✏️":
+            # Cambiar a modo edición
+            entry = tk.Entry(card, bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                             fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                             insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+            entry.insert(0, current_value)
+            entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+            label.pack_forget()
+            button.configure(text="💾")
+        else:
+            # Guardar cambios
+            entry = [child for child in card.winfo_children() if isinstance(child, tk.Entry)][0]
+            new_value = entry.get()
+            label.configure(text=f"{setting_name}: {new_value}")
+            entry.destroy()
+            label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            button.configure(text="✏️")
+            
+            # Actualizar configuraciones
+            if setting_name == "Alto":
+                self.settings['height'] = int(new_value)
+            elif setting_name == "Ancho":
+                self.settings['width'] = int(new_value)
+            elif setting_name == "Alt+":
+                old_hotkey = self.settings['hotkey']
+                new_hotkey = 'alt+' + new_value
+                self.settings['hotkey'] = new_value  # Guarda solo la letra
+                self.clipboard_manager.key_manager.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
+                
+            self.save_settings()
+            self.restart_app()
+            
+    def restart_app(self):
+        python = sys.executable
+        os.execl(python, python, *sys.argv, "--show-settings")
+            
+    def start_move(self, event):
+        self.x = event.x
+        self.y = event.y
+
+    def on_move(self, event):
+        deltax = event.x - self.x
+        deltay = event.y - self.y
+        x = self.settings_window.winfo_x() + deltax
+        y = self.settings_window.winfo_y() + deltay
+        self.settings_window.geometry(f"+{x}+{y}")
+
+// Archivo: structure.py
+# structure.py
+
+import tkinter as tk
+from tkinter import ttk
+import threading
+import win32gui
+import pyautogui
+
+from functions import Functions
+from key_manager import KeyManager
+from navigation import Navigation
+from theme_manager import ThemeManager
+from group_manager import GroupManager
+from data_manager import DataManager
+from settings_manager import SettingsManager
+
+class ClipboardManager:
+    def __init__(self, root, show_settings=False):
+        self.root = root
+        self.root.title("Portapapeles")
+
+        self.data_manager = DataManager()
+        groups, pinned_items, settings = self.data_manager.load_data()
+        
+        self.settings = settings
+        self.settings_manager = SettingsManager(self.root, self)
+        self.settings_manager.initialize_settings()
+
+        self.window_width = settings['width']
+        self.window_height = settings['height']
+        self.window_x = 0
+        self.window_y = 0
+
+        self.root.overrideredirect(True)
+        self.root.attributes('-topmost', True)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)  # Manejar el cierre de la ventana
+
+        
+        self.root.withdraw()
+        self.is_visible = False
+
+        self.previous_window = None
+
+        self.clipboard_items = {}
+        for item_id, item_data in pinned_items.items():
+            if isinstance(item_data['text'], dict):
+                self.clipboard_items[item_id] = item_data
+            else:
+                # Si el texto no es un diccionario, lo convertimos a la estructura esperada
+                self.clipboard_items[item_id] = {
+                    'text': {'text': item_data['text'], 'formatted': {}},
+                    'pinned': item_data['pinned']
+                }
+        self.current_clipboard = ""
+        self.selected_index = None
+        self.current_selection = {'type': 'button', 'index': 0}
+        self.is_dark_mode = True
+        
+        self.paste_with_format = True
+        
+        self.previous_window = None
+        self.last_active_window = None
+        self.selected_button = None
+        self.selected_card = None
+        self.selected_icon = None
+        self.total_buttons = 6
+        self.top_buttons = 3
+        self.icons_per_card = 3
+        
+        self.hotkey = f"alt+{settings['hotkey']}"
+
+        self.theme_manager = ThemeManager(self)
+        self.functions = Functions(self)
+        self.key_manager = KeyManager(self)
+        self.group_manager = GroupManager(self.root, self)
+        
+        self.group_manager.groups = groups
+        
+        self.create_gui()
+        self.load_saved_data()
+        
+        self.navigation = Navigation(self)
+        
+        self.theme_manager.apply_theme()
+
+        self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
+        self.monitor_thread.start()
+
+        self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
+        # self.key_manager.setup_global_keys()
+        
+        # self.root.bind("<Map>", self.on_main_window_map)
+        # self.root.bind("<Unmap>", self.on_main_window_unmap)
+        
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        
+        if show_settings:
+            self.root.after(100, self.settings_manager.show_settings_window)
+        
+        self.root.after(1000, self.navigation.check_window_state)
+        self.key_manager.setup_global_keys()
+        
+    def force_update(self):
+        self.root.update_idletasks()
+        self.root.update()
+            
+    def on_close(self):
+        self.root.withdraw()
+        self.is_visible = False
+
+    def create_gui(self):
+        self.main_frame = ttk.Frame(self.root, style='Main.TFrame')
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        self.title_frame.pack(fill=tk.X, padx=3, pady=(0,6))
+
+        self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark']['bg'], fg=self.theme_manager.colors['dark']['fg'])
+        self.title_label.pack(side=tk.LEFT, padx=5)
+
+        buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark']['bg'])
+        buttons_frame.pack(side=tk.RIGHT, padx=4)
+
+        self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
+        self.theme_button.pack(side=tk.LEFT)
+
+        self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.show_settings, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
+        self.clear_button.pack(side=tk.LEFT)
+
+        self.close_button = tk.Button(buttons_frame, text="❌", command=self.functions.exit_app, font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
+        self.close_button.pack(side=tk.LEFT)
+
+        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
+
+        self.button1 = tk.Button(main_buttons_frame, text="Grupos", 
+                                 command=self.show_groups, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
+                                 pady=8)
+        self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
+
+        self.button2 = tk.Button(main_buttons_frame, text="Con formato", 
+                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
+                                 pady=8) 
+        self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
+
+        self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo", 
+                                 command=self.functions.clear_history, font=('Segoe UI', 10), 
+                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 highlightthickness=1,
+                                 pady=8)                               
+        self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
+
+        self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
+
+        self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # Variables para el movimiento de la ventana
+        self._drag_data = {"x": 0, "y": 0, "item": None}
+
+        # Vincular eventos para mover la ventana
+        self.title_label.bind('<Button-1>', self.start_move)
+        self.title_label.bind('<ButtonRelease-1>', self.stop_move)
+        self.title_label.bind('<B1-Motion>', self.on_move)
+        
+        # Vincula eventos de scroll
+        self.canvas.bind('<Configure>', self.on_canvas_configure)
+        self.cards_frame.bind('<Configure>', self.on_frame_configure)
+        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+
+    def show_groups(self):
+        self.group_manager.show_groups_window()
+        self.navigation.set_strategy('groups')
+
+    def show_settings(self):
+        self.settings_manager.show_settings_window()
+        self.navigation.set_strategy('settings')
+
+    def show_main_screen(self):
+        # Lógica para mostrar la pantalla principal
+        self.navigation.set_strategy('main')
+
+    def load_saved_data(self):
+        groups, pinned_items, _ = self.data_manager.load_data()
+        self.group_manager.groups = groups
+        self.clipboard_items.update(pinned_items)
+        self.functions.refresh_cards()
+
+    def on_main_window_map(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.deiconify()
+
+    def on_main_window_unmap(self, event):
+        if self.group_manager.groups_window and self.group_manager.groups_window.winfo_exists():
+            self.group_manager.groups_window.withdraw()
+
+    def start_move(self, event):
+        self._drag_data["x"] = event.x
+        self._drag_data["y"] = event.y
+
+    def stop_move(self, event):
+        self._drag_data["x"] = 0
+        self._drag_data["y"] = 0
+        self._drag_data["item"] = None
+
+    def on_move(self, event):
+        delta_x = event.x - self._drag_data["x"]
+        delta_y = event.y - self._drag_data["y"]
+        x = self.root.winfo_x() + delta_x
+        y = self.root.winfo_y() + delta_y
+        self.root.geometry(f"+{x}+{y}")
+        self.window_x = x
+        self.window_y = y
+
+    def on_canvas_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        width = event.width
+        self.canvas.itemconfig(self.canvas_window, width=width)
+
+    def on_frame_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+// Archivo: theme_manager.py
+#theme_manager.py
+
+import tkinter as tk
+from tkinter import ttk
+
+class ThemeManager:
+    def __init__(self, manager):
+        self.manager = manager
+        self.colors = {
+            'dark': {
+                'bg': '#1e1e1e',
+                'fg': '#ffffff',
+                'button_bg': '#333333',
+                'button_fg': '#ffffff',
+                'listbox_bg': '#2d2d2d',
+                'listbox_fg': '#ffffff',
+                'active_bg': '#4E4E4E',  # Añadido
+                'active_fg': '#FFFFFF',  # Añadido
+                'card_bg': '#333333'
+            },
+            'light': {
+                'bg': '#f0f0f0',
+                'fg': '#000000',
+                'button_bg': '#e0e0e0',
+                'button_fg': '#000000',
+                'listbox_bg': '#ffffff',
+                'listbox_fg': '#000000',
+                'active_bg': '#D0D0D0',  # Añadido
+                'active_fg': '#000000',  # Añadido
+                'card_bg': '#ffffff'
+            }
+        }
+
+    def toggle_theme(self):
+        self.manager.is_dark_mode = not self.manager.is_dark_mode
+        self.manager.theme_button.config(text="🌙" if self.manager.is_dark_mode else "☀️")
+        self.apply_theme()
+
+    def apply_theme(self):
+        theme = self.colors['dark'] if self.manager.is_dark_mode else self.colors['light']
+        
+        self.manager.root.configure(bg=theme['bg'])
+        self.manager.main_frame.configure(style='Main.TFrame')
+        self.manager.title_frame.configure(bg=theme['bg'])
+        self.manager.title_label.configure(bg=theme['bg'], fg=theme['fg'])
+        
+        self.manager.clear_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+        self.manager.theme_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+        
+        self.manager.close_button.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.button1.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.button2.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.button3.configure(
+            bg=theme['button_bg'],
+            fg=theme['button_fg'],
+            activebackground=theme['button_bg'],
+            activeforeground=theme['button_fg']
+        )
+
+        self.manager.canvas.configure(bg=theme['bg'])
+        self.manager.cards_frame.configure(bg=theme['bg'])
+        
+        self.manager.functions.refresh_cards()
+
+        style = ttk.Style()  
+        style.theme_use('clam')  
+        style.configure('Main.TFrame', background=theme['bg'])
+
+// Archivo: utils.py
+# utils.py
+
+import time
+
+def measure_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__} tomó {(end_time - start_time) * 1000:.2f} ms")
+        return result
+    return wrapper
+
+def process_text(text_data, cant_lineas):
+    """
+    Procesa el texto para mostrarlo de forma limpia y ordenada
+    """
+    # Comprueba si text_data es un diccionario y extrae el texto
+    if isinstance(text_data, dict):
+        text = text_data.get('text', '')
+    else:
+        text = str(text_data)
+
+    # Eliminamos espacios extras y tabulaciones al inicio y final
+    text = text.strip()
+    
+    # Dividimos el texto en líneas
+    lines = text.splitlines()
+    
+    # Eliminamos líneas vacías consecutivas y espacios extras
+    clean_lines = []
+    prev_empty = False
+    for line in lines:
+        line = line.strip()
+        
+        # Si la línea está vacía
+        if not line:
+            if not prev_empty:  # Solo mantenemos una línea vacía
+                clean_lines.append('')
+                prev_empty = True
+        else:
+            clean_lines.append(line)
+            prev_empty = False
+    
+    # Tomamos solo las primeras 'cant_lineas' para la vista previa
+    preview_lines = clean_lines[:cant_lineas]
+    
+    # Si hay más líneas, indicamos cuántas más hay
+    if len(clean_lines) > cant_lineas:
+        remaining_lines = len(clean_lines) - cant_lineas
+        preview_lines.append(f"+ {remaining_lines} líneas más")
+        
+    # Unimos las líneas con saltos de línea
+    return '\n'.join(preview_lines)

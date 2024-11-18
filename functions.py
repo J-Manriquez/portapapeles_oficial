@@ -1,6 +1,7 @@
 # functions.py
 
 import base64
+import re
 import tkinter as tk
 import uuid
 import win32con # type: ignore
@@ -8,6 +9,7 @@ import win32clipboard # type: ignore
 import win32gui # type: ignore
 import time
 import sys
+from bs4 import BeautifulSoup
 from utils import measure_time, process_text
 
 # Definir CF_HTML ya que no está en win32con
@@ -196,6 +198,12 @@ class Functions:
             time.sleep(0.5)
             
     def add_clipboard_item(self, new_id, new_item):
+        # Asegúrate de que new_item['text'] siempre sea un diccionario
+        if isinstance(new_item['text'], str):
+            new_item['text'] = {'text': new_item['text'], 'formatted': {}}
+        elif not isinstance(new_item['text'], dict):
+            new_item['text'] = {'text': str(new_item['text']), 'formatted': {}}
+
         self.manager.clipboard_items[new_id] = new_item
         if len(self.manager.clipboard_items) > 20:
             unpinned_items = [k for k, v in self.manager.clipboard_items.items() if not v['pinned']]
@@ -215,27 +223,83 @@ class Functions:
                 format_id = win32clipboard.EnumClipboardFormats(format_id)
             
             text = None
-            formatted = None
+            format_info = {}
             
             if win32con.CF_UNICODETEXT in formats:
                 text = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
             
             if win32con.CF_RTF in formats:
-                formatted = win32clipboard.GetClipboardData(win32con.CF_RTF)
+                rtf_data = win32clipboard.GetClipboardData(win32con.CF_RTF)
+                format_info = self.extract_format_info_from_rtf(rtf_data)
             elif CF_HTML in formats:
-                formatted = win32clipboard.GetClipboardData(CF_HTML)
+                html_data = win32clipboard.GetClipboardData(CF_HTML)
+                format_info = self.extract_format_info_from_html(html_data)
             
             win32clipboard.CloseClipboard()
             
-            if formatted:
-                if isinstance(formatted, bytes):
-                    formatted = formatted.decode('utf-8', errors='ignore')
-            
-            return {'text': text, 'formatted': formatted} if text else None
+            if text:
+                if format_info:
+                    return {'text': text, 'formatted': format_info}
+                else:
+                    return text  # Retorna solo el texto si no hay información de formato
+            return None
         except Exception as e:
             print(f"Error al obtener texto del portapapeles: {e}")
             return None
         
+    def extract_format_info_from_rtf(self, rtf_data):
+        format_info = {'rtf': True}
+        
+        # Extraer información de fuente
+        font_match = re.search(r'\\fonttbl.*?{\\f0\\fnil (.*?);}', rtf_data)
+        if font_match:
+            format_info['font'] = font_match.group(1)
+
+        # Extraer información de tamaño
+        size_match = re.search(r'\\fs(\d+)', rtf_data)
+        if size_match:
+            format_info['size'] = int(size_match.group(1)) / 2  # RTF usa el doble del tamaño real
+
+        # Extraer información de color
+        color_match = re.search(r'\\red(\d+)\\green(\d+)\\blue(\d+)', rtf_data)
+        if color_match:
+            format_info['color'] = (int(color_match.group(1)), int(color_match.group(2)), int(color_match.group(3)))
+
+        # Extraer información de negrita e itálica
+        format_info['bold'] = r'\b' in rtf_data
+        format_info['italic'] = r'\i' in rtf_data
+
+        return format_info
+
+    def extract_format_info_from_html(self, html_data):
+        format_info = {'html': True}
+        soup = BeautifulSoup(html_data, 'html.parser')
+        
+        # Buscar el primer elemento con estilo
+        styled_element = soup.find(style=True)
+        if styled_element:
+            style = styled_element['style']
+            
+            # Extraer información de fuente
+            font_match = re.search(r'font-family:\s*(.*?);', style)
+            if font_match:
+                format_info['font'] = font_match.group(1)
+
+            # Extraer información de tamaño
+            size_match = re.search(r'font-size:\s*(\d+)pt', style)
+            if size_match:
+                format_info['size'] = int(size_match.group(1))
+
+            # Extraer información de color
+            color_match = re.search(r'color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)', style)
+            if color_match:
+                format_info['color'] = (int(color_match.group(1)), int(color_match.group(2)), int(color_match.group(3)))
+
+        # Extraer información de negrita e itálica
+        format_info['bold'] = bool(soup.find(['strong', 'b']))
+        format_info['italic'] = bool(soup.find(['em', 'i']))
+
+        return format_info
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()

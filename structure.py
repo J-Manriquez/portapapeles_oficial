@@ -41,7 +41,16 @@ class ClipboardManager:
 
         self.previous_window = None
 
-        self.clipboard_items = pinned_items
+        self.clipboard_items = {}
+        for item_id, item_data in pinned_items.items():
+            if isinstance(item_data['text'], dict):
+                self.clipboard_items[item_id] = item_data
+            else:
+                # Si el texto no es un diccionario, lo convertimos a la estructura esperada
+                self.clipboard_items[item_id] = {
+                    'text': {'text': item_data['text'], 'formatted': {}},
+                    'pinned': item_data['pinned']
+                }
         self.current_clipboard = ""
         self.selected_index = None
         self.current_selection = {'type': 'button', 'index': 0}

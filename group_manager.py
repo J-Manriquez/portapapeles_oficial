@@ -167,6 +167,13 @@ class GroupManager:
             
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
+        # Asegúrate de que cada item pinned tenga la estructura correcta
+        for item_id, item_data in pinned_items.items():
+            if isinstance(item_data['text'], str):
+                pinned_items[item_id]['text'] = {'text': item_data['text'], 'formatted': {}}
+            elif not isinstance(item_data['text'], dict):
+                pinned_items[item_id]['text'] = {'text': str(item_data['text']), 'formatted': {}}
+        
         self.data_manager.save_data(self.groups, pinned_items, self.clipboard_manager.settings)
         print("Groups and pinned items saved")
         
