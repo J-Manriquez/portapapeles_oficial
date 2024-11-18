@@ -11,6 +11,10 @@ class GroupContentManager:
         self.clipboard_manager = clipboard_manager
         self.theme_manager = theme_manager
         self.settings_manager = settings_manager
+        self.content_window = None
+        self.canvas = None
+        self.scrollbar = None
+        self.items_frame = None
 
         self.min_card_height = 50  # Altura mínima en píxeles (2 líneas + 2*2 padding)
         self.max_card_height = 120  # Altura máxima en píxeles (4 líneas + 2*2 padding)
@@ -30,80 +34,99 @@ class GroupContentManager:
         return min(max(content_height + 5, self.min_card_height), self.max_card_height)
 
     def show_group_content(self, group_id):
-        group_window = tk.Toplevel(self.master)
-        group_window.title(f"Contenido del Grupo: {self.clipboard_manager.group_manager.groups[group_id]['name']}")
-        
-        window_width = self.settings_manager.settings['width']
-        window_height = self.settings_manager.settings['height']
-        
-        x = self.clipboard_manager.window_x + 20
-        y = self.clipboard_manager.window_y + 20
-        
-        group_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-                
-        group_window.overrideredirect(True)
-        group_window.configure(bg=self.theme_manager.colors['dark']['bg'])
-        group_window.attributes('-topmost', True)
+        if self.content_window is None or not self.content_window.winfo_exists():
+            self.content_window = tk.Toplevel(self.master)
+            self.content_window.title(f"Contenido del Grupo: {self.clipboard_manager.group_manager.groups[group_id]['name']}")
+            
+            window_width = self.settings_manager.settings['width']
+            window_height = self.settings_manager.settings['height']
+            
+            x = self.clipboard_manager.window_x 
+            y = self.clipboard_manager.window_y 
+            
+            self.content_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+                    
+            self.content_window.overrideredirect(True)
+            self.content_window.configure(bg=self.theme_manager.colors['dark']['bg'])
+            self.content_window.attributes('-topmost', True)
 
-        # Barra de título personalizada
-        title_frame = tk.Frame(group_window, bg=self.theme_manager.colors['dark']['bg'])
-        title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
+            # Barra de título personalizada
+            title_frame = tk.Frame(self.content_window, bg=self.theme_manager.colors['dark']['bg'])
+            title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
 
-        title_label = tk.Label(title_frame, text=f"Grupo: {self.clipboard_manager.group_manager.groups[group_id]['name']}", 
-                            font=('Segoe UI', 10, 'bold'),
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
-        title_label.pack(side=tk.LEFT, padx=5, pady=5)
+            title_label = tk.Label(title_frame, text=f"Grupo: {self.clipboard_manager.group_manager.groups[group_id]['name']}", 
+                                font=('Segoe UI', 10, 'bold'),
+                                bg=self.theme_manager.colors['dark']['bg'],
+                                fg=self.theme_manager.colors['dark']['fg'])
+            title_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-        close_button = tk.Button(title_frame, text="❌", command=group_window.destroy,
-                                font=('Segoe UI', 10, 'bold'),bd=0, padx=10, width=5, height=2,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
-        close_button.pack(side=tk.RIGHT)
+            close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_content_window(group_id),
+                                    font=('Segoe UI', 10, 'bold'),bd=0, padx=10, width=5, height=2,
+                                    bg=self.theme_manager.colors['dark']['button_bg'],
+                                    fg=self.theme_manager.colors['dark']['button_fg'])
+            close_button.pack(side=tk.RIGHT)
 
-        # Canvas y scroll para los items
-        self.canvas = tk.Canvas(group_window, bg=self.theme_manager.colors['dark']['bg'], highlightthickness=0)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            # Canvas y scroll para los items
+            self.canvas = tk.Canvas(self.content_window, bg=self.theme_manager.colors['dark']['bg'], highlightthickness=0)
+            self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        scrollbar = ttk.Scrollbar(group_window, orient="vertical", command=self.canvas.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            self.scrollbar = ttk.Scrollbar(self.content_window, orient="vertical", command=self.canvas.yview)
+            self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.canvas.configure(yscrollcommand=scrollbar.set)
+            self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.items_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
-        self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
-        # Configurar el desplazamiento con la rueda del ratón
-        def _on_mousewheel(event):
-            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            self.items_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+            self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
+            self.canvas_window = self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
 
-        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            # Configurar el desplazamiento con la rueda del ratón
+            def _on_mousewheel(event):
+                self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
-        # Asegurar que el ancho del frame interior se ajuste al canvas
-        def _configure_inner_frame(event):
-            if self.canvas.winfo_exists():
-                self.canvas.itemconfig(self.canvas_window, width=event.width)
-        
-        self.canvas.bind('<Configure>', _configure_inner_frame)
+            self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+            # Asegurar que el ancho del frame interior se ajuste al canvas
+            def _configure_inner_frame(event):
+                if self.canvas.winfo_exists():
+                    self.canvas.itemconfig(self.canvas_window, width=event.width)
+            
+            self.canvas.bind('<Configure>', _configure_inner_frame)
+
+            # Hacer la ventana arrastrable
+            title_frame.bind('<Button-1>', self.start_move)
+            title_frame.bind('<B1-Motion>', self.on_move)
+
+        else:
+            self.content_window.deiconify()  # Muestra la ventana si estaba oculta
+            self.content_window.lift()
+            self.content_window.attributes('-topmost', True)
+            self.content_window.after_idle(self.content_window.attributes, '-topmost', False)
 
         # Mostrar items del grupo
         self.refresh_group_content(group_id)
 
-        # Hacer la ventana arrastrable
-        def start_move(event):
-            group_window.x = event.x
-            group_window.y = event.y
+        # Restaurar la posición del scroll
+        if hasattr(self, 'scroll_position'):
+            self.canvas.yview_moveto(self.scroll_position)
 
-        def on_move(event):
-            deltax = event.x - group_window.x
-            deltay = event.y - group_window.y
-            x = group_window.winfo_x() + deltax
-            y = group_window.winfo_y() + deltay
-            group_window.geometry(f"+{x}+{y}")
+    def close_content_window(self, group_id):
+        if self.canvas:
+            # Guardar la posición actual del scroll
+            self.scroll_position = self.canvas.yview()[0]
+        self.content_window.withdraw()
+        self.clipboard_manager.group_manager.show_groups_window()
 
-        title_frame.bind('<Button-1>', start_move)
-        title_frame.bind('<B1-Motion>', on_move)
+    def start_move(self, event):
+        self.x = event.x
+        self.y = event.y
 
+    def on_move(self, event):
+        deltax = event.x - self.x
+        deltay = event.y - self.y
+        x = self.content_window.winfo_x() + deltax
+        y = self.content_window.winfo_y() + deltay
+        self.content_window.geometry(f"+{x}+{y}")
+        
     def refresh_group_content(self, group_id):
         # Limpiar el frame de items existente
         for widget in self.items_frame.winfo_children():

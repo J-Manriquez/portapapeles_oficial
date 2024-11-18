@@ -846,8 +846,8 @@ class GroupManager:
             # self.groups_window.geometry(f"{window_width}x{window_height}+0+0")
             
              # Calcula la posición relativa a la ventana principal
-            x = self.clipboard_manager.window_x + 10
-            y = self.clipboard_manager.window_y + 10
+            x = self.clipboard_manager.window_x 
+            y = self.clipboard_manager.window_y 
             
             self.groups_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
@@ -876,19 +876,11 @@ class GroupManager:
                                    fg=self.theme_manager.colors['dark']['button_fg'])
             add_button.pack(side=tk.LEFT)
 
-            close_button = tk.Button(buttons_frame, text="❌", command=self.groups_window.destroy, 
+            close_button = tk.Button(buttons_frame, text="❌", command=self.close_groups_window, 
                                      font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                      bg=self.theme_manager.colors['dark']['button_bg'],
                                      fg=self.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.LEFT)
-
-            # # Marco para la lista de grupos
-            # self.groups_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark']['bg'])
-            # self.groups_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
-
-            # # Hacer la ventana arrastrable
-            # title_label.bind('<Button-1>', self.start_move)
-            # title_label.bind('<B1-Motion>', self.on_move)
             
             # Canvas para scroll y contenedor de grupos
             canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
@@ -1023,6 +1015,10 @@ class GroupManager:
     def on_main_window_close(self, event):
         if self.groups_window and self.groups_window.winfo_exists():
             self.groups_window.destroy()
+            
+    def close_groups_window(self):
+        self.groups_window.destroy()
+        self.clipboard_manager.show_main_screen()
             
     # ----------------------------------------------------------------------
    
@@ -1870,8 +1866,8 @@ class SettingsManager:
             window_height = self.settings['height']
 
             # Usa las coordenadas de la ventana principal o una posición predeterminada
-            x = getattr(self.clipboard_manager, 'window_x', 0) + 50
-            y = getattr(self.clipboard_manager, 'window_y', 0) + 50
+            x = getattr(self.clipboard_manager, 'window_x', 0) 
+            y = getattr(self.clipboard_manager, 'window_y', 0)
             
             self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
@@ -1888,7 +1884,7 @@ class SettingsManager:
                                    fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
             title_label.pack(side=tk.LEFT, padx=5)
 
-            close_button = tk.Button(title_frame, text="❌", command=self.settings_window.destroy, 
+            close_button = tk.Button(title_frame, text="❌", command=self.close_settings_window, 
                                      font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                      bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
                                      fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
@@ -2015,6 +2011,10 @@ class SettingsManager:
         x = self.settings_window.winfo_x() + deltax
         y = self.settings_window.winfo_y() + deltay
         self.settings_window.geometry(f"+{x}+{y}")
+        
+    def close_settings_window(self):
+        self.settings_window.destroy()
+        self.clipboard_manager.show_main_screen()
 
 // Archivo: structure.py
 # structure.py
@@ -2070,6 +2070,7 @@ class ClipboardManager:
                     'text': {'text': item_data['text'], 'formatted': {}},
                     'pinned': item_data['pinned']
                 }
+                
         self.current_clipboard = ""
         self.selected_index = None
         self.current_selection = {'type': 'button', 'index': 0}
@@ -2106,9 +2107,7 @@ class ClipboardManager:
         self.monitor_thread.start()
 
         self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
-        
-        # self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        
+                
         if show_settings:
             self.root.after(100, self.settings_manager.show_settings_window)
         
@@ -2212,14 +2211,36 @@ class ClipboardManager:
     def show_groups(self):
         self.group_manager.show_groups_window()
         self.navigation.set_strategy('groups')
+        self.root.withdraw()
 
     def show_settings(self):
         self.settings_manager.show_settings_window()
         self.navigation.set_strategy('settings')
+        self.root.withdraw()
+        
+    def refresh_main_screen(self):
+        # Actualizar la región de desplazamiento
+        self.canvas.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        
+        # Volver a vincular eventos de scroll
+        self.canvas.bind('<Configure>', self.on_canvas_configure)
+        self.cards_frame.bind('<Configure>', self.on_frame_configure)
+        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+        
+        # Asegurarse de que el canvas tenga el foco
+        self.canvas.focus_set()
+        
+        # Refrescar las tarjetas
+        self.functions.refresh_cards()
 
     def show_main_screen(self):
         # Lógica para mostrar la pantalla principal
         self.navigation.set_strategy('main')
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+        self.refresh_main_screen()
 
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()

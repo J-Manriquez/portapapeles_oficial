@@ -19,9 +19,14 @@ class GroupManager:
         self.groups_window = None
         self.groups_frame = None
         self.group_content_manager = GroupContentManager(master, clipboard_manager, clipboard_manager.theme_manager, clipboard_manager.settings_manager)
+        self.canvas = None
+        self.scrollbar = None
 
     def show_group_content(self, group_id):
+        if self.groups_window:
+            self.groups_window.withdraw()  # Oculta la ventana de grupos
         self.group_content_manager.show_group_content(group_id)
+
 
     def show_groups_window(self):
         if self.groups_window is None or not self.groups_window.winfo_exists():
@@ -30,19 +35,17 @@ class GroupManager:
             
             window_width = self.settings['width']
             window_height = self.settings['height']
-            # self.groups_window.geometry(f"{window_width}x{window_height}+0+0")
             
-             # Calcula la posición relativa a la ventana principal
             x = self.clipboard_manager.window_x 
             y = self.clipboard_manager.window_y 
             
             self.groups_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
-            self.groups_window.overrideredirect(True) # Oculta la barra de título
+            self.groups_window.overrideredirect(True)
             
             self.groups_window.configure(bg=self.theme_manager.colors['dark']['bg'])
-            self.groups_window.attributes('-topmost', True) # Hacer que la ventana esté siempre en primer plano
-            self.master.bind("<Destroy>", self.on_main_window_close) # Vincular el cierre de la ventana principal al cierre de la ventana de grupos
+            self.groups_window.attributes('-topmost', True)
+            self.master.bind("<Destroy>", self.on_main_window_close)
 
             # Barra de título personalizada
             title_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark']['bg'])
@@ -70,34 +73,34 @@ class GroupManager:
             close_button.pack(side=tk.LEFT)
             
             # Canvas para scroll y contenedor de grupos
-            canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
-            canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+            self.canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
+            self.canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
-            # Scrollbar oculto
-            scrollbar = ttk.Scrollbar(self.groups_window, orient=tk.VERTICAL, command=canvas.yview)
-            canvas.configure(yscrollcommand=scrollbar.set)
+            # Scrollbar
+            self.scrollbar = ttk.Scrollbar(self.groups_window, orient=tk.VERTICAL, command=self.canvas.yview)
+            self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
             # Frame contenedor dentro del canvas para el scroll
-            self.groups_frame = tk.Frame(canvas, bg=self.theme_manager.colors['dark']['bg'])
-            canvas_window = canvas.create_window((0, 0), window=self.groups_frame, anchor='nw', width=295)
+            self.groups_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+            canvas_window = self.canvas.create_window((0, 0), window=self.groups_frame, anchor='nw', width=295)
 
             # Ajustar el ancho del frame contenedor al canvas
             def on_canvas_resize(event):
-                canvas.itemconfig(canvas_window, width=event.width)
+                self.canvas.itemconfig(canvas_window, width=event.width)
 
-            canvas.bind("<Configure>", on_canvas_resize)
+            self.canvas.bind("<Configure>", on_canvas_resize)
 
             # Configuración de scroll
             def on_frame_configure(event):
-                canvas.configure(scrollregion=canvas.bbox("all"))
+                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
             self.groups_frame.bind("<Configure>", on_frame_configure)
 
             # Función para desplazamiento con la rueda del mouse
             def _on_mousewheel(event):
-                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
             # Hacer la ventana arrastrable
             title_label.bind('<Button-1>', self.start_move)
@@ -107,9 +110,21 @@ class GroupManager:
 
         # Si la ventana de grupos ya estaba abierta, llevarla al frente
         else:
+            self.groups_window.deiconify()  # Muestra la ventana si estaba oculta
             self.groups_window.lift()
             self.groups_window.attributes('-topmost', True)
             self.groups_window.after_idle(self.groups_window.attributes, '-topmost', False)
+        
+        # Restaurar la posición del scroll
+        if hasattr(self, 'scroll_position'):
+            self.canvas.yview_moveto(self.scroll_position)
+        
+    def close_groups_window(self):
+        if self.canvas:
+            # Guardar la posición actual del scroll
+            self.scroll_position = self.canvas.yview()[0]
+        self.groups_window.withdraw()
+        self.clipboard_manager.show_main_screen()
         
     def start_move(self, event):
         self.x = event.x
