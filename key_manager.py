@@ -108,11 +108,14 @@ class KeyManager:
     def setup_global_keys(self):
         keyboard.unhook_all()
         keyboard.add_hotkey(self.current_hotkey, self.toggle_window)
-        keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
-        keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
-        keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
-        keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
-        keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
+        
+        # Solo configura las teclas globales si la ventana principal está visible
+        if self.manager.is_visible:
+            keyboard.add_hotkey('up', lambda: self.handle_global_key('Up'))
+            keyboard.add_hotkey('down', lambda: self.handle_global_key('Down'))
+            keyboard.add_hotkey('left', lambda: self.handle_global_key('Left'))
+            keyboard.add_hotkey('right', lambda: self.handle_global_key('Right'))
+            keyboard.add_hotkey('enter', lambda: self.handle_global_key('Return'))
 
     def handle_global_key(self, key):
         if self.manager.is_visible:

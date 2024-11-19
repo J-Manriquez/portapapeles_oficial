@@ -14,6 +14,10 @@ from group_manager import GroupManager
 from data_manager import DataManager
 from settings_manager import SettingsManager
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class ClipboardManager:
     def __init__(self, root, show_settings=False):
         self.root = root
@@ -190,9 +194,17 @@ class ClipboardManager:
         self.canvas.yview_moveto(float(start))
 
     def show_groups(self):
+        logger.debug("Mostrando ventana de grupos")
         self.group_manager.show_groups_window()
         self.navigation.set_strategy('groups')
         self.root.withdraw()
+        
+        # Desvincula los eventos de teclado de la ventana principal
+        self.root.unbind('<Up>')
+        self.root.unbind('<Down>')
+        self.root.unbind('<Left>')
+        self.root.unbind('<Right>')
+        self.root.unbind('<Return>')
 
     def show_settings(self):
         self.settings_manager.show_settings_window()

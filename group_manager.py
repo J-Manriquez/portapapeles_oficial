@@ -5,7 +5,11 @@ from tkinter import ttk, simpledialog, messagebox
 import uuid
 from settings_manager import SettingsManager
 from group_content_manager import GroupContentManager
+import logging
 
+logging.getLogger('chardet').setLevel(logging.WARNING)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class GroupManager:
     def __init__(self, master, clipboard_manager):
@@ -21,6 +25,8 @@ class GroupManager:
         self.group_content_manager = GroupContentManager(master, clipboard_manager, clipboard_manager.theme_manager, clipboard_manager.settings_manager)
         self.canvas = None
         self.scrollbar = None
+        self.add_button = None
+        self.close_button = None
 
     def show_group_content(self, group_id):
         if self.groups_window:
@@ -29,7 +35,9 @@ class GroupManager:
 
 
     def show_groups_window(self):
+        logger.debug("Intentando mostrar la ventana de grupos")
         if self.groups_window is None or not self.groups_window.winfo_exists():
+            logger.debug("Creando nueva ventana de grupos")
             self.groups_window = tk.Toplevel(self.master)
             self.groups_window.title("Grupos")
             
@@ -42,7 +50,6 @@ class GroupManager:
             self.groups_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
             
             self.groups_window.overrideredirect(True)
-            
             self.groups_window.configure(bg=self.theme_manager.colors['dark']['bg'])
             self.groups_window.attributes('-topmost', True)
             self.master.bind("<Destroy>", self.on_main_window_close)
@@ -60,17 +67,17 @@ class GroupManager:
             buttons_frame = tk.Frame(title_frame, bg=self.theme_manager.colors['dark']['bg'])
             buttons_frame.pack(side=tk.RIGHT, padx=4)
 
-            add_button = tk.Button(buttons_frame, text="➕", command=self.add_group, 
+            self.add_button = tk.Button(buttons_frame, text="➕", command=self.add_group, 
                                    font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2,
                                    bg=self.theme_manager.colors['dark']['button_bg'],
                                    fg=self.theme_manager.colors['dark']['button_fg'])
-            add_button.pack(side=tk.LEFT)
+            self.add_button.pack(side=tk.LEFT)
 
-            close_button = tk.Button(buttons_frame, text="❌", command=self.close_groups_window, 
+            self.close_button = tk.Button(buttons_frame, text="❌", command=self.close_groups_window, 
                                      font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                      bg=self.theme_manager.colors['dark']['button_bg'],
                                      fg=self.theme_manager.colors['dark']['button_fg'])
-            close_button.pack(side=tk.LEFT)
+            self.close_button.pack(side=tk.LEFT)
             
             # Canvas para scroll y contenedor de grupos
             self.canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
@@ -108,17 +115,31 @@ class GroupManager:
 
             self.refresh_groups()
 
-        # Si la ventana de grupos ya estaba abierta, llevarla al frente
+            # Configurar eventos de teclado
+            self.groups_window.bind('<Up>', lambda e: self.clipboard_manager.navigation.navigate_vertical(e))
+            self.groups_window.bind('<Down>', lambda e: self.clipboard_manager.navigation.navigate_vertical(e))
+            self.groups_window.bind('<Left>', lambda e: self.clipboard_manager.navigation.navigate_horizontal(e))
+            self.groups_window.bind('<Right>', lambda e: self.clipboard_manager.navigation.navigate_horizontal(e))
+            self.groups_window.bind('<Return>', lambda e: self.clipboard_manager.navigation.activate_selected(e))
+
+            # Mostrar la ventana después de configurarla completamente
+            self.groups_window.deiconify()
+            self.groups_window.focus_force()
+            
+            # Inicializar el foco después de que la ventana esté visible
+            self.groups_window.after(100, self.clipboard_manager.navigation.initialize_focus)
         else:
-            self.groups_window.deiconify()  # Muestra la ventana si estaba oculta
-            self.groups_window.lift()
-            self.groups_window.attributes('-topmost', True)
-            self.groups_window.after_idle(self.groups_window.attributes, '-topmost', False)
-        
+            logger.debug("Mostrando ventana de grupos existente")
+            self.groups_window.deiconify()
+            self.groups_window.focus_force()
+
+        self.clipboard_manager.navigation.set_strategy('groups')
+        logger.debug("Ventana de grupos mostrada y estrategia de navegación configurada")
+
         # Restaurar la posición del scroll
-        if hasattr(self, 'scroll_position'):
-            self.canvas.yview_moveto(self.scroll_position)
-        
+        # if hasattr(self, 'scroll_position'):
+        #     self.canvas.yview_moveto(self.scroll_position)
+         
     def close_groups_window(self):
         if self.canvas:
             # Guardar la posición actual del scroll
@@ -138,6 +159,7 @@ class GroupManager:
         self.groups_window.geometry(f"+{x}+{y}")
 
     def refresh_groups(self):
+        logger.debug("Refrescando grupos")
         if self.groups_frame is None or not self.groups_frame.winfo_exists():
             return
 
@@ -146,7 +168,7 @@ class GroupManager:
 
         for group_id, group_info in self.groups.items():
             group_card = tk.Frame(self.groups_frame, bg=self.theme_manager.colors['dark']['card_bg'], cursor="hand2")
-            group_card.pack(fill=tk.X, padx=4, pady=2)
+            group_card.pack(fill=tk.X, padx=8, pady=2)
             
             group_card.bind("<Button-1>", lambda e, gid=group_id: self.show_group_content(gid))
 
@@ -160,15 +182,29 @@ class GroupManager:
                                 fg=self.theme_manager.colors['dark']['fg'])
             count_label.pack(side=tk.LEFT, padx=5, pady=5)
             
-            delete_button = tk.Button(group_card, text="    🗑️", command=lambda gid=group_id: self.delete_group(gid),
-                                    font=('Segoe UI', 10), bd=0, bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
-            delete_button.pack(side=tk.RIGHT, padx=2, pady=5)
+            # Frame para los iconos
+            icons_frame = tk.Frame(group_card, bg=self.theme_manager.colors['dark']['card_bg'])
+            icons_frame.pack(side=tk.RIGHT)
 
-            edit_button = tk.Button(group_card, text="✏️", command=lambda gid=group_id: self.edit_group(gid),
-                                    font=('Segoe UI', 10), bd=0, bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
-            edit_button.pack(side=tk.RIGHT, padx=2, pady=5)
+            # edit_button = tk.Button(icons_frame, text="✏️", command=lambda gid=group_id: self.edit_group(gid),
+            #                         font=('Segoe UI', 10), bd=0, bg=self.theme_manager.colors['dark']['button_bg'],
+            #                         fg=self.theme_manager.colors['dark']['button_fg'])
+            edit_button = tk.Button(icons_frame, text="✏️", command=lambda gid=group_id: self.edit_group(gid),
+                        font=('Segoe UI', 10), bd=0, highlightthickness=0,
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+            edit_button.pack(side=tk.LEFT, padx=4)
+
+            # delete_button = tk.Button(icons_frame, text="🗑️", command=lambda gid=group_id: self.delete_group(gid),
+            #                         font=('Segoe UI', 10), bd=0, bg=self.theme_manager.colors['dark']['button_bg'],
+            #                         fg=self.theme_manager.colors['dark']['button_fg'])
+            delete_button = tk.Button(icons_frame, text="❌", command=lambda gid=group_id: self.delete_group(gid),
+                          font=('Segoe UI', 10), bd=0, highlightthickness=0,
+                          bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                          fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+            delete_button.pack(side=tk.LEFT, padx=4)
+
+        # logger.debug(f"Grupos refrescados: {len(self.groups)} grupos")
 
             
             

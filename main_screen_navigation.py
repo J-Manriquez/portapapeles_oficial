@@ -249,3 +249,4 @@ class MainScreenNavigation:
             if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
                 return child
         return None
+

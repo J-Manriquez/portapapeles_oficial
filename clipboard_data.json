@@ -9,7 +9,7 @@
                         "text": "groups\": {},\r\n    \"pinned_items\": {},\r\n    \"settings\": {\r\n        \"height\": 400,\r\n        \"width\": 295,\r\n        \"hotkey\": \"z\"\r\n    } jajajaja",
                         "formatted": {}
                     },
-                    "name": ""
+                    "name": "hola"
                 },
                 {
                     "id": "a02a9a7a-abb6-4879-ad5a-861ecea110e4",
@@ -24,6 +24,10 @@
                     }
                 }
             ]
+        },
+        "b39a691f-619b-4ba2-8a96-ce953941ddf0": {
+            "name": "otro",
+            "items": []
         }
     },
     "pinned_items": {
