@@ -300,6 +300,7 @@ class Functions:
         format_info['italic'] = bool(soup.find(['em', 'i']))
 
         return format_info
+    
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()

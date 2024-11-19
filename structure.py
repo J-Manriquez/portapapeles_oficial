@@ -1,5 +1,6 @@
 # structure.py
 
+import sys
 import tkinter as tk
 from tkinter import ttk
 import threading
@@ -287,3 +288,7 @@ class ClipboardManager:
             self.canvas.yview_moveto(args[0])
         elif len(args) == 2 and isinstance(args[0], str):
             self.canvas.yview_scroll(int(args[1]), args[0])
+            
+    def exit_app(self):
+        self.root.quit()
+        sys.exit()

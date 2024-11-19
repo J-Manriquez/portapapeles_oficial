@@ -1,5 +1,3 @@
-# groups_screen_navigation.py
-
 import tkinter as tk
 import logging
 
@@ -33,11 +31,11 @@ class GroupsScreenNavigation:
             else:
                 self.manager.current_selection = {'type': 'top_buttons', 'index': 0}
         elif current_type == 'group_card_icons':
-            self.manager.current_selection = {'type': 'group_cards', 'index': current_index // 3}
+            card_index = current_index // 3
+            self.manager.current_selection = {'type': 'group_cards', 'index': card_index}
         elif current_type == 'top_buttons':
-            # Si ya estamos en los botones superiores, no hacemos nada
-            pass
-
+            pass  # No hacer nada si ya estamos en los botones superiores
+        
     def move_down(self, current_type, current_index):
         logger.debug(f"Moviendo abajo desde {current_type}, {current_index}")
         if current_type == 'top_buttons':
@@ -47,10 +45,10 @@ class GroupsScreenNavigation:
             if current_index < self.get_group_cards_count() - 1:
                 self.manager.current_selection['index'] = current_index + 1
         elif current_type == 'group_card_icons':
-            next_card_index = (current_index // 3) + 1
-            if next_card_index < self.get_group_cards_count():
-                self.manager.current_selection = {'type': 'group_cards', 'index': next_card_index}
-
+            card_index = current_index // 3
+            if card_index < self.get_group_cards_count() - 1:
+                self.manager.current_selection = {'type': 'group_cards', 'index': card_index + 1}
+                
     def navigate_horizontal(self, event):
         logger.debug(f"Navegación horizontal: {event.keysym}")
         current_type = self.manager.current_selection['type']
@@ -64,18 +62,19 @@ class GroupsScreenNavigation:
         self.update_highlights()
 
     def move_left(self, current_type, current_index):
+        num_buttons = len(self.get_top_buttons())
         if current_type == 'top_buttons':
-            self.manager.current_selection['index'] = (current_index - 1) % self.get_top_button_count()
+            self.manager.current_selection['index'] = (current_index - 1) % num_buttons
         elif current_type == 'group_card_icons':
             if current_index % 3 > 0:
                 self.manager.current_selection['index'] = current_index - 1
             else:
                 self.manager.current_selection = {'type': 'group_cards', 'index': current_index // 3}
-        self.update_highlights()
 
     def move_right(self, current_type, current_index):
+        num_buttons = len(self.get_top_buttons())
         if current_type == 'top_buttons':
-            self.manager.current_selection['index'] = (current_index + 1) % self.get_top_button_count()
+            self.manager.current_selection['index'] = (current_index + 1) % num_buttons
         elif current_type == 'group_cards':
             icons = self.get_card_icons(self.get_group_cards()[current_index])
             if icons:
@@ -86,7 +85,6 @@ class GroupsScreenNavigation:
             icons = self.get_card_icons(self.get_group_cards()[card_index])
             if icon_position < len(icons) - 1:
                 self.manager.current_selection['index'] = current_index + 1
-        self.update_highlights()
 
     def activate_selected(self, event=None):
         current_type = self.manager.current_selection['type']
@@ -154,7 +152,7 @@ class GroupsScreenNavigation:
                 if icons and 0 <= icon_position < len(icons):
                     self.highlight_group_card(card, highlight_color)
                     icons[icon_position].configure(bg=icon_highlight_color)
-                    
+
     def clear_all_highlights(self):
         theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
         base_color = theme['card_bg']
