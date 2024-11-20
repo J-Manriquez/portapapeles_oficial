@@ -64,7 +64,7 @@ class GroupsScreenNavigation:
     def move_left(self, current_type, current_index):
         num_buttons = len(self.get_top_buttons())
         if current_type == 'top_buttons':
-            self.manager.current_selection['index'] = (current_index - 1) % self.get_top_button_count
+            self.manager.current_selection['index'] = (current_index - 1) % num_buttons
         elif current_type == 'group_card_icons':
             if current_index % 3 > 0:
                 self.manager.current_selection['index'] = current_index - 1

@@ -111,7 +111,7 @@ class MainScreenNavigation:
         if index < len(items):
             item_id, item_data = items[index]
             clipboard_data = item_data['text']
-            self.manager.key_manager.paste_content(clipboard_data)
+            self.manager.key_handler.paste_content(clipboard_data)
 
     def activate_icon(self, index):
         items = list(self.manager.clipboard_items.keys())

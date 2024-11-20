@@ -17,9 +17,14 @@ class Navigation:
     def set_strategy(self, screen_type):
         if screen_type in self.strategies:
             self.current_strategy = self.strategies[screen_type]
-            logger.debug(f"Estrategia de navegación cambiada a: {screen_type}")
+            if screen_type == 'main':
+                self.manager.main_screen_keys.activate()
+            elif screen_type == 'groups':
+                # Aquí activaríamos las teclas de la pantalla de grupos cuando la implementemos
+                pass
+            logger.debug(f"Navigation strategy set to: {screen_type}")
         else:
-            logger.error(f"Estrategia de navegación no reconocida: {screen_type}")
+            logger.error(f"Unknown navigation strategy: {screen_type}")
 
     def navigate_vertical(self, event):
         logger.debug(f"Navegación vertical: {event.keysym}")
@@ -102,7 +107,7 @@ class Navigation:
             
             self.manager.root.update_idletasks()
             self.manager.root.after(10, self.manager.root.update)
-            self.manager.root.after(20, self.manager.key_manager.restore_cursor_position)
+            self.manager.root.after(20, self.manager.key_handler.restore_cursor_position)
 
     def refresh_navigation(self):
         logger.debug("Refrescando navegación")

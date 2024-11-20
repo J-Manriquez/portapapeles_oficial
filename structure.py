@@ -8,12 +8,15 @@ import win32gui
 import pyautogui
 
 from functions import Functions
-from key_manager import KeyManager
 from navigation import Navigation
 from theme_manager import ThemeManager
-from group_manager import GroupManager
+from groups_manager import GroupManager
 from data_manager import DataManager
 from settings_manager import SettingsManager
+from key_handler import KeyHandler
+from keys_main_screen import MainScreenKeyConfig
+from main_screen_navigation import MainScreenNavigation
+
 
 import logging
 
@@ -77,8 +80,13 @@ class ClipboardManager:
 
         self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)
-        self.key_manager = KeyManager(self)
         self.group_manager = GroupManager(self.root, self)
+        self.key_handler = KeyHandler(self)
+        self.setup_key_bindings()
+        self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
+        self.main_screen_navigation = MainScreenNavigation(self)
+        
+        self.root.bind('<Key>', self.key_handler.handle_key_press)
         
         self.group_manager.groups = groups
         
@@ -91,20 +99,39 @@ class ClipboardManager:
 
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
-
-        self.key_manager.update_hotkey(None, self.settings_manager.settings['hotkey'])
-                
+                        
         if show_settings:
             self.root.after(100, self.settings_manager.show_settings_window)
         
         self.root.after(1000, self.navigation.check_window_state)
-        self.key_manager.setup_global_keys()
         
         # scroll
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         
+    def setup_key_bindings(self):
+        self.key_handler.register_screen_hotkey('main', 'up', self.navigate_up)
+        self.key_handler.register_screen_hotkey('main', 'down', self.navigate_down)
+        self.key_handler.register_screen_hotkey('main', 'left', self.navigate_left)
+        self.key_handler.register_screen_hotkey('main', 'right', self.navigate_right)
+        self.key_handler.register_screen_hotkey('main', 'return', self.activate_selected)
+        
+    def navigate_up(self):
+        self.main_screen_navigation.navigate_vertical(type('Event', (), {'keysym': 'Up'})())
+
+    def navigate_down(self):
+        self.main_screen_navigation.navigate_vertical(type('Event', (), {'keysym': 'Down'})())
+
+    def navigate_left(self):
+        self.main_screen_navigation.navigate_horizontal(type('Event', (), {'keysym': 'Left'})())
+
+    def navigate_right(self):
+        self.main_screen_navigation.navigate_horizontal(type('Event', (), {'keysym': 'Right'})())
+
+    def activate_selected(self):
+        self.main_screen_navigation.activate_selected()    
+    
     def force_update(self):
         self.root.update_idletasks()
         self.root.update()
@@ -229,12 +256,12 @@ class ClipboardManager:
         self.functions.refresh_cards()
 
     def show_main_screen(self):
-        # Lógica para mostrar la pantalla principal
         self.navigation.set_strategy('main')
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
         self.refresh_main_screen()
+        self.main_screen_keys.activate()  # Activar las teclas de la pantalla principal
 
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()

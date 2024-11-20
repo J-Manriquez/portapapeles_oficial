@@ -156,7 +156,7 @@ class SettingsManager:
                 old_hotkey = self.settings['hotkey']
                 new_hotkey = 'alt+' + new_value
                 self.settings['hotkey'] = new_value  # Guarda solo la letra
-                self.clipboard_manager.key_manager.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
+                self.clipboard_manager.key_handler.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
                 
             self.save_settings()
             self.restart_app()
