@@ -1,6 +1,6 @@
 import logging
-from main_screen_navigation import MainScreenNavigation
-from groups_screen_navigation import GroupsScreenNavigation
+from navigation_main_screen import MainScreenNavigation
+from navigation_groups_screen import GroupsScreenNavigation
 
 logger = logging.getLogger(__name__)
 

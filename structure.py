@@ -15,7 +15,7 @@ from data_manager import DataManager
 from settings_manager import SettingsManager
 from key_handler import KeyHandler
 from keys_main_screen import MainScreenKeyConfig
-from main_screen_navigation import MainScreenNavigation
+from navigation_main_screen import MainScreenNavigation
 
 
 import logging
