@@ -226,13 +226,6 @@ class ClipboardManager:
         self.group_manager.show_groups_window()
         self.navigation.set_strategy('groups')
         self.root.withdraw()
-        
-        # Desvincula los eventos de teclado de la ventana principal
-        self.root.unbind('<Up>')
-        self.root.unbind('<Down>')
-        self.root.unbind('<Left>')
-        self.root.unbind('<Right>')
-        self.root.unbind('<Return>')
 
     def show_settings(self):
         self.settings_manager.show_settings_window()
