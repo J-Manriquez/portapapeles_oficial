@@ -1,116 +1,135 @@
 # key_handler.py
-import pyperclip
-import win32clipboard
-import win32com.client
 import keyboard
 import win32gui
 import win32api
+import win32clipboard
+import win32com.client
 import win32con
 import pyautogui
+import pyperclip
 import time
 import logging
+from typing import Dict, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
+class GlobalHotkeyManager:
+    """Maneja los atajos de teclado globales de la aplicación"""
+    
+    def __init__(self):
+        self._hotkeys: Dict[str, Callable] = {}
+        keyboard.unhook_all()
+    
+    def register_hotkey(self, key: str, callback: Callable) -> None:
+        """Registra un nuevo atajo global"""
+        if key in self._hotkeys:
+            keyboard.remove_hotkey(key)
+        self._hotkeys[key] = callback
+        keyboard.add_hotkey(key, callback)
+        logger.debug(f"Registered global hotkey: {key}")
+    
+    def unregister_hotkey(self, key: str) -> None:
+        """Elimina un atajo global"""
+        if key in self._hotkeys:
+            keyboard.remove_hotkey(key)
+            del self._hotkeys[key]
+            logger.debug(f"Unregistered global hotkey: {key}")
+    
+    def update_hotkey(self, old_key: Optional[str], new_key: str, callback: Callable) -> None:
+        """Actualiza un atajo existente con una nueva tecla"""
+        if old_key:
+            self.unregister_hotkey(old_key)
+        self.register_hotkey(new_key, callback)
+        logger.debug(f"Updated hotkey from {old_key} to {new_key}")
+
 class KeyHandler:
+    """Coordinador principal del sistema de teclas"""
+    
     def __init__(self, manager):
         self.manager = manager
-        self.global_hotkeys = {}
-        self.screen_specific_hotkeys = {}
+        self.global_hotkeys = GlobalHotkeyManager()
         self.current_screen = 'main'
+        # self.screen_specific_hotkeys: Dict[str, Dict[str, Callable]] = {}
+        self.screen_specific_hotkeys = {}
         self.original_cursor_pos = None
-        self.current_hotkey = None
-        self.hotkey = self.manager.hotkey
-        self.update_hotkey(None, self.hotkey)
         
-    def update_hotkey(self, old_hotkey, new_hotkey):
-        if old_hotkey:
-            try:
-                keyboard.remove_hotkey(old_hotkey)
-            except KeyError:
-                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
-
-        if not new_hotkey.lower().startswith('alt+'):
-            new_hotkey = 'alt+' + new_hotkey
+        # Inicializar el hotkey principal
+        self.setup_main_hotkey()
         
-        keyboard.add_hotkey(new_hotkey, self.toggle_window)
-        self.current_hotkey = new_hotkey
-        print(f"Nuevo atajo configurado: {new_hotkey}")
-
-    def register_global_hotkey(self, key, callback, priority=0):
-        if key not in self.global_hotkeys:
-            self.global_hotkeys[key] = []
-        self.global_hotkeys[key].append((callback, priority))
-        self.global_hotkeys[key].sort(key=lambda x: x[1], reverse=True)
-        keyboard.add_hotkey(key, lambda: self.handle_global_hotkey(key))
-        logger.debug(f"Registered global hotkey: {key}")
-
-    def register_screen_hotkey(self, screen, key, callback):
+    def register_global_hotkey(self, key: str, callback: Callable) -> None:
+        """Registra un atajo de teclado global"""
+        self.global_hotkeys.register_hotkey(key, callback)
+        
+    def register_screen_hotkey(self, screen: str, key: str, callback: Callable) -> None:
+        """Registra un atajo de teclado específico para una pantalla"""
         if screen not in self.screen_specific_hotkeys:
             self.screen_specific_hotkeys[screen] = {}
         self.screen_specific_hotkeys[screen][key] = callback
         logger.debug(f"Registered screen hotkey: {key} for screen {screen}")
 
-    def unregister_global_hotkey(self, key):
-        if key in self.global_hotkeys:
-            del self.global_hotkeys[key]
-            keyboard.remove_hotkey(key)
-            logger.debug(f"Unregistered global hotkey: {key}")
-
-    def unregister_screen_hotkey(self, screen, key):
+    def unregister_screen_hotkey(self, screen: str, key: str) -> None:
+        """Elimina un atajo de teclado específico de una pantalla"""
         if screen in self.screen_specific_hotkeys and key in self.screen_specific_hotkeys[screen]:
             del self.screen_specific_hotkeys[screen][key]
             logger.debug(f"Unregistered screen hotkey: {key} for screen {screen}")
 
-    def set_current_screen(self, screen):
+    def set_current_screen(self, screen: str) -> None:
+        """Establece la pantalla actual para manejar los atajos de teclado"""
         self.current_screen = screen
-        logger.info(f"Current screen set to: {screen}")
-
-    def handle_global_hotkey(self, key):
-        if key in self.global_hotkeys:
-            for callback, _ in self.global_hotkeys[key]:
-                callback()
+        logger.debug(f"Set current screen to: {screen}")
 
     def handle_key_press(self, event):
+        """Maneja las pulsaciones de teclas"""
+        print(f"KeyHandler received key: {event.keysym}")  # Debug
         key = event.keysym.lower()
-        if self.current_screen in self.screen_specific_hotkeys and key in self.screen_specific_hotkeys[self.current_screen]:
-            self.screen_specific_hotkeys[self.current_screen][key]()
-        elif key in self.global_hotkeys:
-            self.handle_global_hotkey(key)
+        
+        # Manejar teclas específicas de la pantalla actual
+        if self.current_screen in self.screen_specific_hotkeys:
+            if key in self.screen_specific_hotkeys[self.current_screen]:
+                print(f"Executing screen-specific handler for {key}")  # Debug
+                self.screen_specific_hotkeys[self.current_screen][key]()
+                return True
+        
+        # Propagar el evento a la estrategia de navegación actual
+        if self.manager.is_visible:
+            self.manager.navigation.handle_keyboard_event(event)
+            return True
+        
+        # Manejar teclas globales
+        if key in self.global_hotkeys._hotkeys:
+            print(f"Executing global handler for {key}")  # Debug
+            self.global_hotkeys._hotkeys[key]()
+            return True
+            
+        return False
 
-    def setup_global_keys(self):
-        keyboard.unhook_all()
-        for key in self.global_hotkeys:
-            keyboard.add_hotkey(key, lambda k=key: self.handle_global_hotkey(k))
-        logger.info("Global keys setup completed")
-
-    def toggle_window(self):
+    def setup_main_hotkey(self) -> None:
+        """Configura el atajo principal de la aplicación"""
+        hotkey = self.manager.hotkey
+        if not hotkey.lower().startswith('alt+'):
+            hotkey = 'alt+' + hotkey
+        self.global_hotkeys.register_hotkey(hotkey, self.toggle_window)
+        
+    def toggle_window(self) -> None:
+        """Alterna la visibilidad de la ventana principal"""
         logger.debug("Toggling window")
         if not self.manager.is_visible:
-            logger.debug("Showing window")
-            self.original_cursor_pos = win32gui.GetCursorPos()
             self.show_window()
         else:
-            logger.debug("Hiding window")
             self.hide_window()
-
-    def hide_window(self):
-        self.manager.root.withdraw()
-        self.manager.is_visible = False
-        self.restore_focus()
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-        self.setup_global_keys()
-
-    def show_window(self):
-        logger.debug("In show_window function")
+            
+    def show_window(self) -> None:
+        """Muestra la ventana principal"""
         try:
             self.manager.previous_window = win32gui.GetForegroundWindow()
-            mouse_x, mouse_y = pyautogui.position()
+            self.original_cursor_pos = win32gui.GetCursorPos()
             
+            # Posicionar ventana
+            mouse_x, mouse_y = pyautogui.position()
             window_x = mouse_x - self.manager.window_width // 2
             window_y = mouse_y - self.manager.window_height // 2
             
+            # Ajustar a los límites de la pantalla
             screen_width, screen_height = pyautogui.size()
             window_x = max(0, min(window_x, screen_width - self.manager.window_width))
             window_y = max(0, min(window_y, screen_height - self.manager.window_height))
@@ -119,29 +138,45 @@ class KeyHandler:
             self.manager.window_x = window_x
             self.manager.window_y = window_y
             
-            self.manager.root.deiconify()
-            self.manager.root.lift()
-            self.manager.root.attributes('-topmost', True)
-            self.manager.is_visible = True
+            self._show_and_focus_window()
+            
+            # Inicializar el foco y la navegación
             self.manager.navigation.initialize_focus()
-            self.setup_global_keys()
-            
-            self.manager.canvas.update_idletasks()
-            self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
-            
-            self.manager.root.update_idletasks()
-            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
-            self.manager.root.focus_force()
             
         except Exception as e:
-            logger.error(f"Error al mostrar la ventana: {e}")
+            logger.error(f"Error showing window: {e}")
+            
+    def _show_and_focus_window(self) -> None:
+        """Muestra y enfoca la ventana principal"""
+        self.manager.root.deiconify()
+        self.manager.root.lift()
+        self.manager.root.attributes('-topmost', True)
+        self.manager.is_visible = True
+        self.manager.navigation.initialize_focus()
+        
+        self.manager.canvas.update_idletasks()
+        self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
+        
+        self.manager.root.update_idletasks()
+        self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
+        self.manager.root.focus_force()
 
-    def restore_focus(self):
+    def hide_window(self) -> None:
+        """Oculta la ventana principal"""
+        self.manager.root.withdraw()
+        self.manager.is_visible = False
+        self.restore_focus()
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+            self.original_cursor_pos = None
+
+    def restore_focus(self) -> None:
+        """Restaura el foco a la ventana anterior"""
         if self.manager.previous_window:
             try:
                 win32gui.SetForegroundWindow(self.manager.previous_window)
             except Exception as e:
-                logger.error(f"Error al restaurar el foco: {e}")
+                logger.error(f"Error restoring focus: {e}")
                 try:
                     self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
                 except:
@@ -236,3 +271,4 @@ class KeyHandler:
             html += "</strong>"
         html += "</div>"
         return html
+

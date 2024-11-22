@@ -121,6 +121,7 @@ import win32clipboard # type: ignore
 import win32gui # type: ignore
 import time
 import sys
+from tkinter import ttk
 from bs4 import BeautifulSoup
 from utils import measure_time, process_text
 
@@ -194,8 +195,33 @@ class Functions:
                                 fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
         delete_button.pack(side=tk.LEFT)
         
+        # Agregar bindings para la tarjeta completa
+        card_container.bind('<Button-1>', lambda e: self.activate_card(index))
+        text_label.bind('<Button-1>', lambda e: self.activate_card(index))
+
+        # Configurar bindings para los iconos
+        arrow_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 0))
+        pin_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 1))
+        delete_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 2))
+        
         return card_container
     
+    def activate_card(self, index: int) -> None:
+        """Activa una tarjeta específica"""
+        self.manager.navigation.current_strategy.state['current_selection'] = {
+            'type': 'cards',
+            'index': index
+        }
+        self.manager.navigation.current_strategy.activate_selected()
+
+    def activate_card_icon(self, card_index: int, icon_index: int) -> None:
+        """Activa un icono específico de una tarjeta"""
+        self.manager.navigation.current_strategy.state['current_selection'] = {
+            'type': 'icons',
+            'index': card_index * 3 + icon_index
+        }
+        self.manager.navigation.current_strategy.activate_selected()
+        
     def calculate_card_height(self, text_data):
         if isinstance(text_data, dict):
             text = text_data.get('text', '')
@@ -435,45 +461,134 @@ class Functions:
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
         
+    # def on_arrow_click(self, item_id):
+    #     if not self.manager.group_manager.groups:
+    #         tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
+    #         return
+
+    #     dialog = tk.Toplevel(self.manager.root)
+    #     dialog.title("Seleccionar Grupo")
+        
+    #     window_width = self.manager.settings['width']
+    #     window_height = self.manager.settings['height']
+        
+    #     x = self.manager.window_x + 20
+    #     y = self.manager.window_y + 20
+        
+    #     dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
+                
+    #     # dialog.geometry("295x400")
+    #     dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
+    #     dialog.overrideredirect(True)
+    #     dialog.attributes('-topmost', True)
+
+    #     # Barra de título personalizada
+    #     title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
+    #     title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+
+    #     title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
+    #                         bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
+    #     title_label.pack(side=tk.LEFT, padx=5)
+
+    #     close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
+    #                             font=('Segoe UI', 10, 'bold'), bd=0, padx=10,
+    #                             bg=self.manager.theme_manager.colors['dark']['button_bg'],
+    #                             fg=self.manager.theme_manager.colors['dark']['button_fg'])
+    #     close_button.pack(side=tk.RIGHT)
+
+    #     # Contenido
+    #     content_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
+    #     content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    #     for group_id, group_info in self.manager.group_manager.groups.items():
+    #         group_button = tk.Button(content_frame, text=group_info['name'],
+    #                                 command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
+    #                                 bg=self.manager.theme_manager.colors['dark']['button_bg'],
+    #                                 fg=self.manager.theme_manager.colors['dark']['button_fg'],
+    #                                 activebackground=self.manager.theme_manager.colors['dark']['active_bg'],
+    #                                 activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
+    #                                 bd=0, padx=10, pady=5, width=30, anchor='w')
+    #         group_button.pack(fill=tk.X, pady=2)
+
+    #     # Hacer la ventana arrastrable
+    #     def start_move(event):
+    #         dialog.x = event.x
+    #         dialog.y = event.y
+
+    #     def on_move(event):
+    #         deltax = event.x - dialog.x
+    #         deltay = event.y - dialog.y
+    #         x = dialog.winfo_x() + deltax
+    #         y = dialog.winfo_y() + deltay
+    #         dialog.geometry(f"+{x}+{y}")
+
+    #     title_frame.bind('<Button-1>', start_move)
+    #     title_frame.bind('<B1-Motion>', on_move)
+
+    # def add_to_group(self, item_id, group_id, dialog):
+    #     self.manager.group_manager.add_item_to_group(item_id, group_id)
+    #     dialog.destroy()
+    #     # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
+    
     def on_arrow_click(self, item_id):
+        self.select_group(item_id)
+        self.manager.navigation.set_strategy('select_group')
+        
+    def select_group(self, item_id):
         if not self.manager.group_manager.groups:
             tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
             return
-
+        
+        # Ocultar la ventana principal
+        self.manager.root.withdraw()
         dialog = tk.Toplevel(self.manager.root)
+        self.manager.select_group_dialog = dialog  # Guarda una referencia al diálogo
+        
         dialog.title("Seleccionar Grupo")
         
         window_width = self.manager.settings['width']
         window_height = self.manager.settings['height']
         
-        x = self.manager.window_x + 20
-        y = self.manager.window_y + 20
+        x = self.manager.window_x
+        y = self.manager.window_y
         
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
-                
-        # dialog.geometry("295x400")
+            
         dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
-
         # Barra de título personalizada
         title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
-        title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
-
+        title_frame.pack(fill=tk.X, padx=5, pady=(0, 4))
         title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
                             bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
         title_label.pack(side=tk.LEFT, padx=5)
-
-        close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
-                                font=('Segoe UI', 10, 'bold'), bd=0, padx=10,
+        close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_dialog(dialog),
+                                font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                 bg=self.manager.theme_manager.colors['dark']['button_bg'],
                                 fg=self.manager.theme_manager.colors['dark']['button_fg'])
         close_button.pack(side=tk.RIGHT)
-
-        # Contenido
-        content_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
-        content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
+        # Canvas para scroll y contenedor de grupos
+        canvas = tk.Canvas(dialog, bg=dialog.cget('bg'), bd=0, highlightthickness=0)
+        canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=0)
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(dialog, orient=tk.VERTICAL, command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        # Frame contenedor dentro del canvas para el scroll
+        content_frame = tk.Frame(canvas, bg=dialog.cget('bg'))
+        canvas_window = canvas.create_window((0, 0), window=content_frame, anchor='nw', width=295)
+        # Ajustar el ancho del frame contenedor al canvas
+        def on_canvas_resize(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+        canvas.bind("<Configure>", on_canvas_resize)
+        # Configuración de scroll
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        content_frame.bind("<Configure>", on_frame_configure)
+        # Función para desplazamiento con la rueda del mouse
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
         for group_id, group_info in self.manager.group_manager.groups.items():
             group_button = tk.Button(content_frame, text=group_info['name'],
                                     command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
@@ -483,26 +598,36 @@ class Functions:
                                     activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
                                     bd=0, padx=10, pady=5, width=30, anchor='w')
             group_button.pack(fill=tk.X, pady=2)
-
         # Hacer la ventana arrastrable
         def start_move(event):
             dialog.x = event.x
             dialog.y = event.y
-
         def on_move(event):
             deltax = event.x - dialog.x
             deltay = event.y - dialog.y
             x = dialog.winfo_x() + deltax
             y = dialog.winfo_y() + deltay
             dialog.geometry(f"+{x}+{y}")
-
         title_frame.bind('<Button-1>', start_move)
         title_frame.bind('<B1-Motion>', on_move)
-
+        # Configurar la navegación para la pantalla de selección de grupo
+        self.manager.navigation.set_strategy('select_group')
+        self.manager.select_group_keys.activate()
+    def close_dialog(self, dialog):
+        dialog.destroy()
+        self.manager.root.deiconify()
+        self.manager.navigation.set_strategy('main')  # Volver a la estrategia de navegación principal
+        self.manager.main_screen_keys.activate()  # Reactivar 
+        if hasattr(self.manager, 'select_group_dialog'):
+            delattr(self.manager, 'select_group_dialog')
     def add_to_group(self, item_id, group_id, dialog):
         self.manager.group_manager.add_item_to_group(item_id, group_id)
         dialog.destroy()
-        # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
+        self.manager.root.deiconify()
+        self.manager.navigation.set_strategy('main')  # Volver a la estrategia de navegación principal
+        if hasattr(self.manager, 'select_group_dialog'):
+            delattr(self.manager, 'select_group_dialog')
+
 
 // Archivo: groups_manager.py
 # group_manager.py
@@ -596,7 +721,7 @@ class GroupManager:
 
             # Frame contenedor dentro del canvas para el scroll
             self.groups_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
-            canvas_window = self.canvas.create_window((0, 0), window=self.groups_frame, anchor='nw', width=295)
+            canvas_window = self.canvas.create_window((0, 0), window=self.groups_frame, anchor='nw')
 
             # Ajustar el ancho del frame contenedor al canvas
             def on_canvas_resize(event):
@@ -675,7 +800,7 @@ class GroupManager:
 
         for group_id, group_info in self.groups.items():
             group_card = tk.Frame(self.groups_frame, bg=self.theme_manager.colors['dark']['card_bg'], cursor="hand2")
-            group_card.pack(fill=tk.X, padx=8, pady=2)
+            group_card.pack(fill=tk.X, padx=4, pady=2)
             
             group_card.bind("<Button-1>", lambda e, gid=group_id: self.show_group_content(gid))
 
@@ -1187,6 +1312,98 @@ class GroupContentManager:
 
         adjust_dialog_height()
 
+// Archivo: keys_groups_screen.py
+# keys_groups_screen.py
+
+from key_screen_config import ScreenKeyConfig
+from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
+
+class GroupScreenAction(Enum):
+    """Enumera las acciones disponibles en la pantalla de grupos"""
+    NAVIGATE_UP = "up"
+    NAVIGATE_DOWN = "down"
+    NAVIGATE_LEFT = "left"
+    NAVIGATE_RIGHT = "right"
+    ACTIVATE = "return"
+    ADD_GROUP = "alt+n"
+    BACK_TO_MAIN = "escape"
+
+class GroupsScreenKeyConfig(ScreenKeyConfig):
+    def __init__(self, key_handler, manager):
+        super().__init__(key_handler)
+        self.manager = manager
+        self.screen_name = "groups"
+        self.actions = {}
+        self.setup_keys()
+        logger.debug("GroupsScreenKeyConfig initialized")
+
+    def setup_keys(self) -> None:
+        """Configura las teclas específicas para la pantalla de grupos"""
+        self.register_action(GroupScreenAction.NAVIGATE_UP, 
+                           lambda: self.handle_navigation('up'))
+        self.register_action(GroupScreenAction.NAVIGATE_DOWN, 
+                           lambda: self.handle_navigation('down'))
+        self.register_action(GroupScreenAction.NAVIGATE_LEFT, 
+                           lambda: self.handle_navigation('left'))
+        self.register_action(GroupScreenAction.NAVIGATE_RIGHT, 
+                           lambda: self.handle_navigation('right'))
+        self.register_action(GroupScreenAction.ACTIVATE, 
+                           self.handle_activation)
+        
+        # Atajos adicionales específicos de la pantalla de grupos
+        self.register_action(GroupScreenAction.ADD_GROUP, 
+                           self.manager.group_manager.add_group)
+        self.register_action(GroupScreenAction.BACK_TO_MAIN, 
+                           self.manager.show_main_screen)
+        
+        logger.debug("Groups screen keys setup completed")
+
+    def register_action(self, action: GroupScreenAction, callback: callable) -> None:
+        """Registra una acción con su callback correspondiente"""
+        self.actions[action] = callback
+        if isinstance(action.value, str):
+            self.register_hotkey(action.value, callback)
+        logger.debug(f"Registered action: {action.name}")
+
+    def handle_navigation(self, direction: str) -> None:
+        """Maneja los eventos de navegación"""
+        event = type('Event', (), {'keysym': direction.capitalize()})()
+        
+        # Actualizar el estado de selección en el manager
+        current_selection = self.manager.navigation.current_strategy.state['current_selection']
+        self.manager.current_selection = current_selection
+        
+        if direction in ['up', 'down']:
+            self.manager.navigation.navigate_vertical(event)
+        else:
+            self.manager.navigation.navigate_horizontal(event)
+        logger.debug(f"Groups screen navigation: {direction}")
+
+    def handle_activation(self):
+        """Maneja la activación del elemento seleccionado"""
+        print("GroupsScreenKeyConfig: Handling activation")  # Debug
+        self.manager.navigation.current_strategy.activate_selected()
+        logger.debug("Groups screen item activated")
+
+    def activate(self) -> None:
+        """Activa la configuración de teclas para la pantalla de grupos"""
+        super().activate()
+        for action, callback in self.actions.items():
+            if isinstance(action.value, str) and action.value.startswith('alt+'):
+                self.key_handler.global_hotkeys.register_hotkey(action.value, callback)
+        logger.info("Groups screen key configuration activated")
+
+    def deactivate(self) -> None:
+        """Desactiva la configuración de teclas de la pantalla de grupos"""
+        super().deactivate()
+        for action in self.actions:
+            if isinstance(action.value, str) and action.value.startswith('alt+'):
+                self.key_handler.global_hotkeys.unregister_hotkey(action.value)
+        logger.info("Groups screen key configuration deactivated")
+
 // Archivo: keys_main_screen.py
 # main_screen_keys.py
 
@@ -1205,7 +1422,7 @@ class MainScreenKeyConfig(ScreenKeyConfig):
         self.register_hotkey('down', lambda: self.handle_navigation('down'))
         self.register_hotkey('left', lambda: self.handle_navigation('left'))
         self.register_hotkey('right', lambda: self.handle_navigation('right'))
-        self.register_hotkey('enter', self.handle_activation)
+        self.register_hotkey('return', self.handle_activation)
         logger.debug("Main screen keys setup completed")
 
     def handle_navigation(self, direction):
@@ -1221,118 +1438,137 @@ class MainScreenKeyConfig(ScreenKeyConfig):
 
 // Archivo: key_handler.py
 # key_handler.py
-import pyperclip
-import win32clipboard
-import win32com.client
 import keyboard
 import win32gui
 import win32api
+import win32clipboard
+import win32com.client
 import win32con
 import pyautogui
+import pyperclip
 import time
 import logging
+from typing import Dict, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
+class GlobalHotkeyManager:
+    """Maneja los atajos de teclado globales de la aplicación"""
+    
+    def __init__(self):
+        self._hotkeys: Dict[str, Callable] = {}
+        keyboard.unhook_all()
+    
+    def register_hotkey(self, key: str, callback: Callable) -> None:
+        """Registra un nuevo atajo global"""
+        if key in self._hotkeys:
+            keyboard.remove_hotkey(key)
+        self._hotkeys[key] = callback
+        keyboard.add_hotkey(key, callback)
+        logger.debug(f"Registered global hotkey: {key}")
+    
+    def unregister_hotkey(self, key: str) -> None:
+        """Elimina un atajo global"""
+        if key in self._hotkeys:
+            keyboard.remove_hotkey(key)
+            del self._hotkeys[key]
+            logger.debug(f"Unregistered global hotkey: {key}")
+    
+    def update_hotkey(self, old_key: Optional[str], new_key: str, callback: Callable) -> None:
+        """Actualiza un atajo existente con una nueva tecla"""
+        if old_key:
+            self.unregister_hotkey(old_key)
+        self.register_hotkey(new_key, callback)
+        logger.debug(f"Updated hotkey from {old_key} to {new_key}")
+
 class KeyHandler:
+    """Coordinador principal del sistema de teclas"""
+    
     def __init__(self, manager):
         self.manager = manager
-        self.global_hotkeys = {}
-        self.screen_specific_hotkeys = {}
+        self.global_hotkeys = GlobalHotkeyManager()
         self.current_screen = 'main'
+        # self.screen_specific_hotkeys: Dict[str, Dict[str, Callable]] = {}
+        self.screen_specific_hotkeys = {}
         self.original_cursor_pos = None
-        self.current_hotkey = None
-        self.hotkey = self.manager.hotkey
-        self.update_hotkey(None, self.hotkey)
         
-    def update_hotkey(self, old_hotkey, new_hotkey):
-        if old_hotkey:
-            try:
-                keyboard.remove_hotkey(old_hotkey)
-            except KeyError:
-                print(f"No se pudo eliminar el atajo anterior: {old_hotkey}")
-
-        if not new_hotkey.lower().startswith('alt+'):
-            new_hotkey = 'alt+' + new_hotkey
+        # Inicializar el hotkey principal
+        self.setup_main_hotkey()
         
-        keyboard.add_hotkey(new_hotkey, self.toggle_window)
-        self.current_hotkey = new_hotkey
-        print(f"Nuevo atajo configurado: {new_hotkey}")
-
-    def register_global_hotkey(self, key, callback, priority=0):
-        if key not in self.global_hotkeys:
-            self.global_hotkeys[key] = []
-        self.global_hotkeys[key].append((callback, priority))
-        self.global_hotkeys[key].sort(key=lambda x: x[1], reverse=True)
-        keyboard.add_hotkey(key, lambda: self.handle_global_hotkey(key))
-        logger.debug(f"Registered global hotkey: {key}")
-
-    def register_screen_hotkey(self, screen, key, callback):
+    def register_global_hotkey(self, key: str, callback: Callable) -> None:
+        """Registra un atajo de teclado global"""
+        self.global_hotkeys.register_hotkey(key, callback)
+        
+    def register_screen_hotkey(self, screen: str, key: str, callback: Callable) -> None:
+        """Registra un atajo de teclado específico para una pantalla"""
         if screen not in self.screen_specific_hotkeys:
             self.screen_specific_hotkeys[screen] = {}
         self.screen_specific_hotkeys[screen][key] = callback
         logger.debug(f"Registered screen hotkey: {key} for screen {screen}")
 
-    def unregister_global_hotkey(self, key):
-        if key in self.global_hotkeys:
-            del self.global_hotkeys[key]
-            keyboard.remove_hotkey(key)
-            logger.debug(f"Unregistered global hotkey: {key}")
-
-    def unregister_screen_hotkey(self, screen, key):
+    def unregister_screen_hotkey(self, screen: str, key: str) -> None:
+        """Elimina un atajo de teclado específico de una pantalla"""
         if screen in self.screen_specific_hotkeys and key in self.screen_specific_hotkeys[screen]:
             del self.screen_specific_hotkeys[screen][key]
             logger.debug(f"Unregistered screen hotkey: {key} for screen {screen}")
 
-    def set_current_screen(self, screen):
+    def set_current_screen(self, screen: str) -> None:
+        """Establece la pantalla actual para manejar los atajos de teclado"""
         self.current_screen = screen
-        logger.info(f"Current screen set to: {screen}")
-
-    def handle_global_hotkey(self, key):
-        if key in self.global_hotkeys:
-            for callback, _ in self.global_hotkeys[key]:
-                callback()
+        logger.debug(f"Set current screen to: {screen}")
 
     def handle_key_press(self, event):
+        """Maneja las pulsaciones de teclas"""
+        print(f"KeyHandler received key: {event.keysym}")  # Debug
         key = event.keysym.lower()
-        if self.current_screen in self.screen_specific_hotkeys and key in self.screen_specific_hotkeys[self.current_screen]:
-            self.screen_specific_hotkeys[self.current_screen][key]()
-        elif key in self.global_hotkeys:
-            self.handle_global_hotkey(key)
+        
+        # Manejar teclas específicas de la pantalla actual
+        if self.current_screen in self.screen_specific_hotkeys:
+            if key in self.screen_specific_hotkeys[self.current_screen]:
+                print(f"Executing screen-specific handler for {key}")  # Debug
+                self.screen_specific_hotkeys[self.current_screen][key]()
+                return True
+        
+        # Propagar el evento a la estrategia de navegación actual
+        if self.manager.is_visible:
+            self.manager.navigation.handle_keyboard_event(event)
+            return True
+        
+        # Manejar teclas globales
+        if key in self.global_hotkeys._hotkeys:
+            print(f"Executing global handler for {key}")  # Debug
+            self.global_hotkeys._hotkeys[key]()
+            return True
+            
+        return False
 
-    def setup_global_keys(self):
-        keyboard.unhook_all()
-        for key in self.global_hotkeys:
-            keyboard.add_hotkey(key, lambda k=key: self.handle_global_hotkey(k))
-        logger.info("Global keys setup completed")
-
-    def toggle_window(self):
+    def setup_main_hotkey(self) -> None:
+        """Configura el atajo principal de la aplicación"""
+        hotkey = self.manager.hotkey
+        if not hotkey.lower().startswith('alt+'):
+            hotkey = 'alt+' + hotkey
+        self.global_hotkeys.register_hotkey(hotkey, self.toggle_window)
+        
+    def toggle_window(self) -> None:
+        """Alterna la visibilidad de la ventana principal"""
         logger.debug("Toggling window")
         if not self.manager.is_visible:
-            logger.debug("Showing window")
-            self.original_cursor_pos = win32gui.GetCursorPos()
             self.show_window()
         else:
-            logger.debug("Hiding window")
             self.hide_window()
-
-    def hide_window(self):
-        self.manager.root.withdraw()
-        self.manager.is_visible = False
-        self.restore_focus()
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-        self.setup_global_keys()
-
-    def show_window(self):
-        logger.debug("In show_window function")
+            
+    def show_window(self) -> None:
+        """Muestra la ventana principal"""
         try:
             self.manager.previous_window = win32gui.GetForegroundWindow()
-            mouse_x, mouse_y = pyautogui.position()
+            self.original_cursor_pos = win32gui.GetCursorPos()
             
+            # Posicionar ventana
+            mouse_x, mouse_y = pyautogui.position()
             window_x = mouse_x - self.manager.window_width // 2
             window_y = mouse_y - self.manager.window_height // 2
             
+            # Ajustar a los límites de la pantalla
             screen_width, screen_height = pyautogui.size()
             window_x = max(0, min(window_x, screen_width - self.manager.window_width))
             window_y = max(0, min(window_y, screen_height - self.manager.window_height))
@@ -1341,29 +1577,45 @@ class KeyHandler:
             self.manager.window_x = window_x
             self.manager.window_y = window_y
             
-            self.manager.root.deiconify()
-            self.manager.root.lift()
-            self.manager.root.attributes('-topmost', True)
-            self.manager.is_visible = True
+            self._show_and_focus_window()
+            
+            # Inicializar el foco y la navegación
             self.manager.navigation.initialize_focus()
-            self.setup_global_keys()
-            
-            self.manager.canvas.update_idletasks()
-            self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
-            
-            self.manager.root.update_idletasks()
-            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
-            self.manager.root.focus_force()
             
         except Exception as e:
-            logger.error(f"Error al mostrar la ventana: {e}")
+            logger.error(f"Error showing window: {e}")
+            
+    def _show_and_focus_window(self) -> None:
+        """Muestra y enfoca la ventana principal"""
+        self.manager.root.deiconify()
+        self.manager.root.lift()
+        self.manager.root.attributes('-topmost', True)
+        self.manager.is_visible = True
+        self.manager.navigation.initialize_focus()
+        
+        self.manager.canvas.update_idletasks()
+        self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
+        
+        self.manager.root.update_idletasks()
+        self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
+        self.manager.root.focus_force()
 
-    def restore_focus(self):
+    def hide_window(self) -> None:
+        """Oculta la ventana principal"""
+        self.manager.root.withdraw()
+        self.manager.is_visible = False
+        self.restore_focus()
+        if self.original_cursor_pos:
+            win32api.SetCursorPos(self.original_cursor_pos)
+            self.original_cursor_pos = None
+
+    def restore_focus(self) -> None:
+        """Restaura el foco a la ventana anterior"""
         if self.manager.previous_window:
             try:
                 win32gui.SetForegroundWindow(self.manager.previous_window)
             except Exception as e:
-                logger.error(f"Error al restaurar el foco: {e}")
+                logger.error(f"Error restoring focus: {e}")
                 try:
                     self.manager.root.after(100, lambda: win32gui.SetForegroundWindow(self.manager.previous_window))
                 except:
@@ -1458,6 +1710,8 @@ class KeyHandler:
             html += "</strong>"
         html += "</div>"
         return html
+
+
 
 // Archivo: key_screen_config.py
 # screen_key_config.py
@@ -1555,581 +1809,1113 @@ if __name__ == "__main__":
     main()
 
 // Archivo: navigation.py
+
 import logging
+from typing import Dict, Optional, Any
+from enum import Enum, auto
 from navigation_main_screen import MainScreenNavigation
 from navigation_groups_screen import GroupsScreenNavigation
 
 logger = logging.getLogger(__name__)
 
+class ScreenType(Enum):
+    MAIN = auto()
+    GROUPS = auto()
+    SETTINGS = auto()
+
 class Navigation:
     def __init__(self, manager):
         self.manager = manager
-        self.strategies = {
-            'main': MainScreenNavigation(manager),
-            'groups': GroupsScreenNavigation(manager),
+        self.strategies = {}
+        self._initialize_strategies()
+        self.current_strategy = None
+        self.navigation_state = {'enabled': True}
+        
+        self.strategies: Dict[ScreenType, Any] = {
+            ScreenType.MAIN: MainScreenNavigation(manager),
+            ScreenType.GROUPS: GroupsScreenNavigation(manager),
         }
-        self.current_strategy = self.strategies['main']
-        logger.debug("Navigation inicializado")
+        self.current_strategy = self.strategies[ScreenType.MAIN]
+        self.current_screen = ScreenType.MAIN
+        logger.debug("Navigation initialized")
+        
+    def _initialize_strategies(self):
+        """Inicializa las estrategias de navegación con manejo de errores"""
+        try:
+            self.strategies = {
+                ScreenType.MAIN: MainScreenNavigation(self.manager),
+                ScreenType.GROUPS: GroupsScreenNavigation(self.manager)
+            }
+            self.set_strategy('main')
+        except Exception as e:
+            logger.error(f"Error initializing navigation strategies: {e}")
+            raise
 
-    def set_strategy(self, screen_type):
-        if screen_type in self.strategies:
-            self.current_strategy = self.strategies[screen_type]
-            if screen_type == 'main':
-                self.manager.main_screen_keys.activate()
-            elif screen_type == 'groups':
-                # Aquí activaríamos las teclas de la pantalla de grupos cuando la implementemos
-                pass
+    def set_strategy(self, screen_type: str) -> None:
+        """Cambia la estrategia de navegación con verificaciones"""
+        try:
+            screen_mapping = {
+                'main': ScreenType.MAIN,
+                'groups': ScreenType.GROUPS,
+                'settings': ScreenType.SETTINGS
+            }
+            
+            if screen_type not in screen_mapping:
+                raise ValueError(f"Invalid screen type: {screen_type}")
+
+            screen_enum = screen_mapping[screen_type]
+            if screen_enum in self.strategies:
+                self.current_screen = screen_enum
+                self.current_strategy = self.strategies[screen_enum]
+                self._configure_screen_navigation(screen_enum)
+                logger.debug(f"Navigation strategy set to: {screen_type}")
+            else:
+                raise ValueError(f"No strategy found for screen: {screen_type}")
+        except Exception as e:
+            logger.error(f"Error setting navigation strategy: {e}")
+            self._fallback_to_main_strategy()
+    
+    def _fallback_to_main_strategy(self):
+        """Sistema de recuperación para casos de error"""
+        try:
+            logger.warning("Falling back to main navigation strategy")
+            self.current_strategy = self.strategies['main']
+            self.manager.show_main_screen()
+        except Exception as e:
+            logger.critical(f"Critical error in navigation fallback: {e}")
+
+    def set_strategy(self, screen_type: str) -> None:
+        """Cambia la estrategia de navegación según la pantalla"""
+        screen_mapping = {
+            'main': ScreenType.MAIN,
+            'groups': ScreenType.GROUPS,
+            'settings': ScreenType.SETTINGS
+        }
+        
+        if screen_type not in screen_mapping:
+            logger.error(f"Unknown screen type: {screen_type}")
+            return
+            
+        screen_enum = screen_mapping[screen_type]
+        if screen_enum in self.strategies:
+            self.current_screen = screen_enum
+            self.current_strategy = self.strategies[screen_enum]
+            self._configure_screen_navigation(screen_enum)
             logger.debug(f"Navigation strategy set to: {screen_type}")
         else:
-            logger.error(f"Unknown navigation strategy: {screen_type}")
+            logger.error(f"No strategy found for screen: {screen_type}")
 
-    def navigate_vertical(self, event):
-        logger.debug(f"Navegación vertical: {event.keysym}")
+    def _configure_screen_navigation(self, screen_type: ScreenType) -> None:
+        """Configura la navegación específica para cada pantalla"""
+        if screen_type == ScreenType.MAIN:
+            self.manager.main_screen_keys.activate()
+            if hasattr(self.manager, 'groups_screen_keys'):
+                self.manager.groups_screen_keys.deactivate()
+        elif screen_type == ScreenType.GROUPS:
+            self.manager.main_screen_keys.deactivate()
+            if hasattr(self.manager, 'groups_screen_keys'):
+                self.manager.groups_screen_keys.activate()
+
+    def handle_keyboard_event(self, event):
+        """Maneja los eventos de teclado"""
+        print(f"Navigation received keyboard event: {event.keysym}")  # Debug
+        try:
+            if not self.navigation_state['enabled']:
+                return
+                
+            key = event.keysym.lower()
+            print(f"Processing key: {key}")  # Debug
+            
+            # Manejar Enter explícitamente
+            if key == 'return':
+                print("Enter key detected, activating selection")  # Debug
+                self.current_strategy.activate_selected()  # Llamar directamente a la estrategia actual
+                return
+                
+            # Resto de la navegación
+            if key in ['up', 'down']:
+                self.navigate_vertical(event)
+            elif key in ['left', 'right']:
+                self.navigate_horizontal(event)
+                
+        except Exception as e:
+            logger.error(f"Error handling keyboard event: {e}")
+            
+    def handle_escape(self) -> None:
+        """Maneja la tecla Escape según el contexto"""
+        if self.current_screen != ScreenType.MAIN:
+            self.manager.show_main_screen()
+        else:
+            self.manager.key_handler.hide_window()
+
+    def navigate_vertical(self, event) -> None:
+        """Gestiona la navegación vertical"""
+        logger.debug(f"Vertical navigation: {event.keysym}")
         self.current_strategy.navigate_vertical(event)
+        self.update_highlights()
+        self.ensure_visible()
 
-    def navigate_horizontal(self, event):
-        logger.debug(f"Navegación horizontal: {event.keysym}")
+    def navigate_horizontal(self, event) -> None:
+        """Gestiona la navegación horizontal"""
+        logger.debug(f"Horizontal navigation: {event.keysym}")
         self.current_strategy.navigate_horizontal(event)
+        self.update_highlights()
 
-    def activate_selected(self, event=None):
-        logger.debug("Activando selección")
+    def activate_selected(self, event=None) -> None:
+        """Activa el elemento seleccionado actualmente"""
+        logger.debug("Activating selected item")
         self.current_strategy.activate_selected(event)
 
-    def update_highlights(self):
-        logger.debug("Actualizando highlights")
+    def update_highlights(self) -> None:
+        """Actualiza los destacados visuales"""
+        logger.debug("Updating highlights")
         self.current_strategy.update_highlights()
 
-    def initialize_focus(self):
-        logger.debug("Inicializando foco")
+    def initialize_focus(self) -> None:
+        """Inicializa el foco en la pantalla actual"""
+        logger.debug("Initializing focus")
         self.current_strategy.initialize_focus()
 
-    def get_cards_count(self):
-        return self.current_strategy.get_cards_count()
-
-    def handle_focus(self, event=None):
-        if self.manager.is_visible:
-            self.manager.root.focus_force()
-        logger.debug("Manejando foco de la ventana")
-
-    def check_window_state(self):
-        try:
-            actual_visible = self.manager.root.winfo_viewable()
-            if actual_visible != self.manager.is_visible:
-                logger.info(f"Corrigiendo estado de visibilidad: {self.manager.is_visible} -> {actual_visible}")
-                self.manager.is_visible = actual_visible
-        except Exception as e:
-            logger.error(f"Error al verificar estado de la ventana: {e}")
-
-    def update_active_window(self):
-        import win32gui
-        self.manager.last_active_window = win32gui.GetForegroundWindow()
-        logger.debug(f"Ventana activa actualizada: {self.manager.last_active_window}")
-
-    def get_current_selection(self):
-        return self.manager.current_selection
-
-    def set_current_selection(self, selection_type, index):
-        self.manager.current_selection = {'type': selection_type, 'index': index}
-        self.update_highlights()
-        logger.debug(f"Selección actual establecida: {self.manager.current_selection}")
-
-    def get_clipboard_items(self):
-        return self.manager.clipboard_items
-
-    def get_cards_frame(self):
-        return self.manager.cards_frame
-
-    def get_canvas(self):
-        return self.manager.canvas
-
-    def is_dark_mode(self):
-        return self.manager.is_dark_mode
-
-    def get_theme_colors(self):
-        return self.manager.theme_manager.colors
-
-    def ensure_visible(self):
+    def ensure_visible(self) -> None:
+        """Asegura que el elemento seleccionado esté visible"""
         self.current_strategy.ensure_visible()
-        logger.debug("Asegurando visibilidad del elemento seleccionado")
+        logger.debug("Ensuring selected item visibility")
 
-    def handle_global_key(self, key):
-        logger.debug(f"Manejando tecla global: {key}")
-        if self.manager.is_visible:
-            if key in ['Up', 'Down']:
-                self.navigate_vertical(type('Event', (), {'keysym': key})())
-            elif key in ['Left', 'Right']:
-                self.navigate_horizontal(type('Event', (), {'keysym': key})())
-            elif key == 'Return':
-                self.activate_selected()
-            
-            self.manager.root.update_idletasks()
-            self.manager.root.after(10, self.manager.root.update)
-            self.manager.root.after(20, self.manager.key_handler.restore_cursor_position)
-
-    def refresh_navigation(self):
-        logger.debug("Refrescando navegación")
+    def refresh_navigation(self) -> None:
+        """Refresca el estado de navegación actual"""
+        logger.debug("Refreshing navigation")
         self.initialize_focus()
         self.update_highlights()
         if hasattr(self.current_strategy, 'refresh_view'):
             self.current_strategy.refresh_view()
 
-    def on_window_focus(self, event):
-        logger.debug("Ventana obtuvo el foco")
+    def get_current_selection(self) -> dict:
+        """Obtiene la selección actual"""
+        return self.manager.current_selection
+
+    def set_current_selection(self, selection_type: str, index: int) -> None:
+        """Establece la selección actual"""
+        self.manager.current_selection = {'type': selection_type, 'index': index}
+        self.update_highlights()
+        logger.debug(f"Current selection set to: {self.manager.current_selection}")
+
+    def get_cards_count(self) -> int:
+        """Obtiene el número de tarjetas en la vista actual"""
+        return self.current_strategy.get_cards_count()
+
+    def on_window_focus(self, event) -> None:
+        """Maneja el evento de obtención de foco de la ventana"""
+        logger.debug("Window gained focus")
         self.refresh_navigation()
 
-    def on_window_unfocus(self, event):
-        logger.debug("Ventana perdió el foco")
-        # Aquí puedes agregar lógica adicional si es necesario cuando la ventana pierde el foco
+    def on_window_unfocus(self, event) -> None:
+        """Maneja el evento de pérdida de foco de la ventana"""
+        logger.debug("Window lost focus")
+        # Implementar lógica adicional si es necesario
+        
+    def check_window_state(self) -> None:
+        """Verifica y corrige el estado de visibilidad de la ventana"""
+        try:
+            actual_visible = self.manager.root.winfo_viewable()
+            if actual_visible != self.manager.is_visible:
+                logger.info(f"Correcting visibility state: {self.manager.is_visible} -> {actual_visible}")
+                self.manager.is_visible = actual_visible
+        except Exception as e:
+            logger.error(f"Error checking window state: {e}")
+        
+        # Programar la próxima verificación
+        self.manager.root.after(1000, self.check_window_state)
 
 // Archivo: navigation_groups_screen.py
+# navigation_groups_screen.py
+
+from enum import Enum
+from typing import List, Optional, Dict
 import tkinter as tk
 import logging
 
 logger = logging.getLogger(__name__)
 
+class GroupScreenElement(Enum):
+    TOP_BUTTONS = "top_buttons"
+    GROUP_CARDS = "group_cards"
+    ICONS = "card_icons"
+
 class GroupsScreenNavigation:
     def __init__(self, manager):
         self.manager = manager
-        self.navigation_order = ['top_buttons', 'group_cards']
-        logger.debug("GroupsScreenNavigation inicializado")
+        self.navigation_state = {'enabled': True}
+        self.navigation_order = [
+            GroupScreenElement.TOP_BUTTONS,
+            GroupScreenElement.GROUP_CARDS
+        ]
+        self.current_element: Optional[GroupScreenElement] = None
+        self.current_index: int = 0
+        self.state: Dict = self._initialize_state()
+        logger.debug("GroupsScreenNavigation initialized")
 
-    def navigate_vertical(self, event):
-        logger.debug(f"Navegación vertical: {event.keysym}")
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
+    def _initialize_state(self) -> Dict:
+        """Inicializa el estado de navegación"""
+        return {
+            'current_selection': {'type': 'group_cards', 'index': 0},
+            'highlight_colors': {
+                'dark': {'normal': '#444444', 'icon': '#666666'},
+                'light': {'normal': '#cccccc', 'icon': '#aaaaaa'}
+            }
+        }
+
+    def initialize_focus(self) -> None:
+        """Inicializa el foco en la pantalla de grupos"""
+        if self.get_cards_count() > 0:
+            self.state['current_selection'] = {'type': 'group_cards', 'index': 0}
+        else:
+            self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
         
-        if event.keysym == 'Up':
-            self.move_up(current_type, current_index)
-        elif event.keysym == 'Down':
-            self.move_down(current_type, current_index)
+        self.navigation_state['enabled'] = True
+        self.update_highlights()
+        logger.debug(f"Groups focus initialized: {self.state['current_selection']}")
 
+    def navigate_vertical(self, event) -> None:
+        """Gestiona la navegación vertical"""
+        direction = 1 if event.keysym == 'Down' else -1
+        self._update_selection_vertical(direction)
         self.update_highlights()
         self.ensure_visible()
-        logger.debug(f"Nueva selección: {self.manager.current_selection}")
+        logger.debug(f"Vertical navigation: {event.keysym}")
 
-    def move_up(self, current_type, current_index):
-        logger.debug(f"Moviendo arriba desde {current_type}, {current_index}")
-        if current_type == 'group_cards':
-            if current_index > 0:
-                self.manager.current_selection['index'] = current_index - 1
-            else:
-                self.manager.current_selection = {'type': 'top_buttons', 'index': 0}
-        elif current_type == 'group_card_icons':
-            card_index = current_index // 3
-            self.manager.current_selection = {'type': 'group_cards', 'index': card_index}
-        elif current_type == 'top_buttons':
-            pass  # No hacer nada si ya estamos en los botones superiores
-        
-    def move_down(self, current_type, current_index):
-        logger.debug(f"Moviendo abajo desde {current_type}, {current_index}")
-        if current_type == 'top_buttons':
-            if self.get_group_cards_count() > 0:
-                self.manager.current_selection = {'type': 'group_cards', 'index': 0}
-        elif current_type == 'group_cards':
-            if current_index < self.get_group_cards_count() - 1:
-                self.manager.current_selection['index'] = current_index + 1
-        elif current_type == 'group_card_icons':
-            card_index = current_index // 3
-            if card_index < self.get_group_cards_count() - 1:
-                self.manager.current_selection = {'type': 'group_cards', 'index': card_index + 1}
-                
-    def navigate_horizontal(self, event):
-        logger.debug(f"Navegación horizontal: {event.keysym}")
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
+    def _update_selection_vertical(self, direction: int) -> None:
+        """Actualiza la selección actual en dirección vertical"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
 
-        if event.keysym == 'Left':
-            self.move_left(current_type, current_index)
-        elif event.keysym == 'Right':
-            self.move_right(current_type, current_index)
+        if direction > 0:  # Down
+            if current_type == GroupScreenElement.TOP_BUTTONS.value:
+                if self.get_cards_count() > 0:
+                    self.state['current_selection'] = {
+                        'type': GroupScreenElement.GROUP_CARDS.value,
+                        'index': 0
+                    }
+            elif current_type == GroupScreenElement.GROUP_CARDS.value:
+                if current_index < self.get_cards_count() - 1:
+                    self.state['current_selection']['index'] = current_index + 1
+        else:  # Up
+            if current_type == GroupScreenElement.GROUP_CARDS.value:
+                if current_index > 0:
+                    self.state['current_selection']['index'] = current_index - 1
+                else:
+                    self.state['current_selection'] = {
+                        'type': GroupScreenElement.TOP_BUTTONS.value,
+                        'index': 0
+                    }
 
+    def navigate_horizontal(self, event) -> None:
+        """Gestiona la navegación horizontal"""
+        direction = 1 if event.keysym == 'Right' else -1
+        self._update_selection_horizontal(direction)
         self.update_highlights()
+        logger.debug(f"Horizontal navigation: {event.keysym}")
 
-    def move_left(self, current_type, current_index):
-        num_buttons = len(self.get_top_buttons())
-        if current_type == 'top_buttons':
-            self.manager.current_selection['index'] = (current_index - 1) % num_buttons
-        elif current_type == 'group_card_icons':
-            if current_index % 3 > 0:
-                self.manager.current_selection['index'] = current_index - 1
-            else:
-                self.manager.current_selection = {'type': 'group_cards', 'index': current_index // 3}
+    def _update_selection_horizontal(self, direction: int) -> None:
+        """Actualiza la selección actual en dirección horizontal"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
 
-    def move_right(self, current_type, current_index):
-        num_buttons = len(self.get_top_buttons())
-        if current_type == 'top_buttons':
-            self.manager.current_selection['index'] = (current_index + 1) % num_buttons
-        elif current_type == 'group_cards':
-            icons = self.get_card_icons(self.get_group_cards()[current_index])
-            if icons:
-                self.manager.current_selection = {'type': 'group_card_icons', 'index': current_index * 3}
-        elif current_type == 'group_card_icons':
-            card_index = current_index // 3
-            icon_position = current_index % 3
-            icons = self.get_card_icons(self.get_group_cards()[card_index])
-            if icon_position < len(icons) - 1:
-                self.manager.current_selection['index'] = current_index + 1
+        if direction > 0:  # Right
+            if current_type == GroupScreenElement.TOP_BUTTONS.value:
+                button_count = len(self.get_top_buttons())
+                self.state['current_selection']['index'] = (current_index + 1) % button_count
+            elif current_type == GroupScreenElement.GROUP_CARDS.value:
+                self.state['current_selection'] = {
+                    'type': GroupScreenElement.ICONS.value,
+                    'index': current_index * 2  # Solo 2 iconos por tarjeta en grupos
+                }
+            elif current_type == GroupScreenElement.ICONS.value:
+                if current_index % 2 < 1:  # Solo 2 iconos por tarjeta
+                    self.state['current_selection']['index'] = current_index + 1
+        else:  # Left
+            if current_type == GroupScreenElement.TOP_BUTTONS.value:
+                button_count = len(self.get_top_buttons())
+                self.state['current_selection']['index'] = (current_index - 1) % button_count
+            elif current_type == GroupScreenElement.ICONS.value:
+                if current_index % 2 > 0:
+                    self.state['current_selection']['index'] = current_index - 1
+                else:
+                    self.state['current_selection'] = {
+                        'type': GroupScreenElement.GROUP_CARDS.value,
+                        'index': current_index // 2
+                    }
 
-    def activate_selected(self, event=None):
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
+    def activate_selected(self, event=None) -> None:
+        """Activa el elemento seleccionado actualmente"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
 
-        if current_type == 'top_buttons':
-            self.activate_top_button(current_index)
-        elif current_type == 'group_cards':
-            self.activate_group_card(current_index)
-        elif current_type == 'group_card_icons':
-            self.activate_group_card_icon(current_index)
+        actions = {
+            GroupScreenElement.TOP_BUTTONS.value: self._activate_top_button,
+            GroupScreenElement.GROUP_CARDS.value: self._activate_group_card,
+            GroupScreenElement.ICONS.value: self._activate_icon
+        }
 
-    def activate_top_button(self, index):
-        if index == 0:  # Botón Añadir Grupo
-            self.manager.group_manager.add_group()
-        elif index == 1:  # Botón Cerrar
-            self.manager.group_manager.close_groups_window()
+        if handler := actions.get(current_type):
+            handler(current_index)
+            logger.debug(f"Activated {current_type} at index {current_index}")
 
-    def activate_group_card(self, index):
+    def update_highlights(self) -> None:
+        """Actualiza los destacados visuales"""
+        self._clear_all_highlights()
+        self._highlight_current_selection()
+        logger.debug("Highlights updated")
+
+    def _clear_all_highlights(self) -> None:
+        """Limpia todos los destacados visuales"""
+        theme = self.manager.theme_manager.colors[
+            'dark' if self.manager.is_dark_mode else 'light'
+        ]
+        base_color = theme['card_bg']
+        button_color = theme['button_bg']
+
+        # Limpiar botones superiores
+        for button in self.get_top_buttons():
+            button.configure(bg=button_color)
+
+        # Limpiar tarjetas y sus iconos
+        for card in self.manager.group_manager.groups_frame.winfo_children():
+            self._reset_card_colors(card, base_color, button_color)
+
+    def _highlight_card(self, card: tk.Frame, color: str) -> None:
+        """Resalta una tarjeta específica y sus elementos"""
+        card.configure(bg=color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, tk.Label):
+                        subchild.configure(bg=color)
+                    elif isinstance(subchild, tk.Button):
+                        # No cambiar el color de los botones aquí
+                        # a menos que estemos en modo tarjeta
+                        if self.state['current_selection']['type'] == GroupScreenElement.GROUP_CARDS.value:
+                            subchild.configure(bg=color)
+            elif isinstance(child, tk.Label):
+                child.configure(bg=color)
+            elif isinstance(child, tk.Button):
+                if self.state['current_selection']['type'] == GroupScreenElement.GROUP_CARDS.value:
+                    child.configure(bg=color)
+
+    def _reset_card_colors(self, card: tk.Frame, base_color: str, button_color: str) -> None:
+        """Resetea los colores de una tarjeta específica y sus elementos"""
+        card.configure(bg=base_color)
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame):
+                child.configure(bg=base_color)
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, tk.Label):
+                        subchild.configure(bg=base_color)
+                    elif isinstance(subchild, tk.Button):
+                        subchild.configure(bg=button_color)
+            elif isinstance(child, tk.Label):
+                child.configure(bg=base_color)
+            elif isinstance(child, tk.Button):
+                child.configure(bg=button_color)
+    
+    def _highlight_current_selection(self) -> None:
+        """Aplica el destacado al elemento actualmente seleccionado"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+        highlight_color = self._get_highlight_color()
+        icon_highlight_color = self._get_icon_highlight_color()
+
+        if current_type == GroupScreenElement.TOP_BUTTONS.value:
+            buttons = self.get_top_buttons()
+            if 0 <= current_index < len(buttons):
+                buttons[current_index].configure(bg=highlight_color)
+
+        elif current_type == GroupScreenElement.GROUP_CARDS.value:
+            cards = self.get_group_cards()
+            if current_index < len(cards):
+                self._highlight_card(cards[current_index], highlight_color)
+
+        elif current_type == GroupScreenElement.ICONS.value:
+            cards = self.get_group_cards()
+            card_index = current_index // 2
+            icon_index = current_index % 2
+
+            if card_index < len(cards):
+                card = cards[card_index]
+                # Resaltar la tarjeta completa
+                self._highlight_card(card, highlight_color)
+
+                # Resaltar el icono específico
+                icons_frame = self._find_icons_frame(card)
+                if icons_frame:
+                    # Primero resetear todos los iconos al color base
+                    for icon in icons_frame.winfo_children():
+                        icon.configure(bg=highlight_color)
+                    
+                    # Luego resaltar el icono seleccionado
+                    if icon_index < len(icons_frame.winfo_children()):
+                        icons_frame.winfo_children()[icon_index].configure(bg=icon_highlight_color)
+
+        # Forzar la actualización visual
+        self.manager.root.update_idletasks()
+    
+    def _get_highlight_color(self) -> str:
+        """Obtiene el color de resaltado según el tema actual"""
+        theme_type = 'dark' if self.manager.is_dark_mode else 'light'
+        return self.state['highlight_colors'][theme_type]['normal']
+
+    def _get_icon_highlight_color(self) -> str:
+        """Obtiene el color de resaltado para iconos según el tema actual"""
+        theme_type = 'dark' if self.manager.is_dark_mode else 'light'
+        return self.state['highlight_colors'][theme_type]['icon']
+    
+    def _find_icons_frame(self, card: tk.Frame) -> Optional[tk.Frame]:
+        """Encuentra el frame de iconos en una tarjeta"""
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame) and len(child.winfo_children()) > 0:
+                if all(isinstance(btn, tk.Button) for btn in child.winfo_children()):
+                    return child
+        return None
+
+    def _activate_top_button(self, index: int) -> None:
+        """Activa un botón superior"""
+        buttons = self.get_top_buttons()
+        if 0 <= index < len(buttons):
+            buttons[index].invoke()
+
+    def _activate_group_card(self, index: int) -> None:
+        """Activa una tarjeta de grupo"""
         groups = list(self.manager.group_manager.groups.items())
         if index < len(groups):
             group_id, _ = groups[index]
             self.manager.group_manager.show_group_content(group_id)
 
-    def activate_group_card_icon(self, index):
+    def _activate_icon(self, index: int) -> None:
+        """Activa un icono"""
+        card_index = index // 2
+        icon_index = index % 2
         groups = list(self.manager.group_manager.groups.items())
-        card_index = index // 3
-        icon_position = index % 2
         
         if card_index < len(groups):
             group_id, _ = groups[card_index]
-            if icon_position == 0:  # Edit
-                self.manager.group_manager.edit_group(group_id)
-            elif icon_position == 1:  # Delete
-                self.manager.group_manager.delete_group(group_id)
+            actions = {
+                0: lambda: self.manager.group_manager.edit_group(group_id),
+                1: lambda: self.manager.group_manager.delete_group(group_id)
+            }
+            if action := actions.get(icon_index):
+                action()
 
-    def update_highlights(self):
-        self.clear_all_highlights()
-        
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        
-        highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
-        icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
-        
-        if current_type == 'top_buttons':
-            top_buttons = self.get_top_buttons()
-            if 0 <= current_index < len(top_buttons):
-                top_buttons[current_index].configure(bg=highlight_color)
-        
-        elif current_type == 'group_cards':
-            group_cards = self.get_group_cards()
-            if current_index < len(group_cards):
-                self.highlight_group_card(group_cards[current_index], highlight_color)
-        
-        elif current_type == 'group_card_icons':
-            card_index = current_index // 3
-            icon_position = current_index % 3
-            group_cards = self.get_group_cards()
+    def ensure_visible(self) -> None:
+        """Asegura que el elemento seleccionado esté visible"""
+        current_type = self.state['current_selection']['type']
+        if current_type in [GroupScreenElement.GROUP_CARDS.value, GroupScreenElement.ICONS.value]:
+            current_index = self.state['current_selection']['index']
+            card_index = current_index // 2 if current_type == GroupScreenElement.ICONS.value else current_index
+            cards = self.get_group_cards()
             
-            if card_index < len(group_cards):
-                card = group_cards[card_index]
-                icons = self.get_card_icons(card)
-                
-                if icons and 0 <= icon_position < len(icons):
-                    self.highlight_group_card(card, highlight_color)
-                    icons[icon_position].configure(bg=icon_highlight_color)
-
-    def clear_all_highlights(self):
-        theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
-        base_color = theme['card_bg']
-        button_color = theme['button_bg']
-        
-        for button in self.get_top_buttons():
-            button.configure(bg=button_color)
-        
-        for card in self.get_group_cards():
-            self.reset_card_colors(card, base_color, button_color)
-
-    def reset_card_colors(self, card, base_color, button_color):
-        card.configure(bg=base_color)
-        for child in card.winfo_children():
-            if isinstance(child, tk.Label):
-                child.configure(bg=base_color)
-            elif isinstance(child, tk.Frame):  # Frame de iconos
-                child.configure(bg=base_color)
-                for icon in child.winfo_children():
-                    if isinstance(icon, tk.Button):
-                        icon.configure(bg=button_color)
-
-    def highlight_group_card(self, card, color):
-        card.configure(bg=color)
-        for child in card.winfo_children():
-            if isinstance(child, tk.Label):
-                child.configure(bg=color)
-            elif isinstance(child, tk.Frame):  # Para el frame de iconos
-                child.configure(bg=color)
-
-    def highlight_group_card(self, card, color):
-        card.configure(bg=color)
-        for child in card.winfo_children():
-            if isinstance(child, tk.Label):
-                child.configure(bg=color)
-            elif isinstance(child, tk.Frame):  # Frame de iconos
-                child.configure(bg=color)
-                for icon in child.winfo_children():
-                    if isinstance(icon, tk.Button):
-                        icon.configure(bg=color)
-
-    def ensure_visible(self):
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        
-        if current_type in ['group_cards', 'group_card_icons']:
-            group_cards = self.get_group_cards()
-            if current_index < len(group_cards):
-                widget = group_cards[current_index]
+            if card_index < len(cards):
+                card = cards[card_index]
                 bbox = self.manager.group_manager.canvas.bbox("all")
                 if bbox:
-                    widget_y = widget.winfo_y()
+                    card_y = card.winfo_y()
                     canvas_height = self.manager.group_manager.canvas.winfo_height()
-                    if widget_y > 0:
-                        self.manager.group_manager.canvas.yview_moveto(widget_y / bbox[3])
+                    if card_y > 0:
+                        self.manager.group_manager.canvas.yview_moveto(card_y / bbox[3])
 
-    def initialize_focus(self):
-        logger.debug("Inicializando foco")
-        if self.get_group_cards_count() > 0:
-            self.manager.current_selection = {'type': 'group_cards', 'index': 0}
-        else:
-            self.manager.current_selection = {'type': 'top_buttons', 'index': 0}
-        
-        self.update_highlights()
-        logger.debug(f"Foco inicial: {self.manager.current_selection}")
+    def get_top_buttons(self) -> List[tk.Button]:
+        """Obtiene los botones superiores"""
+        return [
+            self.manager.group_manager.add_button,
+            self.manager.group_manager.close_button
+        ]
 
-    def get_group_cards_count(self):
-        return len(self.manager.group_manager.groups)
-
-    def get_top_buttons(self):
-        return [self.manager.group_manager.add_button, self.manager.group_manager.close_button]
-
-    def get_group_cards(self):
+    def get_group_cards(self) -> List[tk.Frame]:
+        """Obtiene las tarjetas de grupo"""
         return self.manager.group_manager.groups_frame.winfo_children()
 
-    def get_top_button_count(self):
-        return len(self.get_top_buttons())
+    def get_cards_count(self) -> int:
+        """Obtiene el número de tarjetas"""
+        return len(self.manager.group_manager.groups)
 
-    def get_card_icons(self, card):
-        icons_frame = [child for child in card.winfo_children() if isinstance(child, tk.Frame)]
-        if icons_frame:
-            return icons_frame[0].winfo_children()
-        return []
+    def refresh_view(self) -> None:
+        """Refresca la vista de grupos"""
+        self.manager.group_manager.refresh_groups()
+        self.update_highlights()
 
 // Archivo: navigation_main_screen.py
-# main_screen_navigation.py
+from enum import Enum
+import logging
+from typing import Optional, Callable, Dict
+from key_screen_config import ScreenKeyConfig
 
+logger = logging.getLogger(__name__)
+
+class MainScreenAction(Enum):
+    """Enumera las acciones disponibles en la pantalla principal"""
+    NAVIGATE_UP = "up"
+    NAVIGATE_DOWN = "down"
+    NAVIGATE_LEFT = "left"
+    NAVIGATE_RIGHT = "right"
+    ACTIVATE = "return"
+    TOGGLE_FORMAT = "alt+f"
+    SHOW_GROUPS = "alt+g"
+    CLEAR_HISTORY = "alt+c"
+
+class MainScreenKeyConfig(ScreenKeyConfig):
+    def __init__(self, key_handler, manager):
+        super().__init__(key_handler)
+        self.manager = manager
+        self.screen_name = "main"
+        self.actions: Dict[MainScreenAction, Callable] = {}
+        self.setup_keys()
+        logger.debug("MainScreenKeyConfig initialized")
+
+    def setup_keys(self) -> None:
+        """Configura las teclas específicas para la pantalla principal"""
+        self.register_action(MainScreenAction.NAVIGATE_UP, 
+                           lambda: self.handle_navigation('up'))
+        self.register_action(MainScreenAction.NAVIGATE_DOWN, 
+                           lambda: self.handle_navigation('down'))
+        self.register_action(MainScreenAction.NAVIGATE_LEFT, 
+                           lambda: self.handle_navigation('left'))
+        self.register_action(MainScreenAction.NAVIGATE_RIGHT, 
+                           lambda: self.handle_navigation('right'))
+        self.register_action(MainScreenAction.ACTIVATE, 
+                           self.handle_activation)
+
+        
+        # Atajos adicionales específicos de la pantalla principal
+        self.register_action(MainScreenAction.TOGGLE_FORMAT, 
+                           self.manager.functions.toggle_paste_format)
+        self.register_action(MainScreenAction.SHOW_GROUPS, 
+                           self.manager.show_groups)
+        self.register_action(MainScreenAction.CLEAR_HISTORY, 
+                           self.manager.functions.clear_history)
+        
+        logger.debug("Main screen keys setup completed")
+
+    def register_action(self, action: MainScreenAction, callback: Callable) -> None:
+        """Registra una acción con su callback correspondiente"""
+        self.actions[action] = callback
+        if isinstance(action.value, str):
+            self.register_hotkey(action.value, callback)
+        logger.debug(f"Registered action: {action.name}")
+
+    def handle_navigation(self, direction: str) -> None:
+        """Maneja los eventos de navegación"""
+        event = type('Event', (), {'keysym': direction.capitalize()})()
+        
+        # Actualizar el estado de selección en el manager
+        current_selection = self.manager.navigation.current_strategy.state['current_selection']
+        self.manager.current_selection = current_selection
+        
+        if direction in ['up', 'down']:
+            self.manager.navigation.navigate_vertical(event)
+        else:
+            self.manager.navigation.navigate_horizontal(event)
+        logger.debug(f"Main screen navigation: {direction}")
+        
+    def handle_activation(self):
+        """Maneja la activación del elemento seleccionado"""
+        print("MainScreenKeyConfig: Handling activation")  # Debug
+        self.manager.navigation.current_strategy.activate_selected()
+        logger.debug("Main screen item activated")
+
+    def activate(self) -> None:
+        """Activa la configuración de teclas para la pantalla principal"""
+        super().activate()
+        for action, callback in self.actions.items():
+            if isinstance(action.value, str) and action.value.startswith('alt+'):
+                self.key_handler.global_hotkeys.register_hotkey(action.value, callback)
+        logger.info("Main screen key configuration activated")
+
+    def deactivate(self) -> None:
+        """Desactiva la configuración de teclas de la pantalla principal"""
+        super().deactivate()
+        for action in self.actions:
+            if isinstance(action.value, str) and action.value.startswith('alt+'):
+                self.key_handler.global_hotkeys.unregister_hotkey(action.value)
+        logger.info("Main screen key configuration deactivated")
+# navigation_main_screen.py
+
+from enum import Enum
+from typing import List, Optional, Dict
 import tkinter as tk
+import logging
+
+logger = logging.getLogger(__name__)
+
+class MainScreenElement(Enum):
+    TOP_BUTTONS = "top_buttons"
+    MAIN_BUTTONS = "main_buttons"
+    CARDS = "cards"
+    ICONS = "icons"
 
 class MainScreenNavigation:
     def __init__(self, manager):
         self.manager = manager
-        self.navigation_order = ['top_buttons', 'main_buttons', 'cards']   
+        self.navigation_state = {'enabled': True}
+        self.navigation_order = [
+            MainScreenElement.TOP_BUTTONS,
+            MainScreenElement.MAIN_BUTTONS,
+            MainScreenElement.CARDS
+        ]
+        self.current_element: Optional[MainScreenElement] = None
+        self.current_index: int = 0
+        self.state: Dict = self._initialize_state()
+        logger.debug("MainScreenNavigation initialized")
 
-    def navigate_vertical(self, event):
-        print(f"MainScreenNavigation: Navigating vertically {event.keysym}")
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        print(f"Before navigation: type={current_type}, index={current_index}")
+    def _initialize_state(self) -> Dict:
+        """Inicializa el estado de navegación"""
+        return {
+            'current_selection': {'type': 'main_buttons', 'index': 0},
+            'highlight_colors': {
+                'dark': {'normal': '#444444', 'icon': '#666666'},
+                'light': {'normal': '#cccccc', 'icon': '#aaaaaa'}
+            }
+        }
         
-        if event.keysym == 'Up':
-            self.move_up(current_type, current_index)
-        elif event.keysym == 'Down':
-            self.move_down(current_type, current_index)
+    def initialize_focus(self):
+        """Inicializa el foco en la pantalla principal"""
+        if self.get_cards_count() > 0:
+            self.state['current_selection'] = {'type': 'cards', 'index': 0}
+        else:
+            self.state['current_selection'] = {'type': 'main_buttons', 'index': 0}
+        
+        self.navigation_state['enabled'] = True 
+        self.update_highlights()
+        logger.debug(f"Main screen focus initialized: {self.state['current_selection']}")
 
+    def navigate_vertical(self, event) -> None:
+        """Gestiona la navegación vertical"""
+        direction = 1 if event.keysym == 'Down' else -1
+        self._update_selection_vertical(direction)
         self.update_highlights()
         self.ensure_visible()
-        print(f"After navigation: type={self.manager.current_selection['type']}, index={self.manager.current_selection['index']}")
-        self.update_highlights()
+        logger.debug(f"Vertical navigation: {event.keysym}")
 
-    def move_up(self, current_type, current_index):
-        if current_type in ['cards', 'icons']:
-            if current_index > 0:
-                self.manager.current_selection['index'] = current_index - 1
-            else:
-                self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        elif current_type == 'main_buttons':
-            self.manager.current_selection = {'type': 'top_buttons', 'index': 0}
-        elif current_type == 'top_buttons':
-            # Si ya estamos en los botones superiores, no hacemos nada
-            pass
-        print(f"After move_up: {self.manager.current_selection}")
+    def _update_selection_vertical(self, direction: int) -> None:
+        """Actualiza la selección actual en dirección vertical"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
         
-    def move_down(self, current_type, current_index):
-        if current_type == 'top_buttons':
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
-        elif current_type == 'main_buttons':
-            if self.get_cards_count() > 0:
-                self.manager.current_selection = {'type': 'cards', 'index': 0}
-        elif current_type == 'cards':
-            if current_index < self.get_cards_count() - 1:
-                self.manager.current_selection['index'] = current_index + 1
-        print(f"After move_down: {self.manager.current_selection}")
+        print(f"Before navigation: type={current_type}, index={current_index}")  # Debug
+
+        if direction > 0:  # Down
+            if current_type == MainScreenElement.TOP_BUTTONS.value:
+                self.state['current_selection'] = {
+                    'type': MainScreenElement.MAIN_BUTTONS.value,
+                    'index': 0
+                }
+            elif current_type == MainScreenElement.MAIN_BUTTONS.value:
+                if self.get_cards_count() > 0:
+                    self.state['current_selection'] = {
+                        'type': MainScreenElement.CARDS.value,
+                        'index': 0
+                    }
+            elif current_type == MainScreenElement.CARDS.value:
+                if current_index < self.get_cards_count() - 1:
+                    self.state['current_selection']['index'] = current_index + 1
+        else:  # Up
+            if current_type == MainScreenElement.CARDS.value:
+                if current_index > 0:
+                    self.state['current_selection']['index'] = current_index - 1
+                else:
+                    self.state['current_selection'] = {
+                        'type': MainScreenElement.MAIN_BUTTONS.value,
+                        'index': 0
+                    }
+            elif current_type == MainScreenElement.MAIN_BUTTONS.value:
+                self.state['current_selection'] = {
+                    'type': MainScreenElement.TOP_BUTTONS.value,
+                    'index': 0
+                }
         
-    def navigate_horizontal(self, event):
-        print(f"MainScreenNavigation: Navigating horizontally {event.keysym}")  
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-
-        if event.keysym == 'Left':
-            self.move_left(current_type, current_index)
-        elif event.keysym == 'Right':
-            self.move_right(current_type, current_index)
-
+        print(f"After navigation: type={self.state['current_selection']['type']}, index={self.state['current_selection']['index']}")  # Debug
+        
+        # Actualizar visualización
         self.update_highlights()
+        self.ensure_visible()
+    
+    def navigate_horizontal(self, event) -> None:
+        """Gestiona la navegación horizontal"""
+        print(f"MainScreenNavigation: Navigating horizontally {event.keysym}")  # Debug
+        direction = 1 if event.keysym == 'Right' else -1
+        self._update_selection_horizontal(direction)
+        self.update_highlights()
+        logger.debug(f"Horizontal navigation: {event.keysym}")
 
-    def move_left(self, current_type, current_index):
-        if current_type in ['top_buttons', 'main_buttons']:
-            self.manager.current_selection['index'] = (current_index - 1) % self.get_button_count(current_type)
-        elif current_type == 'icons':
-            if current_index % 3 > 0:
-                self.manager.current_selection['index'] = current_index - 1
-            else:
-                self.manager.current_selection = {'type': 'cards', 'index': current_index // 3}
+    def get_button_count(self, button_type: str) -> int:
+        """Obtiene el número de botones según el tipo"""
+        if button_type == MainScreenElement.TOP_BUTTONS.value:
+            return 3  # theme_button, clear_button, close_button
+        elif button_type == MainScreenElement.MAIN_BUTTONS.value:
+            return 3  # button1, button2, button3
+        return 0
 
-    def move_right(self, current_type, current_index):
-        if current_type in ['top_buttons', 'main_buttons']:
-            self.manager.current_selection['index'] = (current_index + 1) % self.get_button_count(current_type)
-        elif current_type == 'cards':
-            self.manager.current_selection = {'type': 'icons', 'index': current_index * 3}
-        elif current_type == 'icons':
-            if current_index % 3 < 2:
-                self.manager.current_selection['index'] = current_index + 1
+    def _update_selection_horizontal(self, direction: int) -> None:
+        """Actualiza la selección actual en dirección horizontal"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+        
+        print(f"Horizontal navigation - Before: type={current_type}, index={current_index}")  # Debug
+
+        if direction > 0:  # Right
+            if current_type in [MainScreenElement.TOP_BUTTONS.value, 
+                            MainScreenElement.MAIN_BUTTONS.value]:
+                button_count = self.get_button_count(current_type)
+                self.state['current_selection']['index'] = (current_index + 1) % button_count
+            elif current_type == MainScreenElement.CARDS.value:
+                self.state['current_selection'] = {
+                    'type': MainScreenElement.ICONS.value,
+                    'index': current_index * 3
+                }
+            elif current_type == MainScreenElement.ICONS.value:
+                if current_index % 3 < 2:  # Si no es el último icono
+                    self.state['current_selection']['index'] = current_index + 1
+        else:  # Left
+            if current_type in [MainScreenElement.TOP_BUTTONS.value, 
+                            MainScreenElement.MAIN_BUTTONS.value]:
+                button_count = self.get_button_count(current_type)
+                self.state['current_selection']['index'] = (current_index - 1) % button_count
+            elif current_type == MainScreenElement.ICONS.value:
+                if current_index % 3 > 0:  # Si no es el primer icono
+                    self.state['current_selection']['index'] = current_index - 1
+                else:
+                    self.state['current_selection'] = {
+                        'type': MainScreenElement.CARDS.value,
+                        'index': current_index // 3
+                    }
+        
+        print(f"Horizontal navigation - After: type={self.state['current_selection']['type']}, index={self.state['current_selection']['index']}")  # Debug
+        
+        # Actualizar visualización
+        self.update_highlights()
 
     def activate_selected(self, event=None):
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-
-        if current_type == 'main_buttons':
-            self.activate_main_button(current_index)
-        elif current_type == 'top_buttons':
-            self.activate_top_button(current_index)
-        elif current_type == 'cards':
-            self.activate_card(current_index)
-        elif current_type == 'icons':
-            self.activate_icon(current_index)
-
-    def activate_main_button(self, index):
-        if index == 0:  # Botón Grupos
-            self.manager.show_groups()
-        elif index == 1:  # Botón Pegar (con/sin formato)
-            self.manager.functions.toggle_paste_format()
-        elif index == 2:  # Botón Borrar Todo
-            self.manager.functions.clear_history()
-
-    def activate_top_button(self, index):
-        if index == 0:  # Botón Cambiar tema
-            self.manager.theme_manager.toggle_theme()
-        elif index == 1:  # Botón Configuración
-            self.manager.show_settings()
-        elif index == 2:  # Botón Cerrar app
-            self.manager.functions.exit_app()
-
-    def activate_card(self, index):
-        items = list(self.manager.clipboard_items.items())
-        if index < len(items):
-            item_id, item_data = items[index]
-            clipboard_data = item_data['text']
-            self.manager.key_handler.paste_content(clipboard_data)
-
-    def activate_icon(self, index):
-        items = list(self.manager.clipboard_items.keys())
-        card_index = index // 3
-        icon_position = index % 3
+        """Activa el elemento seleccionado actualmente"""
+        print(f"MainScreenNavigation: Attempting to activate selection")  # Debug
+        print(f"Current selection state: {self.state['current_selection']}")  # Debug
         
-        if card_index < len(items):
-            item_id = items[card_index]
-            if icon_position == 0:  # Arrow
-                self.manager.functions.on_arrow_click(item_id)
-            elif icon_position == 1:  # Pin
-                self.manager.functions.toggle_pin(item_id)
-            elif icon_position == 2:  # Delete
-                self.manager.functions.delete_item(item_id)
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+        
+        print(f"Activating: {current_type} at index {current_index}")  # Debug
 
-    def initialize_focus(self):
-        if self.get_cards_count() > 0:
-            self.manager.current_selection = {'type': 'cards', 'index': 0}
+        # Mapeo de tipos a funciones de activación
+        actions = {
+            'main_buttons': self._activate_main_button,
+            'top_buttons': self._activate_top_button,
+            'cards': self._activate_card,
+            'icons': self._activate_icon
+        }
+
+        if handler := actions.get(current_type):
+            print(f"Executing handler for {current_type}")  # Debug
+            handler(current_index)
         else:
-            self.manager.current_selection = {'type': 'main_buttons', 'index': 0}
+            print(f"No handler found for type: {current_type}")  # Debug
+            
+    def update_highlights(self) -> None:
+        """Actualiza los destacados visuales"""
+        print("Updating highlights")  # Debug
+        self._clear_all_highlights()
         
-        self.manager.root.focus_force()
-        self.manager.root.update_idletasks()
-        self.update_highlights()
-    
-    def update_highlights(self):
-        print("Updating highlights")
-        self.clear_all_highlights()
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+        highlight_color = self._get_highlight_color()
+        icon_highlight_color = self._get_icon_highlight_color()
         
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
-        
-        highlight_color = '#444444' if self.manager.is_dark_mode else '#cccccc'
-        icon_highlight_color = '#666666' if self.manager.is_dark_mode else '#aaaaaa'
-        
-        if current_type == 'main_buttons':
+        if current_type == MainScreenElement.MAIN_BUTTONS.value:
             buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
             if 0 <= current_index < len(buttons):
                 buttons[current_index].configure(bg=highlight_color)
         
-        elif current_type == 'top_buttons':
-            top_buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
-            if 0 <= current_index < len(top_buttons):
-                top_buttons[current_index].configure(bg=highlight_color)
+        elif current_type == MainScreenElement.TOP_BUTTONS.value:
+            buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
+            if 0 <= current_index < len(buttons):
+                buttons[current_index].configure(bg=highlight_color)
         
-        elif current_type == 'cards':
+        elif current_type == MainScreenElement.CARDS.value:
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
-                self.highlight_entire_card(cards[current_index], highlight_color)
+                self._highlight_card(cards[current_index], highlight_color)
         
-        elif current_type == 'icons':
+        elif current_type == MainScreenElement.ICONS.value:
             card_index = current_index // 3
             icon_position = current_index % 3
             cards = self.manager.cards_frame.winfo_children()
             
             if card_index < len(cards):
                 card = cards[card_index]
-                icons_frame = self.find_icons_frame(card)
+                icons_frame = self._find_icons_frame(card)
                 
                 if icons_frame and icon_position < len(icons_frame.winfo_children()):
+                    self._highlight_card(card, highlight_color)
                     icons = icons_frame.winfo_children()
                     if 0 <= icon_position < len(icons):
-                        self.highlight_entire_card(card, highlight_color)
                         icons[icon_position].configure(bg=icon_highlight_color)
-                        
-        print(f"Highlighted: {current_type}, index: {current_index}")
+        
         self.manager.root.update_idletasks()
         self.manager.root.after(10, self.manager.root.update)
 
-    def highlight_entire_card(self, card, color):
+    def handle_specific_keys(self, event) -> None:
+        """Maneja teclas específicas de la pantalla principal"""
+        key_handlers = {
+            'f5': self.refresh_view,
+            'escape': self.manager.key_handler.hide_window
+        }
+        
+        handler = key_handlers.get(event.keysym.lower())
+        if handler:
+            handler()
+            
+    def _move_up(self, current_type: str, current_index: int) -> None:
+        """Maneja el movimiento hacia arriba"""
+        if current_type in [MainScreenElement.CARDS.value, MainScreenElement.ICONS.value]:
+            if current_index > 0:
+                self.state['current_selection']['index'] = current_index - 1
+            else:
+                self.state['current_selection'] = {
+                    'type': MainScreenElement.MAIN_BUTTONS.value, 
+                    'index': 0
+                }
+        elif current_type == MainScreenElement.MAIN_BUTTONS.value:
+            self.state['current_selection'] = {
+                'type': MainScreenElement.TOP_BUTTONS.value, 
+                'index': 0
+            }
+        logger.debug(f"Moved up to {self.state['current_selection']}")
+
+    def _move_down(self, current_type: str, current_index: int) -> None:
+        """Maneja el movimiento hacia abajo"""
+        if current_type == MainScreenElement.TOP_BUTTONS.value:
+            self.state['current_selection'] = {
+                'type': MainScreenElement.MAIN_BUTTONS.value, 
+                'index': 0
+            }
+        elif current_type == MainScreenElement.MAIN_BUTTONS.value:
+            if self.get_cards_count() > 0:
+                self.state['current_selection'] = {
+                    'type': MainScreenElement.CARDS.value, 
+                    'index': 0
+                }
+        elif current_type == MainScreenElement.CARDS.value:
+            if current_index < self.get_cards_count() - 1:
+                self.state['current_selection']['index'] = current_index + 1
+        logger.debug(f"Moved down to {self.state['current_selection']}")
+
+    def _move_left(self, current_type: str, current_index: int) -> None:
+        """Maneja el movimiento hacia la izquierda"""
+        if current_type in [MainScreenElement.TOP_BUTTONS.value, 
+                        MainScreenElement.MAIN_BUTTONS.value]:
+            button_count = self.get_button_count(current_type)
+            self.state['current_selection']['index'] = (current_index - 1) % button_count
+        elif current_type == MainScreenElement.ICONS.value:
+            if current_index % 3 > 0:
+                self.state['current_selection']['index'] = current_index - 1
+            else:
+                self.state['current_selection'] = {
+                    'type': MainScreenElement.CARDS.value,
+                    'index': current_index // 3
+                }
+        logger.debug(f"Moved left to {self.state['current_selection']}")
+
+    def _move_right(self, current_type: str, current_index: int) -> None:
+        """Maneja el movimiento hacia la derecha"""
+        if current_type in [MainScreenElement.TOP_BUTTONS.value, 
+                        MainScreenElement.MAIN_BUTTONS.value]:
+            button_count = self.get_button_count(current_type)
+            self.state['current_selection']['index'] = (current_index + 1) % button_count
+        elif current_type == MainScreenElement.CARDS.value:
+            self.state['current_selection'] = {
+                'type': MainScreenElement.ICONS.value,
+                'index': current_index * 3
+            }
+        elif current_type == MainScreenElement.ICONS.value:
+            if current_index % 3 < 2:
+                self.state['current_selection']['index'] = current_index + 1
+        logger.debug(f"Moved right to {self.state['current_selection']}")
+
+    def _activate_main_button(self, index: int) -> None:
+        """Activa un botón principal"""
+        actions = {
+            0: ('groups', self.manager.show_groups),
+            1: ('format', self.manager.functions.toggle_paste_format),
+            2: ('clear', self.manager.functions.clear_history)
+        }
+        if action := actions.get(index):
+            action_name, action_func = action
+            action_func()
+            logger.debug(f"Activated main button '{action_name}' at index {index}")
+    
+    def _activate_top_button(self, index: int) -> None:
+        """Activa un botón superior"""
+        actions = {
+            0: ('theme', self.manager.theme_manager.toggle_theme),
+            1: ('settings', self.manager.show_settings),
+            2: ('exit', self.manager.functions.exit_app)
+        }
+        if action := actions.get(index):
+            action_name, action_func = action
+            action_func()
+            logger.debug(f"Activated top button '{action_name}' at index {index}")
+            
+    def _activate_card(self, index: int) -> None:
+        """Activa una tarjeta (pegar contenido)"""
+        items = list(self.manager.clipboard_items.items())
+        if index < len(items):
+            item_id, item_data = items[index]
+            clipboard_data = item_data['text']
+            self.manager.key_handler.paste_content(clipboard_data)
+            logger.debug(f"Activated card at index {index}")
+
+    def _activate_icon(self, index):
+        """Activa un icono de tarjeta"""
+        print(f"Activating icon at index {index}")  # Debug
+        items = list(self.manager.clipboard_items.keys())
+        card_index = index // 3
+        icon_position = index % 3
+        
+        print(f"Card index: {card_index}, Icon position: {icon_position}")  # Debug
+        
+        if card_index < len(items):
+            item_id = items[card_index]
+            actions = {
+                0: ('arrow', lambda: self.manager.functions.on_arrow_click(item_id)),
+                1: ('pin', lambda: self.manager.functions.toggle_pin(item_id)),
+                2: ('delete', lambda: self.manager.functions.delete_item(item_id))
+            }
+            
+            if action := actions.get(icon_position):
+                action_name, action_func = action
+                print(f"Executing {action_name} action for icon")  # Debug
+                action_func()
+            else:
+                print(f"No action found for icon position {icon_position}")  # Debug
+                    
+    def get_cards_count(self) -> int:
+        """Obtiene el número de tarjetas en la pantalla principal"""
+        return len(self.manager.cards_frame.winfo_children())
+    
+    
+    def _get_highlight_color(self) -> str:
+        """Obtiene el color de resaltado según el tema actual"""
+        theme_type = 'dark' if self.manager.is_dark_mode else 'light'
+        return self.state['highlight_colors'][theme_type]['normal']
+
+    def _get_icon_highlight_color(self) -> str:
+        """Obtiene el color de resaltado para iconos según el tema actual"""
+        theme_type = 'dark' if self.manager.is_dark_mode else 'light'
+        return self.state['highlight_colors'][theme_type]['icon']
+
+    def _highlight_current_selection(self) -> None:
+        """Aplica el destacado al elemento actualmente seleccionado"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+        highlight_color = self._get_highlight_color()
+        icon_highlight_color = self._get_icon_highlight_color()
+
+        if current_type == MainScreenElement.MAIN_BUTTONS.value:
+            buttons = [
+                self.manager.button1,
+                self.manager.button2,
+                self.manager.button3
+            ]
+            if 0 <= current_index < len(buttons):
+                buttons[current_index].configure(bg=highlight_color)
+        
+        elif current_type == MainScreenElement.TOP_BUTTONS.value:
+            buttons = [
+                self.manager.theme_button,
+                self.manager.clear_button,
+                self.manager.close_button
+            ]
+            if 0 <= current_index < len(buttons):
+                buttons[current_index].configure(bg=highlight_color)
+        
+        elif current_type == MainScreenElement.CARDS.value:
+            cards = self.manager.cards_frame.winfo_children()
+            if current_index < len(cards):
+                self._highlight_card(cards[current_index], highlight_color)
+        
+        elif current_type == MainScreenElement.ICONS.value:
+            cards = self.manager.cards_frame.winfo_children()
+            card_index = current_index // 3
+            icon_index = current_index % 3
+            
+            if card_index < len(cards):
+                card = cards[card_index]
+                # Resaltar la tarjeta completa
+                self._highlight_card(card, highlight_color)
+                
+                # Resaltar el icono específico
+                icons_frame = self._find_icons_frame(card)
+                if icons_frame and icon_index < len(icons_frame.winfo_children()):
+                    # Resetear el color de todos los iconos primero
+                    for icon in icons_frame.winfo_children():
+                        icon.configure(bg=highlight_color)
+                    # Resaltar el icono seleccionado
+                    icons_frame.winfo_children()[icon_index].configure(bg=icon_highlight_color)
+
+    def _highlight_card(self, card: tk.Frame, color: str) -> None:
+        """Resalta una tarjeta específica y sus elementos"""
         card.configure(bg=color)
         for child in card.winfo_children():
             if isinstance(child, tk.Frame):
                 child.configure(bg=color)
                 for subchild in child.winfo_children():
-                    if isinstance(subchild, (tk.Label, tk.Button)):
+                    if isinstance(subchild, tk.Label):
                         subchild.configure(bg=color)
-            elif isinstance(child, (tk.Label, tk.Button)):
+                    elif isinstance(subchild, tk.Button):
+                        # No cambiar el color de los botones aquí
+                        # a menos que estemos en modo tarjeta
+                        if self.state['current_selection']['type'] == MainScreenElement.CARDS.value:
+                            subchild.configure(bg=color)
+            elif isinstance(child, tk.Label):
                 child.configure(bg=color)
+            elif isinstance(child, tk.Button):
+                if self.state['current_selection']['type'] == MainScreenElement.CARDS.value:
+                    child.configure(bg=color)
 
-    def clear_all_highlights(self):
+    def _find_icons_frame(self, card: tk.Frame) -> Optional[tk.Frame]:
+        """Encuentra el frame que contiene los iconos en una tarjeta"""
+        for child in card.winfo_children():
+            if isinstance(child, tk.Frame) and len(child.winfo_children()) > 0:
+                if all(isinstance(btn, tk.Button) for btn in child.winfo_children()):
+                    return child
+        return None
+
+    def _clear_all_highlights(self) -> None:
+        """Limpia todos los destacados visuales"""
         theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
         base_color = theme['card_bg']
         button_color = theme['button_bg']
         
-        buttons = [self.manager.button1, self.manager.button2, self.manager.button3,
-                self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
-        for button in buttons:
+        # Limpiar botones superiores
+        top_buttons = [
+            self.manager.theme_button,
+            self.manager.clear_button,
+            self.manager.close_button
+        ]
+        for button in top_buttons:
             button.configure(bg=button_color)
         
+        # Limpiar botones principales
+        main_buttons = [
+            self.manager.button1,
+            self.manager.button2,
+            self.manager.button3
+        ]
+        for button in main_buttons:
+            button.configure(bg=button_color)
+        
+        # Limpiar tarjetas y sus iconos
         for card in self.manager.cards_frame.winfo_children():
-            self.reset_card_colors(card, base_color, button_color)
+            self._reset_card_colors(card, base_color, button_color)
 
-    def reset_card_colors(self, card, base_color, button_color):
+    def _reset_card_colors(self, card: tk.Frame, base_color: str, button_color: str) -> None:
+        """Resetea los colores de una tarjeta específica y sus elementos"""
         card.configure(bg=base_color)
         for child in card.winfo_children():
             if isinstance(child, tk.Frame):
@@ -2144,37 +2930,51 @@ class MainScreenNavigation:
             elif isinstance(child, tk.Button):
                 child.configure(bg=button_color)
 
-    def ensure_visible(self):
-        current_type = self.manager.current_selection['type']
-        current_index = self.manager.current_selection['index']
+    def update_highlights(self) -> None:
+        """Actualiza los destacados visuales"""
+        print("Updating highlights")  # Debug
+        self._clear_all_highlights()
+        self._highlight_current_selection()
+        
+        # Forzar la actualización visual
+        self.manager.root.update_idletasks()
+    
+    def ensure_visible(self) -> None:
+        """Asegura que el elemento seleccionado esté visible"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
         
         if current_type == 'cards':
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
-                widget = cards[current_index]
+                card = cards[current_index]
                 bbox = self.manager.canvas.bbox("all")
                 if bbox:
-                    widget_y = widget.winfo_y()
+                    card_y = card.winfo_y()
                     canvas_height = self.manager.canvas.winfo_height()
-                    if widget_y > 0:
-                        self.manager.canvas.yview_moveto(widget_y / bbox[3])
-
-    def get_cards_count(self):
-        return len(self.manager.cards_frame.winfo_children())
-
-    def get_button_count(self, button_type):
-        if button_type == 'top_buttons':
-            return 3  # Asumiendo que siempre hay 3 botones superiores
-        elif button_type == 'main_buttons':
-            return 3  # Asumiendo que siempre hay 3 botones principales
-
-    def find_icons_frame(self, card):
-        for child in card.winfo_children():
-            if isinstance(child, tk.Frame) and child.winfo_children() and isinstance(child.winfo_children()[0], tk.Button):
-                return child
-        return None
-
-
+                    if card_y > 0:
+                        self.manager.canvas.yview_moveto(card_y / bbox[3])
+    
+    def _handle_activation(self):
+        """Maneja específicamente la activación por Enter"""
+        print("Handling Enter activation")  # Debug
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+        
+        print(f"Activating: type={current_type}, index={current_index}")  # Debug
+        
+        activation_map = {
+            'main_buttons': self._activate_main_button,
+            'top_buttons': self._activate_top_button,
+            'cards': self._activate_card,
+            'icons': self._activate_icon
+        }
+        
+        if handler := activation_map.get(current_type):
+            handler(current_index)
+            print(f"Activation handler executed for {current_type}")  # Debug
+        else:
+            print(f"No activation handler found for {current_type}")  # Debug
 
 // Archivo: navigation_strategies.py
 # navigation_strategies.py
@@ -2399,6 +3199,7 @@ import win32gui
 import pyautogui
 
 from functions import Functions
+from keys_groups_screen import GroupsScreenKeyConfig
 from navigation import Navigation
 from theme_manager import ThemeManager
 from groups_manager import GroupManager
@@ -2475,13 +3276,18 @@ class ClipboardManager:
         self.key_handler = KeyHandler(self)
         self.setup_key_bindings()
         self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
+        self.groups_screen_keys = GroupsScreenKeyConfig(self.key_handler, self)
         self.main_screen_navigation = MainScreenNavigation(self)
+        
+        # Inicialización del sistema de teclas y navegación
+        self.setup_keyboard_system() 
         
         self.root.bind('<Key>', self.key_handler.handle_key_press)
         
         self.group_manager.groups = groups
         
         self.create_gui()
+        self.setup_button_bindings()  
         self.load_saved_data()
         
         self.navigation = Navigation(self)
@@ -2612,12 +3418,6 @@ class ClipboardManager:
         # Este método se llama cuando el canvas actualiza su región de scroll
         self.canvas.yview_moveto(float(start))
 
-    def show_groups(self):
-        logger.debug("Mostrando ventana de grupos")
-        self.group_manager.show_groups_window()
-        self.navigation.set_strategy('groups')
-        self.root.withdraw()
-
     def show_settings(self):
         self.settings_manager.show_settings_window()
         self.navigation.set_strategy('settings')
@@ -2639,14 +3439,89 @@ class ClipboardManager:
         # Refrescar las tarjetas
         self.functions.refresh_cards()
 
+    def setup_keyboard_system(self):
+        """Inicializa y configura el sistema de teclas y navegación"""
+        try:
+            # Configurar navegación
+            self.navigation = Navigation(self)
+            
+            # Vincular eventos de teclado
+            def handle_key(event):
+                print(f"Root received key event: {event.keysym}")  # Debug
+                if self.is_visible:
+                    self.navigation.handle_keyboard_event(event)
+            
+            self.root.bind('<KeyPress>', handle_key)
+            
+            # Establecer estrategia inicial
+            self.navigation.set_strategy('main')
+            
+            print("Keyboard system initialized")  # Debug
+            
+        except Exception as e:
+            logger.error(f"Error setting up keyboard system: {e}")
+            raise
+
+    def _handle_keypress(self, event):
+        """Manejador central de eventos de teclado"""
+        print(f"Root received key event: {event.keysym}")  # Debug
+        if self.is_visible:
+            self.navigation.handle_keyboard_event(event)
+
+    def _bind_keyboard_events(self):
+        """Vincula los eventos de teclado a la ventana principal"""
+        try:
+            self.root.bind('<Key>', self.handle_keyboard_event)
+            logger.debug("Keyboard events bound successfully")
+        except Exception as e:
+            logger.error(f"Error binding keyboard events: {e}")
+            raise
+
+    def _setup_screen_keys(self):
+        """Configura las teclas específicas de cada pantalla"""
+        try:
+            self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
+            self.main_screen_navigation = MainScreenNavigation(self)
+            logger.debug("Screen keys configured successfully")
+        except Exception as e:
+            logger.error(f"Error setting up screen keys: {e}")
+            raise
+        
+    def register_global_shortcuts(self):
+        """Registra los atajos de teclado globales básicos"""
+        # Atajo principal de la aplicación
+        self.key_handler.global_hotkeys.register_hotkey(
+            self.hotkey, 
+            self.key_handler.toggle_window
+        )
+        
+        # Otros atajos globales que quieras añadir
+        # self.key_handler.global_hotkeys.register_hotkey('alt+q', self.functions.exit_app)
+        # etc...
+
+    def handle_keyboard_event(self, event):
+        """Maneja los eventos de teclado según la pantalla actual"""
+        if self.is_visible:
+            self.navigation.handle_keyboard_event(event)
+
+    def show_groups(self):
+        """Muestra la ventana de grupos y configura su navegación"""
+        self.group_manager.show_groups_window()
+        self.navigation.set_strategy('groups')
+        self.main_screen_keys.deactivate()
+        self.groups_screen_keys.activate()  # Activar configuración de teclas de grupos
+        self.root.withdraw()
+
     def show_main_screen(self):
+        """Muestra la pantalla principal y configura su navegación"""
         self.navigation.set_strategy('main')
+        self.groups_screen_keys.deactivate()  # Desactivar configuración de teclas de grupos
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
         self.refresh_main_screen()
-        self.main_screen_keys.activate()  # Activar las teclas de la pantalla principal
-
+        self.main_screen_keys.activate()  # Activa las teclas de la pantalla principal
+        
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()
         self.group_manager.groups = groups
@@ -2703,6 +3578,26 @@ class ClipboardManager:
     def exit_app(self):
         self.root.quit()
         sys.exit()
+        
+    def setup_button_bindings(self) -> None:
+        """Configura los enlaces de botones para clic y Enter"""
+        # Botones principales
+        self.button1.bind('<Button-1>', lambda e: self.activate_button('main_buttons', 0))
+        self.button2.bind('<Button-1>', lambda e: self.activate_button('main_buttons', 1))
+        self.button3.bind('<Button-1>', lambda e: self.activate_button('main_buttons', 2))
+
+        # Botones superiores
+        self.theme_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 0))
+        self.clear_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 1))
+        self.close_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 2))
+
+    def activate_button(self, button_type: str, index: int) -> None:
+        """Activa un botón específico"""
+        self.navigation.current_strategy.state['current_selection'] = {
+            'type': button_type,
+            'index': index
+        }
+        self.navigation.current_strategy.activate_selected()
 
 // Archivo: theme_manager.py
 #theme_manager.py

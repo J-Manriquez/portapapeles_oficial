@@ -15,7 +15,7 @@ class MainScreenKeyConfig(ScreenKeyConfig):
         self.register_hotkey('down', lambda: self.handle_navigation('down'))
         self.register_hotkey('left', lambda: self.handle_navigation('left'))
         self.register_hotkey('right', lambda: self.handle_navigation('right'))
-        self.register_hotkey('enter', self.handle_activation)
+        self.register_hotkey('return', self.handle_activation)
         logger.debug("Main screen keys setup completed")
 
     def handle_navigation(self, direction):

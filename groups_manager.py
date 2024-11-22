@@ -89,7 +89,7 @@ class GroupManager:
 
             # Frame contenedor dentro del canvas para el scroll
             self.groups_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
-            canvas_window = self.canvas.create_window((0, 0), window=self.groups_frame, anchor='nw', width=295)
+            canvas_window = self.canvas.create_window((0, 0), window=self.groups_frame, anchor='nw')
 
             # Ajustar el ancho del frame contenedor al canvas
             def on_canvas_resize(event):
@@ -168,7 +168,7 @@ class GroupManager:
 
         for group_id, group_info in self.groups.items():
             group_card = tk.Frame(self.groups_frame, bg=self.theme_manager.colors['dark']['card_bg'], cursor="hand2")
-            group_card.pack(fill=tk.X, padx=8, pady=2)
+            group_card.pack(fill=tk.X, padx=4, pady=2)
             
             group_card.bind("<Button-1>", lambda e, gid=group_id: self.show_group_content(gid))
 

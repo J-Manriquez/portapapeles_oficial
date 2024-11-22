@@ -8,6 +8,7 @@ import win32gui
 import pyautogui
 
 from functions import Functions
+from keys_groups_screen import GroupsScreenKeyConfig
 from navigation import Navigation
 from theme_manager import ThemeManager
 from groups_manager import GroupManager
@@ -84,13 +85,18 @@ class ClipboardManager:
         self.key_handler = KeyHandler(self)
         self.setup_key_bindings()
         self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
+        self.groups_screen_keys = GroupsScreenKeyConfig(self.key_handler, self)
         self.main_screen_navigation = MainScreenNavigation(self)
+        
+        # Inicialización del sistema de teclas y navegación
+        self.setup_keyboard_system() 
         
         self.root.bind('<Key>', self.key_handler.handle_key_press)
         
         self.group_manager.groups = groups
         
         self.create_gui()
+        self.setup_button_bindings()  
         self.load_saved_data()
         
         self.navigation = Navigation(self)
@@ -221,12 +227,6 @@ class ClipboardManager:
         # Este método se llama cuando el canvas actualiza su región de scroll
         self.canvas.yview_moveto(float(start))
 
-    def show_groups(self):
-        logger.debug("Mostrando ventana de grupos")
-        self.group_manager.show_groups_window()
-        self.navigation.set_strategy('groups')
-        self.root.withdraw()
-
     def show_settings(self):
         self.settings_manager.show_settings_window()
         self.navigation.set_strategy('settings')
@@ -248,14 +248,89 @@ class ClipboardManager:
         # Refrescar las tarjetas
         self.functions.refresh_cards()
 
+    def setup_keyboard_system(self):
+        """Inicializa y configura el sistema de teclas y navegación"""
+        try:
+            # Configurar navegación
+            self.navigation = Navigation(self)
+            
+            # Vincular eventos de teclado
+            def handle_key(event):
+                print(f"Root received key event: {event.keysym}")  # Debug
+                if self.is_visible:
+                    self.navigation.handle_keyboard_event(event)
+            
+            self.root.bind('<KeyPress>', handle_key)
+            
+            # Establecer estrategia inicial
+            self.navigation.set_strategy('main')
+            
+            print("Keyboard system initialized")  # Debug
+            
+        except Exception as e:
+            logger.error(f"Error setting up keyboard system: {e}")
+            raise
+
+    def _handle_keypress(self, event):
+        """Manejador central de eventos de teclado"""
+        print(f"Root received key event: {event.keysym}")  # Debug
+        if self.is_visible:
+            self.navigation.handle_keyboard_event(event)
+
+    def _bind_keyboard_events(self):
+        """Vincula los eventos de teclado a la ventana principal"""
+        try:
+            self.root.bind('<Key>', self.handle_keyboard_event)
+            logger.debug("Keyboard events bound successfully")
+        except Exception as e:
+            logger.error(f"Error binding keyboard events: {e}")
+            raise
+
+    def _setup_screen_keys(self):
+        """Configura las teclas específicas de cada pantalla"""
+        try:
+            self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
+            self.main_screen_navigation = MainScreenNavigation(self)
+            logger.debug("Screen keys configured successfully")
+        except Exception as e:
+            logger.error(f"Error setting up screen keys: {e}")
+            raise
+        
+    def register_global_shortcuts(self):
+        """Registra los atajos de teclado globales básicos"""
+        # Atajo principal de la aplicación
+        self.key_handler.global_hotkeys.register_hotkey(
+            self.hotkey, 
+            self.key_handler.toggle_window
+        )
+        
+        # Otros atajos globales que quieras añadir
+        # self.key_handler.global_hotkeys.register_hotkey('alt+q', self.functions.exit_app)
+        # etc...
+
+    def handle_keyboard_event(self, event):
+        """Maneja los eventos de teclado según la pantalla actual"""
+        if self.is_visible:
+            self.navigation.handle_keyboard_event(event)
+
+    def show_groups(self):
+        """Muestra la ventana de grupos y configura su navegación"""
+        self.group_manager.show_groups_window()
+        self.navigation.set_strategy('groups')
+        self.main_screen_keys.deactivate()
+        self.groups_screen_keys.activate()  # Activar configuración de teclas de grupos
+        self.root.withdraw()
+
     def show_main_screen(self):
+        """Muestra la pantalla principal y configura su navegación"""
         self.navigation.set_strategy('main')
+        self.groups_screen_keys.deactivate()  # Desactivar configuración de teclas de grupos
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
         self.refresh_main_screen()
-        self.main_screen_keys.activate()  # Activar las teclas de la pantalla principal
-
+        self.main_screen_keys.activate()  # Activa las teclas de la pantalla principal
+        
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()
         self.group_manager.groups = groups
@@ -312,3 +387,23 @@ class ClipboardManager:
     def exit_app(self):
         self.root.quit()
         sys.exit()
+        
+    def setup_button_bindings(self) -> None:
+        """Configura los enlaces de botones para clic y Enter"""
+        # Botones principales
+        self.button1.bind('<Button-1>', lambda e: self.activate_button('main_buttons', 0))
+        self.button2.bind('<Button-1>', lambda e: self.activate_button('main_buttons', 1))
+        self.button3.bind('<Button-1>', lambda e: self.activate_button('main_buttons', 2))
+
+        # Botones superiores
+        self.theme_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 0))
+        self.clear_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 1))
+        self.close_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 2))
+
+    def activate_button(self, button_type: str, index: int) -> None:
+        """Activa un botón específico"""
+        self.navigation.current_strategy.state['current_selection'] = {
+            'type': button_type,
+            'index': index
+        }
+        self.navigation.current_strategy.activate_selected()

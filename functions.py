@@ -9,6 +9,7 @@ import win32clipboard # type: ignore
 import win32gui # type: ignore
 import time
 import sys
+from tkinter import ttk
 from bs4 import BeautifulSoup
 from utils import measure_time, process_text
 
@@ -82,8 +83,33 @@ class Functions:
                                 fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
         delete_button.pack(side=tk.LEFT)
         
+        # Agregar bindings para la tarjeta completa
+        card_container.bind('<Button-1>', lambda e: self.activate_card(index))
+        text_label.bind('<Button-1>', lambda e: self.activate_card(index))
+
+        # Configurar bindings para los iconos
+        arrow_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 0))
+        pin_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 1))
+        delete_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 2))
+        
         return card_container
     
+    def activate_card(self, index: int) -> None:
+        """Activa una tarjeta específica"""
+        self.manager.navigation.current_strategy.state['current_selection'] = {
+            'type': 'cards',
+            'index': index
+        }
+        self.manager.navigation.current_strategy.activate_selected()
+
+    def activate_card_icon(self, card_index: int, icon_index: int) -> None:
+        """Activa un icono específico de una tarjeta"""
+        self.manager.navigation.current_strategy.state['current_selection'] = {
+            'type': 'icons',
+            'index': card_index * 3 + icon_index
+        }
+        self.manager.navigation.current_strategy.activate_selected()
+        
     def calculate_card_height(self, text_data):
         if isinstance(text_data, dict):
             text = text_data.get('text', '')
@@ -323,45 +349,134 @@ class Functions:
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
         
+    # def on_arrow_click(self, item_id):
+    #     if not self.manager.group_manager.groups:
+    #         tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
+    #         return
+
+    #     dialog = tk.Toplevel(self.manager.root)
+    #     dialog.title("Seleccionar Grupo")
+        
+    #     window_width = self.manager.settings['width']
+    #     window_height = self.manager.settings['height']
+        
+    #     x = self.manager.window_x + 20
+    #     y = self.manager.window_y + 20
+        
+    #     dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
+                
+    #     # dialog.geometry("295x400")
+    #     dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
+    #     dialog.overrideredirect(True)
+    #     dialog.attributes('-topmost', True)
+
+    #     # Barra de título personalizada
+    #     title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
+    #     title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+
+    #     title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
+    #                         bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
+    #     title_label.pack(side=tk.LEFT, padx=5)
+
+    #     close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
+    #                             font=('Segoe UI', 10, 'bold'), bd=0, padx=10,
+    #                             bg=self.manager.theme_manager.colors['dark']['button_bg'],
+    #                             fg=self.manager.theme_manager.colors['dark']['button_fg'])
+    #     close_button.pack(side=tk.RIGHT)
+
+    #     # Contenido
+    #     content_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
+    #     content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    #     for group_id, group_info in self.manager.group_manager.groups.items():
+    #         group_button = tk.Button(content_frame, text=group_info['name'],
+    #                                 command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
+    #                                 bg=self.manager.theme_manager.colors['dark']['button_bg'],
+    #                                 fg=self.manager.theme_manager.colors['dark']['button_fg'],
+    #                                 activebackground=self.manager.theme_manager.colors['dark']['active_bg'],
+    #                                 activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
+    #                                 bd=0, padx=10, pady=5, width=30, anchor='w')
+    #         group_button.pack(fill=tk.X, pady=2)
+
+    #     # Hacer la ventana arrastrable
+    #     def start_move(event):
+    #         dialog.x = event.x
+    #         dialog.y = event.y
+
+    #     def on_move(event):
+    #         deltax = event.x - dialog.x
+    #         deltay = event.y - dialog.y
+    #         x = dialog.winfo_x() + deltax
+    #         y = dialog.winfo_y() + deltay
+    #         dialog.geometry(f"+{x}+{y}")
+
+    #     title_frame.bind('<Button-1>', start_move)
+    #     title_frame.bind('<B1-Motion>', on_move)
+
+    # def add_to_group(self, item_id, group_id, dialog):
+    #     self.manager.group_manager.add_item_to_group(item_id, group_id)
+    #     dialog.destroy()
+    #     # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
+    
     def on_arrow_click(self, item_id):
+        self.select_group(item_id)
+        self.manager.navigation.set_strategy('select_group')
+        
+    def select_group(self, item_id):
         if not self.manager.group_manager.groups:
             tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
             return
-
+        
+        # Ocultar la ventana principal
+        self.manager.root.withdraw()
         dialog = tk.Toplevel(self.manager.root)
+        self.manager.select_group_dialog = dialog  # Guarda una referencia al diálogo
+        
         dialog.title("Seleccionar Grupo")
         
         window_width = self.manager.settings['width']
         window_height = self.manager.settings['height']
         
-        x = self.manager.window_x + 20
-        y = self.manager.window_y + 20
+        x = self.manager.window_x
+        y = self.manager.window_y
         
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
-                
-        # dialog.geometry("295x400")
+            
         dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
-
         # Barra de título personalizada
         title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
-        title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
-
+        title_frame.pack(fill=tk.X, padx=5, pady=(0, 4))
         title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
                             bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
         title_label.pack(side=tk.LEFT, padx=5)
-
-        close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
-                                font=('Segoe UI', 10, 'bold'), bd=0, padx=10,
+        close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_dialog(dialog),
+                                font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                 bg=self.manager.theme_manager.colors['dark']['button_bg'],
                                 fg=self.manager.theme_manager.colors['dark']['button_fg'])
         close_button.pack(side=tk.RIGHT)
-
-        # Contenido
-        content_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
-        content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
+        # Canvas para scroll y contenedor de grupos
+        canvas = tk.Canvas(dialog, bg=dialog.cget('bg'), bd=0, highlightthickness=0)
+        canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=0)
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(dialog, orient=tk.VERTICAL, command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        # Frame contenedor dentro del canvas para el scroll
+        content_frame = tk.Frame(canvas, bg=dialog.cget('bg'))
+        canvas_window = canvas.create_window((0, 0), window=content_frame, anchor='nw', width=295)
+        # Ajustar el ancho del frame contenedor al canvas
+        def on_canvas_resize(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+        canvas.bind("<Configure>", on_canvas_resize)
+        # Configuración de scroll
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        content_frame.bind("<Configure>", on_frame_configure)
+        # Función para desplazamiento con la rueda del mouse
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
         for group_id, group_info in self.manager.group_manager.groups.items():
             group_button = tk.Button(content_frame, text=group_info['name'],
                                     command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
@@ -371,23 +486,32 @@ class Functions:
                                     activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
                                     bd=0, padx=10, pady=5, width=30, anchor='w')
             group_button.pack(fill=tk.X, pady=2)
-
         # Hacer la ventana arrastrable
         def start_move(event):
             dialog.x = event.x
             dialog.y = event.y
-
         def on_move(event):
             deltax = event.x - dialog.x
             deltay = event.y - dialog.y
             x = dialog.winfo_x() + deltax
             y = dialog.winfo_y() + deltay
             dialog.geometry(f"+{x}+{y}")
-
         title_frame.bind('<Button-1>', start_move)
         title_frame.bind('<B1-Motion>', on_move)
-
+        # Configurar la navegación para la pantalla de selección de grupo
+        self.manager.navigation.set_strategy('select_group')
+        self.manager.select_group_keys.activate()
+    def close_dialog(self, dialog):
+        dialog.destroy()
+        self.manager.root.deiconify()
+        self.manager.navigation.set_strategy('main')  # Volver a la estrategia de navegación principal
+        self.manager.main_screen_keys.activate()  # Reactivar 
+        if hasattr(self.manager, 'select_group_dialog'):
+            delattr(self.manager, 'select_group_dialog')
     def add_to_group(self, item_id, group_id, dialog):
         self.manager.group_manager.add_item_to_group(item_id, group_id)
         dialog.destroy()
-        # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
+        self.manager.root.deiconify()
+        self.manager.navigation.set_strategy('main')  # Volver a la estrategia de navegación principal
+        if hasattr(self.manager, 'select_group_dialog'):
+            delattr(self.manager, 'select_group_dialog')
