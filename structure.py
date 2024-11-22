@@ -8,6 +8,7 @@ import win32gui
 import pyautogui
 
 from functions import Functions
+from keys_group_content_screen import GroupContentScreenKeyConfig
 from keys_groups_screen import GroupsScreenKeyConfig
 from keys_select_group_screen import SelectGroupScreenKeyConfig
 from navigation import Navigation
@@ -88,6 +89,7 @@ class ClipboardManager:
         self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
         self.groups_screen_keys = GroupsScreenKeyConfig(self.key_handler, self)
         self.select_group_screen_keys = SelectGroupScreenKeyConfig(self.key_handler, self)
+        self.group_content_screen_keys = GroupContentScreenKeyConfig(self.key_handler, self)
         self.main_screen_navigation = MainScreenNavigation(self)
         
         # Inicialización del sistema de teclas y navegación

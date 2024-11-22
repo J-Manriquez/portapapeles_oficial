@@ -2,13 +2,15 @@
 
 import tkinter as tk
 from tkinter import ttk
-
 from utils import process_text
+import logging
+
+logger = logging.getLogger(__name__)
 
 class GroupContentManager:
-    def __init__(self, master, clipboard_manager, theme_manager, settings_manager):
+    def __init__(self, master, manager, theme_manager, settings_manager):
         self.master = master
-        self.clipboard_manager = clipboard_manager
+        self.manager = manager
         self.theme_manager = theme_manager
         self.settings_manager = settings_manager
         self.content_window = None
@@ -34,18 +36,23 @@ class GroupContentManager:
         return min(max(content_height + 5, self.min_card_height), self.max_card_height)
 
     def show_group_content(self, group_id):
+        """Muestra el contenido de un grupo específico"""
+        self.current_group_id = group_id  # Guardar el ID del grupo actual
+        
+        # Crear o mostrar la ventana de contenido
         if self.content_window is None or not self.content_window.winfo_exists():
             self.content_window = tk.Toplevel(self.master)
-            self.content_window.title(f"Contenido del Grupo: {self.clipboard_manager.group_manager.groups[group_id]['name']}")
+            self.content_window.title(f"Contenido del Grupo: {self.manager.group_manager.groups[group_id]['name']}")
             
+            # Configurar dimensiones y posición
             window_width = self.settings_manager.settings['width']
             window_height = self.settings_manager.settings['height']
-            
-            x = self.clipboard_manager.window_x 
-            y = self.clipboard_manager.window_y 
+            x = self.manager.window_x 
+            y = self.manager.window_y 
             
             self.content_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-                    
+            
+            # Configurar apariencia de la ventana
             self.content_window.overrideredirect(True)
             self.content_window.configure(bg=self.theme_manager.colors['dark']['bg'])
             self.content_window.attributes('-topmost', True)
@@ -54,30 +61,42 @@ class GroupContentManager:
             title_frame = tk.Frame(self.content_window, bg=self.theme_manager.colors['dark']['bg'])
             title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
 
-            title_label = tk.Label(title_frame, text=f"Grupo: {self.clipboard_manager.group_manager.groups[group_id]['name']}", 
+            title_label = tk.Label(title_frame, 
+                                text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}", 
                                 font=('Segoe UI', 10, 'bold'),
                                 bg=self.theme_manager.colors['dark']['bg'],
                                 fg=self.theme_manager.colors['dark']['fg'])
             title_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-            close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_content_window(group_id),
-                                    font=('Segoe UI', 10, 'bold'),bd=0, padx=10, width=5, height=2,
-                                    bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
+            close_button = tk.Button(title_frame, 
+                                text="❌", 
+                                command=lambda: self.close_content_window(group_id),
+                                font=('Segoe UI', 10, 'bold'),
+                                bd=0, padx=10, width=5, height=2,
+                                bg=self.theme_manager.colors['dark']['button_bg'],
+                                fg=self.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
             # Canvas y scroll para los items
-            self.canvas = tk.Canvas(self.content_window, bg=self.theme_manager.colors['dark']['bg'], highlightthickness=0)
+            self.canvas = tk.Canvas(self.content_window, 
+                                bg=self.theme_manager.colors['dark']['bg'], 
+                                highlightthickness=0)
             self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-            self.scrollbar = ttk.Scrollbar(self.content_window, orient="vertical", command=self.canvas.yview)
+            self.scrollbar = ttk.Scrollbar(self.content_window, 
+                                        orient="vertical", 
+                                        command=self.canvas.yview)
             self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
             self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-            self.items_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
-            self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
-            self.canvas_window = self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
+            # Frame para los items
+            self.items_frame = tk.Frame(self.canvas, 
+                                    bg=self.theme_manager.colors['dark']['bg'])
+            self.canvas_window = self.canvas.create_window((0, 0), 
+                                                        window=self.items_frame, 
+                                                        anchor='nw', 
+                                                        width=window_width)
 
             # Configurar el desplazamiento con la rueda del ratón
             def _on_mousewheel(event):
@@ -95,26 +114,78 @@ class GroupContentManager:
             # Hacer la ventana arrastrable
             title_frame.bind('<Button-1>', self.start_move)
             title_frame.bind('<B1-Motion>', self.on_move)
+            
+            # Vincular eventos de teclado
+            self.content_window.bind('<Key>', self.manager.key_handler.handle_key_press)
+            
+            # Configurar la navegación y los atajos de teclado
+            def after_dialog_shown():
+                self.content_window.focus_force()
+                self.manager.navigation.set_strategy('group_content')
+                self.manager.group_content_screen_keys.activate()
+                self.manager.navigation.initialize_focus()
+                self.manager.navigation.update_highlights()
+                
+                # Desactivar otras configuraciones de teclas
+                if hasattr(self.manager, 'main_screen_keys'):
+                    self.manager.main_screen_keys.deactivate()
+                if hasattr(self.manager, 'groups_screen_keys'):
+                    self.manager.groups_screen_keys.deactivate()
+                if hasattr(self.manager, 'select_group_screen_keys'):
+                    self.manager.select_group_screen_keys.deactivate()
+            
+            # Dar tiempo a que la ventana se muestre completamente
+            self.content_window.after(100, after_dialog_shown)
 
         else:
-            self.content_window.deiconify()  # Muestra la ventana si estaba oculta
+            # Si la ventana ya existe, mostrarla y actualizarla
+            self.content_window.deiconify()
             self.content_window.lift()
             self.content_window.attributes('-topmost', True)
             self.content_window.after_idle(self.content_window.attributes, '-topmost', False)
+            
+            # Actualizar el título
+            for widget in self.content_window.winfo_children():
+                if isinstance(widget, tk.Frame):
+                    for child in widget.winfo_children():
+                        if isinstance(child, tk.Label):
+                            child.configure(text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}")
+                            break
+                    break
 
         # Mostrar items del grupo
         self.refresh_group_content(group_id)
 
-        # Restaurar la posición del scroll
+        # Restaurar la posición del scroll si existe
         if hasattr(self, 'scroll_position'):
             self.canvas.yview_moveto(self.scroll_position)
+            
+        # Asegurarse de que el foco y la navegación estén correctamente configurados
+        self.content_window.after(200, lambda: self.manager.navigation.current_strategy.initialize_focus())
+        
+        logger.debug(f"Grupo content window shown for group {group_id}")
+    
+    def _initialize_content_view(self):
+        """Inicializa la vista de contenido después de mostrar la ventana"""
+        self.content_window.focus_force()
+        self.manager.navigation.initialize_focus()
+        self.manager.navigation.update_highlights()
 
     def close_content_window(self, group_id):
-        if self.canvas:
-            # Guardar la posición actual del scroll
-            self.scroll_position = self.canvas.yview()[0]
-        self.content_window.withdraw()
-        self.clipboard_manager.group_manager.show_groups_window()
+        """Cierra la ventana de contenido y restaura la navegación de grupos"""
+        if self.content_window:
+            # Desactivar la configuración de teclas actual
+            self.manager.group_content_screen_keys.deactivate()
+            
+            # Guardar la posición del scroll si es necesario
+            if hasattr(self, 'canvas'):
+                self.scroll_position = self.canvas.yview()[0]
+                
+            self.content_window.withdraw()
+            
+            # Restaurar la navegación de grupos
+            self.manager.group_manager.show_groups_window()
+            self.manager.navigation.set_strategy('groups')
 
     def start_move(self, event):
         self.x = event.x
@@ -138,7 +209,7 @@ class GroupContentManager:
         current_theme = 'dark'  # Puedes cambiar esto si soportas modo claro/oscuro
         theme = self.theme_manager.colors[current_theme]
 
-        for item in self.clipboard_manager.group_manager.groups[group_id]['items']:
+        for item in self.manager.group_manager.groups[group_id]['items']:
             card_width = window_width - 4  # Ajuste mínimo para el padding
             card_height = max(self.min_card_height, self.calculate_card_height(item['text']))
     
@@ -187,39 +258,39 @@ class GroupContentManager:
 
             edit_button = tk.Button(icons_frame, text="✏️", 
                                     command=lambda i=item['id']: self.edit_group_item(group_id, i),
-                                    font=('Segoe UI', 10), bd=0,
-                                    padx=2,
-                                    bg=bg_color,
-                                    fg=theme['fg'])
+                                    font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
+                                    bg=bg_color, fg=theme['fg'])
             edit_button.pack(side=tk.LEFT)
 
-            delete_button = tk.Button(icons_frame, text="🗑️", 
+            delete_button = tk.Button(icons_frame, text="❌", 
                                     command=lambda i=item['id']: self.remove_item_from_group(group_id, i, self.items_frame),
-                                    font=('Segoe UI', 10), bd=0,
-                                    padx=2,
-                                    bg=bg_color,
-                                    fg=theme['fg'])
+                                    font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
+                                    bg=bg_color, fg=theme['fg'])
             delete_button.pack(side=tk.LEFT)
 
         # Actualizar el scrollregion después de añadir todos los widgets
         self.items_frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
         
+        # Después de actualizar el contenido:
+        if hasattr(self.manager.navigation, 'current_strategy'):
+            self.manager.navigation.current_strategy.update_highlights()
+        
     def remove_item_from_group(self, group_id, item_id, items_frame):
-        self.clipboard_manager.group_manager.groups[group_id]['items'] = [item for item in self.clipboard_manager.group_manager.groups[group_id]['items'] if item['id'] != item_id]
-        self.clipboard_manager.group_manager.save_groups()
+        self.manager.group_manager.groups[group_id]['items'] = [item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] != item_id]
+        self.manager.group_manager.save_groups()
         self.refresh_group_content(group_id)
 
     def edit_group_item(self, group_id, item_id):
-        item = next((item for item in self.clipboard_manager.group_manager.groups[group_id]['items'] if item['id'] == item_id), None)
+        item = next((item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] == item_id), None)
         if not item:
             return
 
         dialog = tk.Toplevel(self.master)
         dialog.title("Editar Item")
         
-        x = self.clipboard_manager.window_x + 40
-        y = self.clipboard_manager.window_y + 40
+        x = self.manager.window_x + 40
+        y = self.manager.window_y + 40
         
         if isinstance(item['text'], dict):
             text = item['text'].get('text', '')
@@ -289,7 +360,7 @@ class GroupContentManager:
                 else:
                     # Si el texto no ha cambiado, mantenemos el formato original
                     item['text'] = {'text': new_text, 'formatted': original_format}
-                self.clipboard_manager.group_manager.save_groups()
+                self.manager.group_manager.save_groups()
                 dialog.destroy()
                 self.refresh_group_content(group_id)
 

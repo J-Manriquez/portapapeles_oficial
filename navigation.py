@@ -2,6 +2,7 @@
 import logging
 from typing import Dict, Optional, Any
 from enum import Enum, auto
+from navigation_group_content_screen import GroupContentScreenNavigation
 from navigation_main_screen import MainScreenNavigation
 from navigation_groups_screen import GroupsScreenNavigation
 from navigation_select_group_screen import SelectGroupScreenNavigation
@@ -13,6 +14,7 @@ class ScreenType(Enum):
     GROUPS = auto()
     SETTINGS = auto()
     SELECT_GROUP = auto()
+    GROUP_CONTENT = auto()
 
 class Navigation:
     def __init__(self, manager):
@@ -25,7 +27,8 @@ class Navigation:
         self.strategies: Dict[ScreenType, Any] = {
             ScreenType.MAIN: MainScreenNavigation(manager),
             ScreenType.GROUPS: GroupsScreenNavigation(manager),
-            ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(manager)
+            ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(manager),
+            ScreenType.GROUP_CONTENT: GroupContentScreenNavigation(manager)  
         }
         self.current_strategy = self.strategies[ScreenType.MAIN]
         self.current_screen = ScreenType.MAIN
@@ -37,7 +40,8 @@ class Navigation:
             self.strategies = {
                 ScreenType.MAIN: MainScreenNavigation(self.manager),
                 ScreenType.GROUPS: GroupsScreenNavigation(self.manager),
-                ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(self.manager) 
+                ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(self.manager),
+                ScreenType.GROUP_CONTENT: GroupContentScreenNavigation(self.manager) 
             }
             self.set_strategy('main')
         except Exception as e:
@@ -45,26 +49,28 @@ class Navigation:
             raise
 
     def set_strategy(self, screen_type: str) -> None:
-        """Cambia la estrategia de navegación con verificaciones"""
         try:
             screen_mapping = {
                 'main': ScreenType.MAIN,
                 'groups': ScreenType.GROUPS,
                 'select_group': ScreenType.SELECT_GROUP,
                 'settings': ScreenType.SETTINGS,
+                'group_content': ScreenType.GROUP_CONTENT,
             }
             
             if screen_type not in screen_mapping:
                 raise ValueError(f"Invalid screen type: {screen_type}")
             
-            if screen_type == 'select_group':
-                self.manager.root.after(100, lambda: self.current_strategy.ensure_window_focus())
-
             screen_enum = screen_mapping[screen_type]
             if screen_enum in self.strategies:
                 self.current_screen = screen_enum
                 self.current_strategy = self.strategies[screen_enum]
                 self._configure_screen_navigation(screen_enum)
+                
+                # Asegurar que se actualice el foco y los highlights
+                self.current_strategy.initialize_focus()
+                self.current_strategy.update_highlights()
+                
                 logger.debug(f"Navigation strategy set to: {screen_type}")
             else:
                 raise ValueError(f"No strategy found for screen: {screen_type}")
@@ -83,20 +89,25 @@ class Navigation:
 
     def _configure_screen_navigation(self, screen_type: ScreenType) -> None:
         """Configura la navegación específica para cada pantalla"""
+        # Primero desactivar todas las configuraciones de teclas
+        if hasattr(self.manager, 'main_screen_keys'):
+            self.manager.main_screen_keys.deactivate()
+        if hasattr(self.manager, 'groups_screen_keys'):
+            self.manager.groups_screen_keys.deactivate()
+        if hasattr(self.manager, 'select_group_screen_keys'):
+            self.manager.select_group_screen_keys.deactivate()
+        if hasattr(self.manager, 'group_content_screen_keys'):
+            self.manager.group_content_screen_keys.deactivate()
+        
+         # Luego activar la configuración correspondiente
         if screen_type == ScreenType.MAIN:
             self.manager.main_screen_keys.activate()
-            if hasattr(self.manager, 'groups_screen_keys'):
-                self.manager.groups_screen_keys.deactivate()
         elif screen_type == ScreenType.GROUPS:
-            self.manager.main_screen_keys.deactivate()
-            if hasattr(self.manager, 'groups_screen_keys'):
-                self.manager.groups_screen_keys.activate()
+            self.manager.groups_screen_keys.activate()
         elif screen_type == ScreenType.SELECT_GROUP:
-            self.manager.main_screen_keys.deactivate()
-            if hasattr(self.manager, 'groups_screen_keys'):
-                self.manager.groups_screen_keys.deactivate()
-            if hasattr(self.manager, 'select_group_screen_keys'):
-                self.manager.select_group_screen_keys.activate()
+            self.manager.select_group_screen_keys.activate()
+        elif screen_type == ScreenType.GROUP_CONTENT:
+            self.manager.group_content_screen_keys.activate()
 
     def handle_keyboard_event(self, event):
         """Maneja los eventos de teclado"""
