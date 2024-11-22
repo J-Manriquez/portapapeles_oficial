@@ -59,7 +59,7 @@ class Functions:
         icons_frame.pack(side=tk.RIGHT, padx=3)
 
         arrow_button = tk.Button(icons_frame, text="➡️",
-                                command=lambda: self.on_arrow_click(item_id),
+                                command=lambda: self.show_select_group_screen(item_id),
                                 font=('Segoe UI', 10), bd=0,
                                 padx=2,
                                 bg=card_container['bg'],
@@ -349,78 +349,45 @@ class Functions:
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
         
-    # def on_arrow_click(self, item_id):
-    #     if not self.manager.group_manager.groups:
-    #         tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
-    #         return
-
-    #     dialog = tk.Toplevel(self.manager.root)
-    #     dialog.title("Seleccionar Grupo")
+    def show_select_group_screen(self, item_id):
+        """Muestra la pantalla de selección de grupo"""
+        self.root.withdraw()  # Ocultar ventana principal
         
-    #     window_width = self.manager.settings['width']
-    #     window_height = self.manager.settings['height']
+        def after_dialog_shown():
+            if hasattr(self, 'select_group_dialog'):
+                self.select_group_dialog.focus_force()
+                self.navigation.set_strategy('select_group')
+                self.select_group_screen_keys.activate()
+                self.navigation.initialize_focus()
         
-    #     x = self.manager.window_x + 20
-    #     y = self.manager.window_y + 20
+        # Mostrar el diálogo de selección de grupo
+        self.functions.on_arrow_click(item_id)
         
-    #     dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
-                
-    #     # dialog.geometry("295x400")
-    #     dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
-    #     dialog.overrideredirect(True)
-    #     dialog.attributes('-topmost', True)
-
-    #     # Barra de título personalizada
-    #     title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
-    #     title_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
-
-    #     title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
-    #                         bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
-    #     title_label.pack(side=tk.LEFT, padx=5)
-
-    #     close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
-    #                             font=('Segoe UI', 10, 'bold'), bd=0, padx=10,
-    #                             bg=self.manager.theme_manager.colors['dark']['button_bg'],
-    #                             fg=self.manager.theme_manager.colors['dark']['button_fg'])
-    #     close_button.pack(side=tk.RIGHT)
-
-    #     # Contenido
-    #     content_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
-    #     content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-    #     for group_id, group_info in self.manager.group_manager.groups.items():
-    #         group_button = tk.Button(content_frame, text=group_info['name'],
-    #                                 command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
-    #                                 bg=self.manager.theme_manager.colors['dark']['button_bg'],
-    #                                 fg=self.manager.theme_manager.colors['dark']['button_fg'],
-    #                                 activebackground=self.manager.theme_manager.colors['dark']['active_bg'],
-    #                                 activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
-    #                                 bd=0, padx=10, pady=5, width=30, anchor='w')
-    #         group_button.pack(fill=tk.X, pady=2)
-
-    #     # Hacer la ventana arrastrable
-    #     def start_move(event):
-    #         dialog.x = event.x
-    #         dialog.y = event.y
-
-    #     def on_move(event):
-    #         deltax = event.x - dialog.x
-    #         deltay = event.y - dialog.y
-    #         x = dialog.winfo_x() + deltax
-    #         y = dialog.winfo_y() + deltay
-    #         dialog.geometry(f"+{x}+{y}")
-
-    #     title_frame.bind('<Button-1>', start_move)
-    #     title_frame.bind('<B1-Motion>', on_move)
-
-    # def add_to_group(self, item_id, group_id, dialog):
-    #     self.manager.group_manager.add_item_to_group(item_id, group_id)
-    #     dialog.destroy()
-    #     # tk.messagebox.showinfo("Éxito", "Item agregado al grupo exitosamente.")
+        # Asegurar que el foco se mantenga después de mostrar la ventana
+        self.root.after(100, after_dialog_shown)
     
     def on_arrow_click(self, item_id):
+        if not self.manager.group_manager.groups:
+            tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
+            return
+        
         self.select_group(item_id)
-        self.manager.navigation.set_strategy('select_group')
+        
+        # Asegurarse de que el diálogo se ha creado correctamente
+        if hasattr(self.manager, 'select_group_dialog') and self.manager.select_group_dialog.winfo_exists():
+            dialog = self.manager.select_group_dialog
+            
+            # Vincular eventos de teclado
+            dialog.bind('<Key>', self.manager.key_handler.handle_key_press)
+            dialog.focus_force()
+            dialog.grab_set()
+            
+            # Configurar la navegación
+            self.manager.navigation.set_strategy('select_group')
+            self.manager.select_group_screen_keys.activate()
+            
+            # Inicializar el foco y los highlights después de que la ventana sea visible
+            self.manager.root.after(100, lambda: self.manager.navigation.initialize_focus())
         
     def select_group(self, item_id):
         if not self.manager.group_manager.groups:
@@ -498,16 +465,40 @@ class Functions:
             dialog.geometry(f"+{x}+{y}")
         title_frame.bind('<Button-1>', start_move)
         title_frame.bind('<B1-Motion>', on_move)
+        
         # Configurar la navegación para la pantalla de selección de grupo
         self.manager.navigation.set_strategy('select_group')
-        self.manager.select_group_keys.activate()
+        self.manager.select_group_screen_keys.activate()
+        
+        dialog.focus_force()  # Forzar el foco en la ventana de diálogo
+        dialog.grab_set()     # Hacer que la ventana sea modal
+        
+        # Asegurarse de que el foco se mantenga después de mostrar la ventana
+        self.manager.root.after(100, dialog.focus_force)
+        
+        # Actualizar la navegación después de que la ventana esté visible
+        self.manager.root.after(200, lambda: self.manager.navigation.initialize_focus())
+        
+        # # Inicializar el foco y los highlights
+        # self.manager.navigation.initialize_focus()
+    
     def close_dialog(self, dialog):
+        """Cierra el diálogo y restaura el foco en la pantalla principal"""
         dialog.destroy()
-        self.manager.root.deiconify()
-        self.manager.navigation.set_strategy('main')  # Volver a la estrategia de navegación principal
-        self.manager.main_screen_keys.activate()  # Reactivar 
-        if hasattr(self.manager, 'select_group_dialog'):
-            delattr(self.manager, 'select_group_dialog')
+        self.manager.show_main_screen()
+
+        # Asegurar que el foco vuelva a la pantalla principal
+        def restore_main_focus():
+            self.manager.root.focus_force()
+            self.manager.navigation.set_strategy('main')
+            self.manager.main_screen_keys.activate()
+            self.manager.select_group_screen_keys.deactivate()
+            self.manager.navigation.initialize_focus()
+            self.manager.navigation.update_highlights()
+        
+        # Dar tiempo a que la ventana principal se muestre
+        self.manager.root.after(100, restore_main_focus)
+    
     def add_to_group(self, item_id, group_id, dialog):
         self.manager.group_manager.add_item_to_group(item_id, group_id)
         dialog.destroy()

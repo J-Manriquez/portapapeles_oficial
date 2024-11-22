@@ -138,7 +138,13 @@ class MainScreenNavigation:
             self.state['current_selection'] = {'type': 'main_buttons', 'index': 0}
         
         self.navigation_state['enabled'] = True 
+        
+        # Asegurar que la ventana principal tenga el foco
+        self.manager.root.focus_force()
+        
+        # Actualizar los highlights después de inicializar el foco
         self.update_highlights()
+        
         logger.debug(f"Main screen focus initialized: {self.state['current_selection']}")
 
     def navigate_vertical(self, event) -> None:

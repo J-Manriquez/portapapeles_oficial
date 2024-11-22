@@ -4,6 +4,7 @@ from typing import Dict, Optional, Any
 from enum import Enum, auto
 from navigation_main_screen import MainScreenNavigation
 from navigation_groups_screen import GroupsScreenNavigation
+from navigation_select_group_screen import SelectGroupScreenNavigation
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class ScreenType(Enum):
     MAIN = auto()
     GROUPS = auto()
     SETTINGS = auto()
+    SELECT_GROUP = auto()
 
 class Navigation:
     def __init__(self, manager):
@@ -23,6 +25,7 @@ class Navigation:
         self.strategies: Dict[ScreenType, Any] = {
             ScreenType.MAIN: MainScreenNavigation(manager),
             ScreenType.GROUPS: GroupsScreenNavigation(manager),
+            ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(manager)
         }
         self.current_strategy = self.strategies[ScreenType.MAIN]
         self.current_screen = ScreenType.MAIN
@@ -33,7 +36,8 @@ class Navigation:
         try:
             self.strategies = {
                 ScreenType.MAIN: MainScreenNavigation(self.manager),
-                ScreenType.GROUPS: GroupsScreenNavigation(self.manager)
+                ScreenType.GROUPS: GroupsScreenNavigation(self.manager),
+                ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(self.manager) 
             }
             self.set_strategy('main')
         except Exception as e:
@@ -46,11 +50,15 @@ class Navigation:
             screen_mapping = {
                 'main': ScreenType.MAIN,
                 'groups': ScreenType.GROUPS,
-                'settings': ScreenType.SETTINGS
+                'select_group': ScreenType.SELECT_GROUP,
+                'settings': ScreenType.SETTINGS,
             }
             
             if screen_type not in screen_mapping:
                 raise ValueError(f"Invalid screen type: {screen_type}")
+            
+            if screen_type == 'select_group':
+                self.manager.root.after(100, lambda: self.current_strategy.ensure_window_focus())
 
             screen_enum = screen_mapping[screen_type]
             if screen_enum in self.strategies:
@@ -73,27 +81,6 @@ class Navigation:
         except Exception as e:
             logger.critical(f"Critical error in navigation fallback: {e}")
 
-    def set_strategy(self, screen_type: str) -> None:
-        """Cambia la estrategia de navegación según la pantalla"""
-        screen_mapping = {
-            'main': ScreenType.MAIN,
-            'groups': ScreenType.GROUPS,
-            'settings': ScreenType.SETTINGS
-        }
-        
-        if screen_type not in screen_mapping:
-            logger.error(f"Unknown screen type: {screen_type}")
-            return
-            
-        screen_enum = screen_mapping[screen_type]
-        if screen_enum in self.strategies:
-            self.current_screen = screen_enum
-            self.current_strategy = self.strategies[screen_enum]
-            self._configure_screen_navigation(screen_enum)
-            logger.debug(f"Navigation strategy set to: {screen_type}")
-        else:
-            logger.error(f"No strategy found for screen: {screen_type}")
-
     def _configure_screen_navigation(self, screen_type: ScreenType) -> None:
         """Configura la navegación específica para cada pantalla"""
         if screen_type == ScreenType.MAIN:
@@ -104,6 +91,12 @@ class Navigation:
             self.manager.main_screen_keys.deactivate()
             if hasattr(self.manager, 'groups_screen_keys'):
                 self.manager.groups_screen_keys.activate()
+        elif screen_type == ScreenType.SELECT_GROUP:
+            self.manager.main_screen_keys.deactivate()
+            if hasattr(self.manager, 'groups_screen_keys'):
+                self.manager.groups_screen_keys.deactivate()
+            if hasattr(self.manager, 'select_group_screen_keys'):
+                self.manager.select_group_screen_keys.activate()
 
     def handle_keyboard_event(self, event):
         """Maneja los eventos de teclado"""
@@ -214,3 +207,5 @@ class Navigation:
         
         # Programar la próxima verificación
         self.manager.root.after(1000, self.check_window_state)
+        
+    

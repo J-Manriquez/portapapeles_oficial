@@ -9,6 +9,7 @@ import pyautogui
 
 from functions import Functions
 from keys_groups_screen import GroupsScreenKeyConfig
+from keys_select_group_screen import SelectGroupScreenKeyConfig
 from navigation import Navigation
 from theme_manager import ThemeManager
 from groups_manager import GroupManager
@@ -86,6 +87,7 @@ class ClipboardManager:
         self.setup_key_bindings()
         self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
         self.groups_screen_keys = GroupsScreenKeyConfig(self.key_handler, self)
+        self.select_group_screen_keys = SelectGroupScreenKeyConfig(self.key_handler, self)
         self.main_screen_navigation = MainScreenNavigation(self)
         
         # Inicialización del sistema de teclas y navegación
@@ -324,12 +326,26 @@ class ClipboardManager:
     def show_main_screen(self):
         """Muestra la pantalla principal y configura su navegación"""
         self.navigation.set_strategy('main')
-        self.groups_screen_keys.deactivate()  # Desactivar configuración de teclas de grupos
+        
+        # Desactivar otras configuraciones de teclas
+        if hasattr(self, 'groups_screen_keys'):
+            self.groups_screen_keys.deactivate()
+        if hasattr(self, 'select_group_screen_keys'):
+            self.select_group_screen_keys.deactivate()
+        
+        # Mostrar y enfocar la ventana principal
         self.root.deiconify()
         self.root.lift()
-        self.root.focus_force()
-        self.refresh_main_screen()
-        self.main_screen_keys.activate()  # Activa las teclas de la pantalla principal
+        
+        def setup_main_screen():
+            self.root.focus_force()
+            self.refresh_main_screen()
+            self.main_screen_keys.activate()
+            self.navigation.initialize_focus()
+            self.navigation.update_highlights()
+        
+        # Dar tiempo a que la ventana se muestre
+        self.root.after(100, setup_main_screen)
         
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()

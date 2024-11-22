@@ -22,6 +22,99 @@
                             "italic": false
                         }
                     }
+                },
+                {
+                    "id": "b613aa01-13ba-419e-9ef2-ceef812653b4",
+                    "text": {
+                        "text": "close_settings_window",
+                        "formatted": {
+                            "font": "Consolas, 'Courier New', monospace",
+                            "size": null,
+                            "color": null,
+                            "bold": false,
+                            "italic": false,
+                            "rtf": null,
+                            "html": true,
+                            "underline": null,
+                            "strikethrough": null,
+                            "superscript": null,
+                            "subscript": null,
+                            "background_color": null,
+                            "alignment": null
+                        }
+                    }
+                }
+            ]
+        },
+        "d6ba9ad6-4d3c-4221-8fc4-d1310938076e": {
+            "name": "xs",
+            "items": [
+                {
+                    "id": "a8764c32-9db7-4488-aef6-45b9409f32f2",
+                    "text": {
+                        "text": "if screen_type == 'select_group':\r\n            self.manager.root.after(100, lambda: self.current_strategy.ensure_window_focus())",
+                        "formatted": {
+                            "html": true,
+                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
+                            "bold": false,
+                            "italic": false
+                        }
+                    }
+                },
+                {
+                    "id": "29e2c747-f468-4ba0-880a-0520e8c75f16",
+                    "text": {
+                        "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
+                        "formatted": {
+                            "html": true,
+                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
+                            "bold": false,
+                            "italic": false
+                        }
+                    }
+                }
+            ]
+        },
+        "2d0a0775-806f-4998-9eff-f7302daf4486": {
+            "name": "xd",
+            "items": [
+                {
+                    "id": "b613aa01-13ba-419e-9ef2-ceef812653b4",
+                    "text": {
+                        "text": "close_settings_window",
+                        "formatted": {
+                            "font": "Consolas, 'Courier New', monospace",
+                            "size": null,
+                            "color": null,
+                            "bold": false,
+                            "italic": false,
+                            "rtf": null,
+                            "html": true,
+                            "underline": null,
+                            "strikethrough": null,
+                            "superscript": null,
+                            "subscript": null,
+                            "background_color": null,
+                            "alignment": null
+                        }
+                    }
+                }
+            ]
+        },
+        "ee1462c1-8f15-4c0a-ba76-3b5f6e2ea9fa": {
+            "name": "peo",
+            "items": [
+                {
+                    "id": "29e2c747-f468-4ba0-880a-0520e8c75f16",
+                    "text": {
+                        "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
+                        "formatted": {
+                            "html": true,
+                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
+                            "bold": false,
+                            "italic": false
+                        }
+                    }
                 }
             ]
         }
@@ -32,6 +125,28 @@
                 "text": "close_settings_window",
                 "format": {
                     "font": "Consolas, 'Courier New', monospace",
+                    "size": null,
+                    "color": null,
+                    "bold": false,
+                    "italic": false,
+                    "rtf": null,
+                    "html": true,
+                    "underline": null,
+                    "strikethrough": null,
+                    "superscript": null,
+                    "subscript": null,
+                    "background_color": null,
+                    "alignment": null
+                }
+            },
+            "pinned": true,
+            "with_format": false
+        },
+        "29e2c747-f468-4ba0-880a-0520e8c75f16": {
+            "text": {
+                "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
+                "format": {
+                    "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
                     "size": null,
                     "color": null,
                     "bold": false,

@@ -77,6 +77,13 @@ class KeyHandler:
         """Establece la pantalla actual para manejar los atajos de teclado"""
         self.current_screen = screen
         logger.debug(f"Set current screen to: {screen}")
+        
+        # Limpiar los atajos anteriores
+        self.screen_specific_hotkeys = {}
+        
+        # Reconfigurar los atajos según la pantalla actual
+        if screen == 'select_group':
+            self.manager.select_group_screen_keys.setup_keys()
 
     def handle_key_press(self, event):
         """Maneja las pulsaciones de teclas"""
@@ -101,6 +108,12 @@ class KeyHandler:
             self.global_hotkeys._hotkeys[key]()
             return True
             
+        # Asegurar que la ventana correcta tiene el foco
+        if self.current_screen == 'main':
+            self.manager.root.focus_force()
+        elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):
+            self.manager.select_group_dialog.focus_force()
+        
         return False
 
     def setup_main_hotkey(self) -> None:
