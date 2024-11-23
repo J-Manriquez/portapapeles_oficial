@@ -39,6 +39,14 @@ class GroupContentManager:
         """Muestra el contenido de un grupo específico"""
         self.current_group_id = group_id  # Guardar el ID del grupo actual
         
+        # Si existe una ventana anterior, destruirla para evitar problemas de estado
+        if hasattr(self, 'content_window') and self.content_window:
+            self.content_window.destroy()
+            
+        # Siempre crear una nueva ventana
+        if self.content_window is not None:
+            self.content_window.destroy()
+        
         # Crear o mostrar la ventana de contenido
         if self.content_window is None or not self.content_window.winfo_exists():
             self.content_window = tk.Toplevel(self.master)
@@ -121,6 +129,7 @@ class GroupContentManager:
             # Configurar la navegación y los atajos de teclado
             def after_dialog_shown():
                 self.content_window.focus_force()
+                self.content_window.grab_set()  # Asegurar que la ventana tenga el foco exclusivo
                 self.manager.navigation.set_strategy('group_content')
                 self.manager.group_content_screen_keys.activate()
                 self.manager.navigation.initialize_focus()
@@ -133,6 +142,9 @@ class GroupContentManager:
                     self.manager.groups_screen_keys.deactivate()
                 if hasattr(self.manager, 'select_group_screen_keys'):
                     self.manager.select_group_screen_keys.deactivate()
+            
+            # Dar tiempo a que la ventana se muestre completamente
+            self.content_window.after(100, after_dialog_shown)
             
             # Dar tiempo a que la ventana se muestre completamente
             self.content_window.after(100, after_dialog_shown)
@@ -181,7 +193,9 @@ class GroupContentManager:
             if hasattr(self, 'canvas'):
                 self.scroll_position = self.canvas.yview()[0]
                 
-            self.content_window.withdraw()
+            # self.content_window.withdraw()
+            self.content_window.destroy()
+            self.content_window = None
             
             # Restaurar la navegación de grupos
             self.manager.group_manager.show_groups_window()

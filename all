@@ -978,8 +978,10 @@ class GroupManager:
 
 import tkinter as tk
 from tkinter import ttk
-
 from utils import process_text
+import logging
+
+logger = logging.getLogger(__name__)
 
 class GroupContentManager:
     def __init__(self, master, manager, theme_manager, settings_manager):
@@ -1010,19 +1012,23 @@ class GroupContentManager:
         return min(max(content_height + 5, self.min_card_height), self.max_card_height)
 
     def show_group_content(self, group_id):
+        """Muestra el contenido de un grupo específico"""
         self.current_group_id = group_id  # Guardar el ID del grupo actual
+        
+        # Crear o mostrar la ventana de contenido
         if self.content_window is None or not self.content_window.winfo_exists():
             self.content_window = tk.Toplevel(self.master)
             self.content_window.title(f"Contenido del Grupo: {self.manager.group_manager.groups[group_id]['name']}")
             
+            # Configurar dimensiones y posición
             window_width = self.settings_manager.settings['width']
             window_height = self.settings_manager.settings['height']
-            
             x = self.manager.window_x 
             y = self.manager.window_y 
             
             self.content_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-                    
+            
+            # Configurar apariencia de la ventana
             self.content_window.overrideredirect(True)
             self.content_window.configure(bg=self.theme_manager.colors['dark']['bg'])
             self.content_window.attributes('-topmost', True)
@@ -1031,30 +1037,42 @@ class GroupContentManager:
             title_frame = tk.Frame(self.content_window, bg=self.theme_manager.colors['dark']['bg'])
             title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
 
-            title_label = tk.Label(title_frame, text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}", 
+            title_label = tk.Label(title_frame, 
+                                text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}", 
                                 font=('Segoe UI', 10, 'bold'),
                                 bg=self.theme_manager.colors['dark']['bg'],
                                 fg=self.theme_manager.colors['dark']['fg'])
             title_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-            close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_content_window(group_id),
-                                    font=('Segoe UI', 10, 'bold'),bd=0, padx=10, width=5, height=2,
-                                    bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
+            close_button = tk.Button(title_frame, 
+                                text="❌", 
+                                command=lambda: self.close_content_window(group_id),
+                                font=('Segoe UI', 10, 'bold'),
+                                bd=0, padx=10, width=5, height=2,
+                                bg=self.theme_manager.colors['dark']['button_bg'],
+                                fg=self.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
             # Canvas y scroll para los items
-            self.canvas = tk.Canvas(self.content_window, bg=self.theme_manager.colors['dark']['bg'], highlightthickness=0)
+            self.canvas = tk.Canvas(self.content_window, 
+                                bg=self.theme_manager.colors['dark']['bg'], 
+                                highlightthickness=0)
             self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-            self.scrollbar = ttk.Scrollbar(self.content_window, orient="vertical", command=self.canvas.yview)
+            self.scrollbar = ttk.Scrollbar(self.content_window, 
+                                        orient="vertical", 
+                                        command=self.canvas.yview)
             self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
             self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-            self.items_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
-            self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
-            self.canvas_window = self.canvas.create_window((0, 0), window=self.items_frame, anchor='nw', width=window_width)
+            # Frame para los items
+            self.items_frame = tk.Frame(self.canvas, 
+                                    bg=self.theme_manager.colors['dark']['bg'])
+            self.canvas_window = self.canvas.create_window((0, 0), 
+                                                        window=self.items_frame, 
+                                                        anchor='nw', 
+                                                        width=window_width)
 
             # Configurar el desplazamiento con la rueda del ratón
             def _on_mousewheel(event):
@@ -1073,26 +1091,56 @@ class GroupContentManager:
             title_frame.bind('<Button-1>', self.start_move)
             title_frame.bind('<B1-Motion>', self.on_move)
             
-            # Configurar la navegación
-            self.manager.navigation.set_strategy('group_content')
-            self.manager.group_content_screen_keys.activate()
+            # Vincular eventos de teclado
+            self.content_window.bind('<Key>', self.manager.key_handler.handle_key_press)
             
-            # Inicializar el foco y los highlights
-            self.content_window.after(100, lambda: self._initialize_content_view())
+            # Configurar la navegación y los atajos de teclado
+            def after_dialog_shown():
+                self.content_window.focus_force()
+                self.manager.navigation.set_strategy('group_content')
+                self.manager.group_content_screen_keys.activate()
+                self.manager.navigation.initialize_focus()
+                self.manager.navigation.update_highlights()
+                
+                # Desactivar otras configuraciones de teclas
+                if hasattr(self.manager, 'main_screen_keys'):
+                    self.manager.main_screen_keys.deactivate()
+                if hasattr(self.manager, 'groups_screen_keys'):
+                    self.manager.groups_screen_keys.deactivate()
+                if hasattr(self.manager, 'select_group_screen_keys'):
+                    self.manager.select_group_screen_keys.deactivate()
+            
+            # Dar tiempo a que la ventana se muestre completamente
+            self.content_window.after(100, after_dialog_shown)
 
         else:
-            self.content_window.deiconify()  # Muestra la ventana si estaba oculta
+            # Si la ventana ya existe, mostrarla y actualizarla
+            self.content_window.deiconify()
             self.content_window.lift()
             self.content_window.attributes('-topmost', True)
             self.content_window.after_idle(self.content_window.attributes, '-topmost', False)
+            
+            # Actualizar el título
+            for widget in self.content_window.winfo_children():
+                if isinstance(widget, tk.Frame):
+                    for child in widget.winfo_children():
+                        if isinstance(child, tk.Label):
+                            child.configure(text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}")
+                            break
+                    break
 
         # Mostrar items del grupo
         self.refresh_group_content(group_id)
 
-        # Restaurar la posición del scroll
+        # Restaurar la posición del scroll si existe
         if hasattr(self, 'scroll_position'):
             self.canvas.yview_moveto(self.scroll_position)
-
+            
+        # Asegurarse de que el foco y la navegación estén correctamente configurados
+        self.content_window.after(200, lambda: self.manager.navigation.current_strategy.initialize_focus())
+        
+        logger.debug(f"Grupo content window shown for group {group_id}")
+    
     def _initialize_content_view(self):
         """Inicializa la vista de contenido después de mostrar la ventana"""
         self.content_window.focus_force()
@@ -1186,18 +1234,14 @@ class GroupContentManager:
 
             edit_button = tk.Button(icons_frame, text="✏️", 
                                     command=lambda i=item['id']: self.edit_group_item(group_id, i),
-                                    font=('Segoe UI', 10), bd=0,
-                                    padx=2,
-                                    bg=bg_color,
-                                    fg=theme['fg'])
+                                    font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
+                                    bg=bg_color, fg=theme['fg'])
             edit_button.pack(side=tk.LEFT)
 
-            delete_button = tk.Button(icons_frame, text="🗑️", 
+            delete_button = tk.Button(icons_frame, text="❌", 
                                     command=lambda i=item['id']: self.remove_item_from_group(group_id, i, self.items_frame),
-                                    font=('Segoe UI', 10), bd=0,
-                                    padx=2,
-                                    bg=bg_color,
-                                    fg=theme['fg'])
+                                    font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
+                                    bg=bg_color, fg=theme['fg'])
             delete_button.pack(side=tk.LEFT)
 
         # Actualizar el scrollregion después de añadir todos los widgets
@@ -1544,10 +1588,10 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
         """Activa la configuración de teclas para la pantalla de contenido de grupo"""
         super().activate()
         for action, callback in self.actions.items():
-            if isinstance(action.value, str) and action.value.startswith('alt+'):
-                self.key_handler.global_hotkeys.register_hotkey(action.value, callback)
+            if isinstance(action.value, str):
+                self.key_handler.register_screen_hotkey('group_content', action.value, callback)
         logger.info("Group content screen key configuration activated")
-
+        
     def deactivate(self) -> None:
         """Desactiva la configuración de teclas de la pantalla de contenido de grupo"""
         super().deactivate()
@@ -1587,6 +1631,86 @@ class MainScreenKeyConfig(ScreenKeyConfig):
     def handle_activation(self):
         self.manager.navigation.activate_selected()
         logger.debug("Main screen item activated")
+
+// Archivo: keys_select_group_screen.py
+# keys_select_group_screen.py
+
+from key_screen_config import ScreenKeyConfig
+from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SelectGroupScreenAction(Enum):
+    """Enumera las acciones disponibles en la pantalla de selección de grupo"""
+    NAVIGATE_UP = "up"
+    NAVIGATE_DOWN = "down"
+    ACTIVATE = "return"
+    BACK = "escape"
+
+class SelectGroupScreenKeyConfig(ScreenKeyConfig):
+    def __init__(self, key_handler, manager):
+        super().__init__(key_handler)
+        self.manager = manager
+        self.screen_name = "select_group"
+        self.actions = {}
+        self.setup_keys()
+        logger.debug("SelectGroupScreenKeyConfig initialized")
+
+    def setup_keys(self) -> None:
+        """Configura las teclas específicas para la pantalla de selección de grupo"""
+        self.register_action(SelectGroupScreenAction.NAVIGATE_UP, 
+                           lambda: self.handle_navigation('up'))
+        self.register_action(SelectGroupScreenAction.NAVIGATE_DOWN, 
+                           lambda: self.handle_navigation('down'))
+        self.register_action(SelectGroupScreenAction.ACTIVATE, 
+                           self.handle_activation)
+        self.register_action(SelectGroupScreenAction.BACK, 
+                           self.handle_back)
+        
+        logger.debug("Select group screen keys setup completed")
+
+    def register_action(self, action: SelectGroupScreenAction, callback: callable) -> None:
+        """Registra una acción con su callback correspondiente"""
+        self.actions[action] = callback
+        if isinstance(action.value, str):
+            self.register_hotkey(action.value, callback)
+        logger.debug(f"Registered action: {action.name}")
+
+    def handle_navigation(self, direction: str) -> None:
+        """Maneja los eventos de navegación"""
+        event = type('Event', (), {'keysym': direction.capitalize()})()
+        
+        # Actualizar el estado de selección en el manager
+        current_selection = self.manager.navigation.current_strategy.state['current_selection']
+        self.manager.current_selection = current_selection
+        
+        if direction in ['up', 'down']:
+            self.manager.navigation.navigate_vertical(event)
+        
+        logger.debug(f"Select group screen navigation: {direction}")
+
+    def handle_activation(self):
+        """Maneja la activación del elemento seleccionado"""
+        print("SelectGroupScreenKeyConfig: Handling activation")  # Debug
+        self.manager.navigation.current_strategy.activate_selected()
+        logger.debug("Select group screen item activated")
+
+    def handle_back(self):
+        """Maneja el evento de retroceso"""
+        if hasattr(self.manager, 'select_group_dialog'):
+            self.manager.functions.close_dialog(self.manager.select_group_dialog)
+        logger.debug("Handled back action")
+
+    def activate(self) -> None:
+        """Activa la configuración de teclas para la pantalla de selección de grupo"""
+        super().activate()
+        logger.info("Select group screen key configuration activated")
+
+    def deactivate(self) -> None:
+        """Desactiva la configuración de teclas de la pantalla de selección de grupo"""
+        super().deactivate()
+        logger.info("Select group screen key configuration deactivated")
 
 // Archivo: key_handler.py
 # key_handler.py
@@ -2025,7 +2149,6 @@ class Navigation:
             raise
 
     def set_strategy(self, screen_type: str) -> None:
-        """Cambia la estrategia de navegación con verificaciones"""
         try:
             screen_mapping = {
                 'main': ScreenType.MAIN,
@@ -2038,14 +2161,16 @@ class Navigation:
             if screen_type not in screen_mapping:
                 raise ValueError(f"Invalid screen type: {screen_type}")
             
-            if screen_type == 'select_group':
-                self.manager.root.after(100, lambda: self.current_strategy.ensure_window_focus())
-
             screen_enum = screen_mapping[screen_type]
             if screen_enum in self.strategies:
                 self.current_screen = screen_enum
                 self.current_strategy = self.strategies[screen_enum]
                 self._configure_screen_navigation(screen_enum)
+                
+                # Asegurar que se actualice el foco y los highlights
+                self.current_strategy.initialize_focus()
+                self.current_strategy.update_highlights()
+                
                 logger.debug(f"Navigation strategy set to: {screen_type}")
             else:
                 raise ValueError(f"No strategy found for screen: {screen_type}")
@@ -2557,10 +2682,10 @@ class GroupContentScreenNavigation:
         else:
             self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
         
-        self.navigation_state['enabled'] = True
         self.update_highlights()
+        self.ensure_visible()
         logger.debug(f"Group content focus initialized: {self.state['current_selection']}")
-
+        
     def navigate_vertical(self, event) -> None:
         """Gestiona la navegación vertical"""
         direction = 1 if event.keysym == 'Down' else -1
@@ -2781,21 +2906,21 @@ class GroupContentScreenNavigation:
 
     def _activate_icon(self, index: int) -> None:
         """Activa un icono"""
-        group_items = self.manager.group_manager.groups[self.manager.group_content_manager.current_group_id]['items']
+        group_items = self.manager.group_manager.groups[self.manager.group_manager.group_content_manager.current_group_id]['items']
         card_index = index // 2
         icon_position = index % 2
         
         if card_index < len(group_items):
             item = group_items[card_index]
             actions = {
-                0: ('edit', lambda: self.manager.group_content_manager.edit_group_item(
-                    self.manager.group_content_manager.current_group_id, 
+                0: ('edit', lambda: self.manager.group_manager.group_content_manager.edit_group_item(
+                    self.manager.group_manager.group_content_manager.current_group_id, 
                     item['id']
                 )),
-                1: ('delete', lambda: self.manager.group_content_manager.remove_item_from_group(
-                    self.manager.group_content_manager.current_group_id, 
+                1: ('delete', lambda: self.manager.group_manager.group_content_manager.remove_item_from_group(
+                    self.manager.group_manager.group_content_manager.current_group_id, 
                     item['id'],
-                    self.manager.group_content_manager.items_frame
+                    self.manager.group_manager.group_content_manager.items_frame
                 ))
             }
             
@@ -3476,6 +3601,227 @@ class MainScreenNavigation:
             print(f"Activation handler executed for {current_type}")  # Debug
         else:
             print(f"No activation handler found for {current_type}")  # Debug
+
+// Archivo: navigation_select_group_screen.py
+# navigation_select_group_screen.py
+
+from enum import Enum
+from typing import List, Optional, Dict
+import tkinter as tk
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SelectGroupScreenElement(Enum):
+    TOP_BUTTONS = "top_buttons"
+    GROUP_OPTIONS = "group_options"
+
+class SelectGroupScreenNavigation:
+    def __init__(self, manager):
+        self.manager = manager
+        self.navigation_state = {'enabled': True}
+        self.navigation_order = [
+            SelectGroupScreenElement.TOP_BUTTONS,
+            SelectGroupScreenElement.GROUP_OPTIONS
+        ]
+        self.current_element: Optional[SelectGroupScreenElement] = None
+        self.current_index: int = 0
+        self.state: Dict = self._initialize_state()
+        logger.debug("SelectGroupScreenNavigation initialized")
+
+    def ensure_window_focus(self) -> None:
+        """Asegura que la ventana de selección de grupo mantenga el foco"""
+        if hasattr(self.manager, 'select_group_dialog') and self.manager.select_group_dialog.winfo_exists():
+            self.manager.select_group_dialog.focus_force()
+            self.manager.select_group_dialog.grab_set()
+
+    def _initialize_state(self) -> Dict:
+        """Inicializa el estado de navegación"""
+        return {
+            'current_selection': {'type': 'group_options', 'index': 0},
+            'highlight_colors': {
+                'dark': {'normal': '#444444', 'icon': '#666666'},
+                'light': {'normal': '#cccccc', 'icon': '#aaaaaa'}
+            }
+        }
+
+    def initialize_focus(self) -> None:
+        """Inicializa el foco en la pantalla de selección de grupo"""
+        if hasattr(self.manager, 'select_group_dialog'):
+            self.manager.select_group_dialog.focus_force()
+            
+        if self.get_options_count() > 0:
+            self.state['current_selection'] = {'type': 'group_options', 'index': 0}
+        else:
+            self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
+        
+        self.navigation_state['enabled'] = True
+        self.update_highlights()
+        logger.debug(f"Select group focus initialized: {self.state['current_selection']}")
+
+    def navigate_vertical(self, event) -> None:
+        """Gestiona la navegación vertical"""
+        direction = 1 if event.keysym == 'Down' else -1
+        self._update_selection_vertical(direction)
+        self.update_highlights()
+        self.ensure_visible()
+        logger.debug(f"Vertical navigation: {event.keysym}")
+
+    def _update_selection_vertical(self, direction: int) -> None:
+        """Actualiza la selección actual en dirección vertical"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+
+        if direction > 0:  # Down
+            if current_type == SelectGroupScreenElement.TOP_BUTTONS.value:
+                if self.get_options_count() > 0:
+                    self.state['current_selection'] = {
+                        'type': SelectGroupScreenElement.GROUP_OPTIONS.value,
+                        'index': 0
+                    }
+            elif current_type == SelectGroupScreenElement.GROUP_OPTIONS.value:
+                if current_index < self.get_options_count() - 1:
+                    self.state['current_selection']['index'] = current_index + 1
+        else:  # Up
+            if current_type == SelectGroupScreenElement.GROUP_OPTIONS.value:
+                if current_index > 0:
+                    self.state['current_selection']['index'] = current_index - 1
+                else:
+                    self.state['current_selection'] = {
+                        'type': SelectGroupScreenElement.TOP_BUTTONS.value,
+                        'index': 0
+                    }
+
+    def navigate_horizontal(self, event) -> None:
+        """Gestiona la navegación horizontal"""
+        # En la pantalla de selección de grupo no hay navegación horizontal
+        # ya que solo hay un botón superior (cerrar) y opciones verticales
+        pass
+
+    def activate_selected(self, event=None) -> None:
+        """Activa el elemento seleccionado actualmente"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+
+        if current_type == SelectGroupScreenElement.TOP_BUTTONS.value:
+            self._activate_top_button(current_index)
+        elif current_type == SelectGroupScreenElement.GROUP_OPTIONS.value:
+            self._activate_group_option(current_index)
+
+    def update_highlights(self) -> None:
+        """Actualiza los destacados visuales"""
+        self._clear_all_highlights()
+        self._highlight_current_selection()
+        logger.debug("Highlights updated")
+
+    def _clear_all_highlights(self) -> None:
+        """Limpia todos los destacados visuales"""
+        theme = self.manager.theme_manager.colors[
+            'dark' if self.manager.is_dark_mode else 'light'
+        ]
+        base_color = theme['button_bg']
+
+        # Limpiar botón superior (cerrar)
+        if hasattr(self.manager, 'select_group_dialog'):
+            close_button = self._get_close_button()
+            if close_button:
+                close_button.configure(bg=base_color)
+
+        # Limpiar opciones de grupos
+        for option in self._get_group_options():
+            option.configure(bg=base_color)
+
+    def _highlight_current_selection(self) -> None:
+        """Aplica el destacado al elemento actualmente seleccionado"""
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+        highlight_color = self._get_highlight_color()
+
+        if current_type == SelectGroupScreenElement.TOP_BUTTONS.value:
+            close_button = self._get_close_button()
+            if close_button:
+                close_button.configure(bg=highlight_color)
+        elif current_type == SelectGroupScreenElement.GROUP_OPTIONS.value:
+            options = self._get_group_options()
+            if 0 <= current_index < len(options):
+                options[current_index].configure(bg=highlight_color)
+
+    def _activate_top_button(self, index: int) -> None:
+        """Activa el botón superior (cerrar)"""
+        if hasattr(self.manager, 'select_group_dialog'):
+            close_button = self._get_close_button()
+            if close_button:
+                close_button.invoke()
+
+    def _activate_group_option(self, index: int) -> None:
+        """Activa una opción de grupo"""
+        options = self._get_group_options()
+        if 0 <= index < len(options):
+            options[index].invoke()
+
+    def ensure_visible(self) -> None:
+        """Asegura que el elemento seleccionado esté visible"""
+        if not hasattr(self.manager, 'select_group_dialog'):
+            return
+
+        current_type = self.state['current_selection']['type']
+        if current_type == SelectGroupScreenElement.GROUP_OPTIONS.value:
+            current_index = self.state['current_selection']['index']
+            options = self._get_group_options()
+            
+            if 0 <= current_index < len(options):
+                option = options[current_index]
+                canvas = self._get_canvas()
+                if canvas:
+                    bbox = canvas.bbox("all")
+                    if bbox:
+                        option_y = option.winfo_y()
+                        canvas_height = canvas.winfo_height()
+                        if option_y > 0:
+                            canvas.yview_moveto(option_y / bbox[3])
+
+    def _get_close_button(self) -> Optional[tk.Button]:
+        """Obtiene el botón de cerrar"""
+        if hasattr(self.manager, 'select_group_dialog'):
+            for child in self.manager.select_group_dialog.winfo_children():
+                if isinstance(child, tk.Frame):
+                    for button in child.winfo_children():
+                        if isinstance(button, tk.Button) and button['text'] == "❌":
+                            return button
+        return None
+
+    def _get_group_options(self) -> List[tk.Button]:
+        """Obtiene la lista de botones de opciones de grupos"""
+        options = []
+        if hasattr(self.manager, 'select_group_dialog'):
+            for child in self.manager.select_group_dialog.winfo_children():
+                if isinstance(child, tk.Canvas):
+                    content_frame = child.winfo_children()[0]
+                    for button in content_frame.winfo_children():
+                        if isinstance(button, tk.Button):
+                            options.append(button)
+        return options
+
+    def _get_canvas(self) -> Optional[tk.Canvas]:
+        """Obtiene el canvas del diálogo"""
+        if hasattr(self.manager, 'select_group_dialog'):
+            for child in self.manager.select_group_dialog.winfo_children():
+                if isinstance(child, tk.Canvas):
+                    return child
+        return None
+
+    def get_options_count(self) -> int:
+        """Obtiene el número de opciones de grupos"""
+        return len(self._get_group_options())
+
+    def _get_highlight_color(self) -> str:
+        """Obtiene el color de resaltado según el tema actual"""
+        theme_type = 'dark' if self.manager.is_dark_mode else 'light'
+        return self.state['highlight_colors'][theme_type]['normal']
+
+    def refresh_view(self) -> None:
+        """Refresca la vista de selección de grupo"""
+        self.update_highlights()
 
 // Archivo: navigation_strategies.py
 # navigation_strategies.py

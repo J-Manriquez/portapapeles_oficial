@@ -48,8 +48,17 @@ class Navigation:
             logger.error(f"Error initializing navigation strategies: {e}")
             raise
 
+    def clean_current_strategy(self):
+        """Limpia el estado de la estrategia actual antes de cambiar"""
+        if self.current_strategy:
+            if hasattr(self.current_strategy, 'clean'):
+                self.current_strategy.clean()
+            self.current_strategy = None
+
     def set_strategy(self, screen_type: str) -> None:
         try:
+            self.clean_current_strategy()  # Limpiar estrategia actual
+            
             screen_mapping = {
                 'main': ScreenType.MAIN,
                 'groups': ScreenType.GROUPS,
