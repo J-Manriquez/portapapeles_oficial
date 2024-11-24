@@ -47,7 +47,7 @@ class SelectGroupScreenNavigation:
             
         if self.get_options_count() > 0:
             self.state['current_selection'] = {'type': 'group_options', 'index': 0}
-        else:
+        elif self.get_options_count() == 0:
             self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
         
         self.navigation_state['enabled'] = True

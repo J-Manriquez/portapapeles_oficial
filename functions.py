@@ -35,54 +35,94 @@ class Functions:
         else:
             processed_text = process_text(str(item_data['text']), 3)
         
-        # Obtén el color de fondo actual
-        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
-        bg_color = self.manager.theme_manager.colors[current_theme]['card_bg']
+        # Obtener colores del tema actual
+        is_dark = self.manager.is_dark_mode
+        theme = self.manager.theme_manager.colors['dark' if is_dark else 'light']
+        bg_color = theme['card_bg']
+        
+        # Usar los mismos colores de highlight que la navegación
+        highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+            'dark' if is_dark else 'light']['normal']
+        icon_highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+            'dark' if is_dark else 'light']['icon']
 
         card_container = tk.Frame(self.manager.cards_frame, width=card_width, height=card_height, bg=bg_color)
         card_container.pack(fill=tk.BOTH, padx=2, pady=2)
-        card_container.pack_propagate(False)  # Evita que el contenido afecte el tamaño del contenedor
+        card_container.pack_propagate(False)
 
         text_frame = tk.Frame(card_container, bg=bg_color)
         text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Procesamos el texto para mostrarlo de forma limpia
         processed_text = process_text(item_data['text'], 3)
-
+        
         text_label = tk.Label(text_frame, text=processed_text,
                             justify=tk.LEFT, anchor='w', padx=10, pady=5,
-                            bg=card_container['bg'],
-                            fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'], width=int(24))
+                            bg=bg_color,
+                            fg=theme['fg'], width=int(24))
         text_label.pack(fill=tk.X, expand=True, side=tk.LEFT)
 
-        icons_frame = tk.Frame(card_container, bg=card_container['bg'])
+        # El contenedor de iconos ahora usa el mismo color de fondo que la card
+        icons_frame = tk.Frame(card_container, bg=bg_color)
         icons_frame.pack(side=tk.RIGHT, padx=3)
 
+        # Crear botones con los colores del tema
         arrow_button = tk.Button(icons_frame, text="➡️",
                                 command=lambda: self.show_select_group_screen(item_id),
                                 font=('Segoe UI', 10), bd=0,
-                                padx=2,
-                                bg=card_container['bg'],
-                                fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
+                                padx=2, bg=bg_color, fg=theme['fg'])
         arrow_button.pack(side=tk.LEFT)
         
         pin_text = "📌" if item_data['pinned'] else "📍"
         pin_button = tk.Button(icons_frame, text=pin_text,
                             command=lambda: self.toggle_pin(item_id),
                             font=('Segoe UI', 10), bd=0,
-                            padx=2,
-                            bg=card_container['bg'],
-                            fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
+                            padx=2, bg=bg_color, fg=theme['fg'])
         pin_button.pack(side=tk.LEFT)
 
         delete_button = tk.Button(icons_frame, text="✖️",
                                 command=lambda: self.delete_item(item_id),
                                 font=('Segoe UI', 10), bd=0,
-                                padx=2,
-                                bg=card_container['bg'],
-                                fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
+                                padx=2, bg=bg_color, fg=theme['fg'])
         delete_button.pack(side=tk.LEFT)
-        
+
+        # Funciones de hover
+        def on_enter(event):
+            card_container.configure(bg=highlight_color)
+            text_frame.configure(bg=highlight_color)
+            text_label.configure(bg=highlight_color)
+            icons_frame.configure(bg=highlight_color)
+            for btn in [arrow_button, pin_button, delete_button]:
+                btn.configure(bg=highlight_color)
+
+        def on_leave(event):
+            card_container.configure(bg=bg_color)
+            text_frame.configure(bg=bg_color)
+            text_label.configure(bg=bg_color)
+            icons_frame.configure(bg=bg_color)
+            for btn in [arrow_button, pin_button, delete_button]:
+                btn.configure(bg=bg_color)
+
+        # Funciones de hover para los iconos individuales
+        def on_icon_enter(event, button):
+            # Usar el color de highlight para iconos cuando el mouse está sobre ellos
+            button.configure(bg=icon_highlight_color)
+
+        def on_icon_leave(event, button):
+            # Restaurar al color de highlight normal si la card está resaltada,
+            # o al color base si no lo está
+            parent_bg = icons_frame.cget('bg')
+            button.configure(bg=parent_bg)
+
+        # Vincular eventos hover para la card
+        for widget in [card_container, text_frame, text_label, icons_frame]:
+            widget.bind('<Enter>', on_enter)
+            widget.bind('<Leave>', on_leave)
+
+        # Vincular eventos hover para los iconos individuales
+        for btn in [arrow_button, pin_button, delete_button]:
+            btn.bind('<Enter>', lambda e, b=btn: on_icon_enter(e, b))
+            btn.bind('<Leave>', lambda e, b=btn: on_icon_leave(e, b))
+            
         # Agregar bindings para la tarjeta completa
         card_container.bind('<Button-1>', lambda e: self.activate_card(index))
         text_label.bind('<Button-1>', lambda e: self.activate_card(index))
@@ -178,10 +218,16 @@ class Functions:
 
     def toggle_pin(self, item_id):
         if item_id in self.manager.clipboard_items:
+            # Actualizar el estado de anclaje
             self.manager.clipboard_items[item_id]['pinned'] = not self.manager.clipboard_items[item_id]['pinned']
+            # Actualizar la interfaz
             self.refresh_cards()
-            self.manager.group_manager.save_groups()  # Guardar después de cambiar el estado de anclaje
-
+            # Guardar los cambios inmediatamente
+            self.manager.data_manager.save_data(
+                self.manager.group_manager.groups,
+                self.manager.clipboard_items,
+                self.manager.settings
+            )
     def delete_item(self, item_id):
         if item_id in self.manager.clipboard_items and not self.manager.clipboard_items[item_id]['pinned']:
             del self.manager.clipboard_items[item_id]
@@ -366,11 +412,7 @@ class Functions:
         # Asegurar que el foco se mantenga después de mostrar la ventana
         self.root.after(100, after_dialog_shown)
     
-    def on_arrow_click(self, item_id):
-        if not self.manager.group_manager.groups:
-            tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
-            return
-        
+    def on_arrow_click(self, item_id):        
         self.select_group(item_id)
         
         # Asegurarse de que el diálogo se ha creado correctamente
@@ -389,11 +431,7 @@ class Functions:
             # Inicializar el foco y los highlights después de que la ventana sea visible
             self.manager.root.after(100, lambda: self.manager.navigation.initialize_focus())
         
-    def select_group(self, item_id):
-        if not self.manager.group_manager.groups:
-            tk.messagebox.showinfo("Sin Grupos", "No hay grupos disponibles. Cree un grupo primero.")
-            return
-        
+    def select_group(self, item_id):        
         # Ocultar la ventana principal
         self.manager.root.withdraw()
         dialog = tk.Toplevel(self.manager.root)
@@ -412,17 +450,34 @@ class Functions:
         dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
+        
         # Barra de título personalizada
         title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
         title_frame.pack(fill=tk.X, padx=5, pady=(0, 4))
         title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
                             bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
         title_label.pack(side=tk.LEFT, padx=5)
-        close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_dialog(dialog),
+        
+        # Configurar efecto hover para el botón de cerrar
+        def create_close_button_hover():
+            close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_dialog(dialog),
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                 bg=self.manager.theme_manager.colors['dark']['button_bg'],
                                 fg=self.manager.theme_manager.colors['dark']['button_fg'])
-        close_button.pack(side=tk.RIGHT)
+            close_button.pack(side=tk.RIGHT)
+            
+            def on_enter(e):
+                close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
+                    'dark' if self.manager.is_dark_mode else 'light']['normal'])
+            
+            def on_leave(e):
+                close_button.configure(bg=self.manager.theme_manager.colors['dark']['button_bg'])
+            
+            close_button.bind('<Enter>', on_enter)
+            close_button.bind('<Leave>', on_leave)
+            
+        create_close_button_hover()
+        
         # Canvas para scroll y contenedor de grupos
         canvas = tk.Canvas(dialog, bg=dialog.cget('bg'), bd=0, highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=0)
@@ -432,6 +487,46 @@ class Functions:
         # Frame contenedor dentro del canvas para el scroll
         content_frame = tk.Frame(canvas, bg=dialog.cget('bg'))
         canvas_window = canvas.create_window((0, 0), window=content_frame, anchor='nw', width=295)
+        
+        # Mostrar mensaje cuando no hay grupos
+        if not self.manager.group_manager.groups:
+            message_frame = tk.Frame(content_frame, 
+                                bg=self.manager.theme_manager.colors['dark']['card_bg'])
+            message_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=20)
+            
+            message_label = tk.Label(message_frame, 
+                                text='No hay grupos creados.\nCrea un nuevo grupo en la pantalla de grupos.',
+                                font=('Segoe UI', 10),
+                                bg=self.manager.theme_manager.colors['dark']['card_bg'],
+                                fg=self.manager.theme_manager.colors['dark']['fg'],
+                                justify=tk.CENTER)
+            message_label.pack(expand=True)
+        else:
+            # Crear botones para cada grupo con efecto hover
+            for group_id, group_info in self.manager.group_manager.groups.items():
+                group_button = tk.Button(content_frame, text=group_info['name'],
+                                    command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
+                                    bg=self.manager.theme_manager.colors['dark']['button_bg'],
+                                    fg=self.manager.theme_manager.colors['dark']['button_fg'],
+                                    activebackground=self.manager.theme_manager.colors['dark']['active_bg'],
+                                    activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
+                                    bd=0, padx=10, pady=5, width=30, anchor='w')
+                group_button.pack(fill=tk.X, pady=2)
+                
+                # Configurar hover para los botones de grupo
+                def create_hover_effect(button):
+                    def on_enter(e):
+                        button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
+                            'dark' if self.manager.is_dark_mode else 'light']['normal'])
+                    
+                    def on_leave(e):
+                        button.configure(bg=self.manager.theme_manager.colors['dark']['button_bg'])
+                    
+                    button.bind('<Enter>', on_enter)
+                    button.bind('<Leave>', on_leave)
+                
+                create_hover_effect(group_button)
+        
         # Ajustar el ancho del frame contenedor al canvas
         def on_canvas_resize(event):
             canvas.itemconfig(canvas_window, width=event.width)
@@ -444,15 +539,7 @@ class Functions:
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        for group_id, group_info in self.manager.group_manager.groups.items():
-            group_button = tk.Button(content_frame, text=group_info['name'],
-                                    command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
-                                    bg=self.manager.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.manager.theme_manager.colors['dark']['button_fg'],
-                                    activebackground=self.manager.theme_manager.colors['dark']['active_bg'],
-                                    activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
-                                    bd=0, padx=10, pady=5, width=30, anchor='w')
-            group_button.pack(fill=tk.X, pady=2)
+
         # Hacer la ventana arrastrable
         def start_move(event):
             dialog.x = event.x

@@ -417,6 +417,25 @@ class ClipboardManager:
         self.theme_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 0))
         self.clear_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 1))
         self.close_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 2))
+        
+         # Obtener colores del tema
+        theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
+        
+        def create_hover_effect(button):
+            def on_enter(e):
+                button.configure(bg=theme['active_bg'], fg=theme['active_fg'])
+            def on_leave(e):
+                button.configure(bg=theme['button_bg'], fg=theme['button_fg'])
+            button.bind('<Enter>', on_enter)
+            button.bind('<Leave>', on_leave)
+
+        # Aplicar efectos hover a los botones principales
+        for button in [self.button1, self.button2, self.button3]:
+            create_hover_effect(button)
+
+        # Aplicar efectos hover a los botones de la barra de título
+        for button in [self.theme_button, self.clear_button, self.close_button]:
+            create_hover_effect(button)
 
     def activate_button(self, button_type: str, index: int) -> None:
         """Activa un botón específico"""

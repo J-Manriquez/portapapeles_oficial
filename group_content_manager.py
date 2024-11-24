@@ -197,9 +197,9 @@ class GroupContentManager:
             self.content_window.destroy()
             self.content_window = None
             
-            # Restaurar la navegación de grupos
-            self.manager.group_manager.show_groups_window()
-            self.manager.navigation.set_strategy('groups')
+            # # Restaurar la navegación de grupos
+            # self.manager.group_manager.show_groups_window()
+            # self.manager.navigation.set_strategy('groups')
 
     def start_move(self, event):
         self.x = event.x
@@ -294,8 +294,13 @@ class GroupContentManager:
         self.manager.group_manager.groups[group_id]['items'] = [item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] != item_id]
         self.manager.group_manager.save_groups()
         self.refresh_group_content(group_id)
+        self.manager.group_manager._initialize_content_view()
 
     def edit_group_item(self, group_id, item_id):
+        """Muestra el diálogo para editar un item del grupo"""
+        # Primero, cerrar la ventana de contenido del grupo
+        self.close_content_window(group_id)
+        
         item = next((item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] == item_id), None)
         if not item:
             return
@@ -303,8 +308,8 @@ class GroupContentManager:
         dialog = tk.Toplevel(self.master)
         dialog.title("Editar Item")
         
-        x = self.manager.window_x + 40
-        y = self.manager.window_y + 40
+        x = self.manager.window_x
+        y = self.manager.window_y 
         
         if isinstance(item['text'], dict):
             text = item['text'].get('text', '')
@@ -330,7 +335,12 @@ class GroupContentManager:
                             fg=self.theme_manager.colors['dark']['fg'])
         title_label.pack(side=tk.LEFT, padx=0)
 
-        close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
+        def close_edit_dialog():
+            dialog.destroy()
+            # Volver a mostrar la ventana de grupos después de cerrar el diálogo
+            self.manager.group_manager.show_groups_window()
+
+        close_button = tk.Button(title_frame, text="❌", command=close_edit_dialog,
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'])
@@ -376,11 +386,13 @@ class GroupContentManager:
                     item['text'] = {'text': new_text, 'formatted': original_format}
                 self.manager.group_manager.save_groups()
                 dialog.destroy()
-                self.refresh_group_content(group_id)
+                # Volver a mostrar la ventana de grupos después de guardar
+                self.manager.group_manager.show_groups_window()
 
         save_button = tk.Button(content_frame, text="Guardar", command=save_item,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
+                                fg=self.theme_manager.colors['dark']['button_fg'],
+                                relief=tk.FLAT, bd=0, padx=4, pady=8)
         save_button.pack(fill=tk.X, pady=(0, 5))
 
         # Código para hacer la ventana arrastrable

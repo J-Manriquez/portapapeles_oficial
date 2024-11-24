@@ -1,22 +1,14 @@
 {
     "groups": {
-        "7293acc6-2e0d-492e-bfbb-07971be03980": {
-            "name": "holaa",
+        "b1b7bb9c-0ebf-43ef-85e6-945e2f6f8d68": {
+            "name": "hola",
             "items": [
                 {
-                    "id": "64bd3ac3-d0e1-49e9-abe6-1f704da4bc7e",
+                    "id": "29e2c747-f468-4ba0-880a-0520e8c75f16",
                     "text": {
-                        "text": "groups\": {},\r\n    \"pinned_items\": {},\r\n    \"settings\": {\r\n        \"height\": 400,\r\n        \"width\": 295,\r\n        \"hotkey\": \"z\"\r\n    } jajajaja",
-                        "formatted": {}
-                    },
-                    "name": "hola"
-                },
-                {
-                    "id": "b613aa01-13ba-419e-9ef2-ceef812653b4",
-                    "text": {
-                        "text": "close_settings_window",
+                        "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
                         "formatted": {
-                            "font": "Consolas, 'Courier New', monospace",
+                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
                             "size": null,
                             "color": null,
                             "bold": false,
@@ -34,26 +26,13 @@
                 }
             ]
         },
-        "d6ba9ad6-4d3c-4221-8fc4-d1310938076e": {
+        "2b13e6da-7eb2-4b6a-9161-b1e755d49292": {
             "name": "xs",
             "items": [
                 {
-                    "id": "a8764c32-9db7-4488-aef6-45b9409f32f2",
+                    "id": "2b2fe8db-ee4c-4603-b5fa-5542eaee44ce",
                     "text": {
-                        "text": "if screen_type == 'select_group':\r\n            self.manager.root.after(100, lambda: self.current_strategy.ensure_window_focus())",
-                        "formatted": {
-                            "html": true,
-                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
-                            "bold": false,
-                            "italic": false
-                        }
-                    },
-                    "name": "hola"
-                },
-                {
-                    "id": "29e2c747-f468-4ba0-880a-0520e8c75f16",
-                    "text": {
-                        "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
+                        "text": "# Mostrar mensaje cuando no hay grupos\r\n    if not self.manager.group_manager.groups:\r\n        message_frame = tk.Frame(content_frame, \r\n                            bg=self.manager.theme_manager.colors['dark']['card_bg'])\r\n        message_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=20)\r\n        \r\n        message_label = tk.Label(message_frame, \r\n                            text='No hay grupos creados.\\nCrea un nuevo grupo en la pantalla de grupos.',\r\n                            font=('Segoe UI', 10),\r\n                            bg=self.manager.theme_manager.colors['dark']['card_bg'],\r\n                            fg=self.manager.theme_manager.colors['dark']['fg'],\r\n                            justify=tk.CENTER)\r\n        message_label.pack(expand=True)\r\n    else:\r\n        # Crear botones para cada grupo con efecto hover\r\n        for group_id, group_info in self.manager.group_manager.groups.items():\r\n            group_button = tk.Button(content_frame, text=group_info['name'],\r\n                                command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),\r\n                                bg=self.manager.theme_manager.colors['dark']['button_bg'],\r\n                                fg=self.manager.theme_manager.colors['dark']['button_fg'],\r\n                                activebackground=self.manager.theme_manager.colors['dark']['active_bg'],\r\n                                activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],\r\n                                bd=0, padx=10, pady=5, width=30, anchor='w')\r\n            group_button.pack(fill=tk.X, pady=2)\r\n            \r\n            # Configurar hover para los botones de grupo\r\n            def create_hover_effect(button):\r\n                def on_enter(e):\r\n                    button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][\r\n                        'dark' if self.manager.is_dark_mode else 'light']['normal'])\r\n                \r\n                def on_leave(e):\r\n                    button.configure(bg=self.manager.theme_manager.colors['dark']['button_bg'])\r\n                \r\n                button.bind('<Enter>', on_enter)\r\n                button.bind('<Leave>', on_leave)\r\n            \r\n            create_hover_effect(group_button)",
                         "formatted": {
                             "html": true,
                             "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
@@ -61,12 +40,7 @@
                             "italic": false
                         }
                     }
-                }
-            ]
-        },
-        "2d0a0775-806f-4998-9eff-f7302daf4486": {
-            "name": "xd",
-            "items": [
+                },
                 {
                     "id": "b613aa01-13ba-419e-9ef2-ceef812653b4",
                     "text": {
@@ -85,23 +59,6 @@
                             "subscript": null,
                             "background_color": null,
                             "alignment": null
-                        }
-                    }
-                }
-            ]
-        },
-        "ee1462c1-8f15-4c0a-ba76-3b5f6e2ea9fa": {
-            "name": "peo",
-            "items": [
-                {
-                    "id": "29e2c747-f468-4ba0-880a-0520e8c75f16",
-                    "text": {
-                        "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
-                        "formatted": {
-                            "html": true,
-                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
-                            "bold": false,
-                            "italic": false
                         }
                     }
                 }

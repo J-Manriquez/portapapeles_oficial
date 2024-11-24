@@ -147,54 +147,94 @@ class Functions:
         else:
             processed_text = process_text(str(item_data['text']), 3)
         
-        # Obtén el color de fondo actual
-        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
-        bg_color = self.manager.theme_manager.colors[current_theme]['card_bg']
+        # Obtener colores del tema actual
+        is_dark = self.manager.is_dark_mode
+        theme = self.manager.theme_manager.colors['dark' if is_dark else 'light']
+        bg_color = theme['card_bg']
+        
+        # Usar los mismos colores de highlight que la navegación
+        highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+            'dark' if is_dark else 'light']['normal']
+        icon_highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+            'dark' if is_dark else 'light']['icon']
 
         card_container = tk.Frame(self.manager.cards_frame, width=card_width, height=card_height, bg=bg_color)
         card_container.pack(fill=tk.BOTH, padx=2, pady=2)
-        card_container.pack_propagate(False)  # Evita que el contenido afecte el tamaño del contenedor
+        card_container.pack_propagate(False)
 
         text_frame = tk.Frame(card_container, bg=bg_color)
         text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Procesamos el texto para mostrarlo de forma limpia
         processed_text = process_text(item_data['text'], 3)
-
+        
         text_label = tk.Label(text_frame, text=processed_text,
                             justify=tk.LEFT, anchor='w', padx=10, pady=5,
-                            bg=card_container['bg'],
-                            fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'], width=int(24))
+                            bg=bg_color,
+                            fg=theme['fg'], width=int(24))
         text_label.pack(fill=tk.X, expand=True, side=tk.LEFT)
 
-        icons_frame = tk.Frame(card_container, bg=card_container['bg'])
+        # El contenedor de iconos ahora usa el mismo color de fondo que la card
+        icons_frame = tk.Frame(card_container, bg=bg_color)
         icons_frame.pack(side=tk.RIGHT, padx=3)
 
+        # Crear botones con los colores del tema
         arrow_button = tk.Button(icons_frame, text="➡️",
                                 command=lambda: self.show_select_group_screen(item_id),
                                 font=('Segoe UI', 10), bd=0,
-                                padx=2,
-                                bg=card_container['bg'],
-                                fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
+                                padx=2, bg=bg_color, fg=theme['fg'])
         arrow_button.pack(side=tk.LEFT)
         
         pin_text = "📌" if item_data['pinned'] else "📍"
         pin_button = tk.Button(icons_frame, text=pin_text,
                             command=lambda: self.toggle_pin(item_id),
                             font=('Segoe UI', 10), bd=0,
-                            padx=2,
-                            bg=card_container['bg'],
-                            fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
+                            padx=2, bg=bg_color, fg=theme['fg'])
         pin_button.pack(side=tk.LEFT)
 
         delete_button = tk.Button(icons_frame, text="✖️",
                                 command=lambda: self.delete_item(item_id),
                                 font=('Segoe UI', 10), bd=0,
-                                padx=2,
-                                bg=card_container['bg'],
-                                fg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
+                                padx=2, bg=bg_color, fg=theme['fg'])
         delete_button.pack(side=tk.LEFT)
-        
+
+        # Funciones de hover
+        def on_enter(event):
+            card_container.configure(bg=highlight_color)
+            text_frame.configure(bg=highlight_color)
+            text_label.configure(bg=highlight_color)
+            icons_frame.configure(bg=highlight_color)
+            for btn in [arrow_button, pin_button, delete_button]:
+                btn.configure(bg=highlight_color)
+
+        def on_leave(event):
+            card_container.configure(bg=bg_color)
+            text_frame.configure(bg=bg_color)
+            text_label.configure(bg=bg_color)
+            icons_frame.configure(bg=bg_color)
+            for btn in [arrow_button, pin_button, delete_button]:
+                btn.configure(bg=bg_color)
+
+        # Funciones de hover para los iconos individuales
+        def on_icon_enter(event, button):
+            # Usar el color de highlight para iconos cuando el mouse está sobre ellos
+            button.configure(bg=icon_highlight_color)
+
+        def on_icon_leave(event, button):
+            # Restaurar al color de highlight normal si la card está resaltada,
+            # o al color base si no lo está
+            parent_bg = icons_frame.cget('bg')
+            button.configure(bg=parent_bg)
+
+        # Vincular eventos hover para la card
+        for widget in [card_container, text_frame, text_label, icons_frame]:
+            widget.bind('<Enter>', on_enter)
+            widget.bind('<Leave>', on_leave)
+
+        # Vincular eventos hover para los iconos individuales
+        for btn in [arrow_button, pin_button, delete_button]:
+            btn.bind('<Enter>', lambda e, b=btn: on_icon_enter(e, b))
+            btn.bind('<Leave>', lambda e, b=btn: on_icon_leave(e, b))
+            
         # Agregar bindings para la tarjeta completa
         card_container.bind('<Button-1>', lambda e: self.activate_card(index))
         text_label.bind('<Button-1>', lambda e: self.activate_card(index))
@@ -290,10 +330,16 @@ class Functions:
 
     def toggle_pin(self, item_id):
         if item_id in self.manager.clipboard_items:
+            # Actualizar el estado de anclaje
             self.manager.clipboard_items[item_id]['pinned'] = not self.manager.clipboard_items[item_id]['pinned']
+            # Actualizar la interfaz
             self.refresh_cards()
-            self.manager.group_manager.save_groups()  # Guardar después de cambiar el estado de anclaje
-
+            # Guardar los cambios inmediatamente
+            self.manager.data_manager.save_data(
+                self.manager.group_manager.groups,
+                self.manager.clipboard_items,
+                self.manager.settings
+            )
     def delete_item(self, item_id):
         if item_id in self.manager.clipboard_items and not self.manager.clipboard_items[item_id]['pinned']:
             del self.manager.clipboard_items[item_id]
@@ -524,6 +570,7 @@ class Functions:
         dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
+        
         # Barra de título personalizada
         title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
         title_frame.pack(fill=tk.X, padx=5, pady=(0, 4))
@@ -682,8 +729,8 @@ class GroupManager:
             title_frame.pack(fill=tk.X, padx=2, pady=(0, 0))
 
             title_label = tk.Label(title_frame, text="Grupos", font=('Segoe UI', 10, 'bold'), 
-                                   bg=self.theme_manager.colors['dark']['bg'], 
-                                   fg=self.theme_manager.colors['dark']['fg'])
+                                bg=self.theme_manager.colors['dark']['bg'], 
+                                fg=self.theme_manager.colors['dark']['fg'])
             title_label.pack(side=tk.LEFT, padx=5)
 
             # Botones en la barra de título
@@ -691,16 +738,34 @@ class GroupManager:
             buttons_frame.pack(side=tk.RIGHT, padx=4)
 
             self.add_button = tk.Button(buttons_frame, text="➕", command=self.add_group, 
-                                   font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2,
-                                   bg=self.theme_manager.colors['dark']['button_bg'],
-                                   fg=self.theme_manager.colors['dark']['button_fg'])
+                                font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2,
+                                bg=self.theme_manager.colors['dark']['button_bg'],
+                                fg=self.theme_manager.colors['dark']['button_fg'])
             self.add_button.pack(side=tk.LEFT)
 
             self.close_button = tk.Button(buttons_frame, text="❌", command=self.close_groups_window, 
-                                     font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
-                                     bg=self.theme_manager.colors['dark']['button_bg'],
-                                     fg=self.theme_manager.colors['dark']['button_fg'])
+                                    font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
+                                    bg=self.theme_manager.colors['dark']['button_bg'],
+                                    fg=self.theme_manager.colors['dark']['button_fg'])
             self.close_button.pack(side=tk.LEFT)
+
+            # Configurar efectos hover para los botones de la barra de título
+            def create_hover_effect(button):
+                highlight_color = self.clipboard_manager.navigation.current_strategy.state['highlight_colors'][
+                    'dark' if self.clipboard_manager.is_dark_mode else 'light']['normal']
+                
+                def on_enter(e):
+                    button.configure(bg=highlight_color)
+                
+                def on_leave(e):
+                    button.configure(bg=self.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['button_bg'])
+                
+                button.bind('<Enter>', on_enter)
+                button.bind('<Leave>', on_leave)
+
+            # Aplicar efectos hover a los botones
+            create_hover_effect(self.add_button)
+            create_hover_effect(self.close_button)
             
             # Canvas para scroll y contenedor de grupos
             self.canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
@@ -713,6 +778,23 @@ class GroupManager:
             # Frame contenedor dentro del canvas para el scroll
             self.groups_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
             canvas_window = self.canvas.create_window((0, 0), window=self.groups_frame, anchor='nw')
+
+            # Si no hay grupos, mostrar mensaje
+            if not self.groups:
+                # Crear el mensaje cuando no hay grupos
+                message_frame = tk.Frame(self.groups_frame, 
+                                    bg=self.theme_manager.colors['dark']['bg'])
+                message_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=20)
+                
+                message_label = tk.Label(message_frame, 
+                                    text='No hay grupos creados.\nCrea un nuevo grupo dando click en "+"',
+                                    font=('Segoe UI', 10),
+                                    bg=self.theme_manager.colors['dark']['bg'],
+                                    fg=self.theme_manager.colors['dark']['fg'],
+                                    justify=tk.CENTER)
+                message_label.pack(expand=True)
+            
+            self.refresh_groups()
 
             # Ajustar el ancho del frame contenedor al canvas
             def on_canvas_resize(event):
@@ -786,46 +868,134 @@ class GroupManager:
         if self.groups_frame is None or not self.groups_frame.winfo_exists():
             return
 
+        # Limpiar todos los widgets existentes
         for widget in self.groups_frame.winfo_children():
             widget.destroy()
 
-        for group_id, group_info in self.groups.items():
-            group_card = tk.Frame(self.groups_frame, bg=self.theme_manager.colors['dark']['card_bg'], cursor="hand2")
-            group_card.pack(fill=tk.X, padx=4, pady=2)
+        # Si no hay grupos, mostrar el mensaje
+        if not self.groups:
+            message_frame = tk.Frame(self.groups_frame, 
+                                bg=self.theme_manager.colors['dark']['card_bg'])
+            message_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=20)
             
-            group_card.bind("<Button-1>", lambda e, gid=group_id: self.show_group_content(gid))
-
-            name_label = tk.Label(group_card, text=group_info['name'], font=("Segoe UI", 10, "bold"),
+            message_label = tk.Label(message_frame, 
+                                text='No hay grupos creados.\nCrea un nuevo grupo dando click en "+"',
+                                font=('Segoe UI', 10),
                                 bg=self.theme_manager.colors['dark']['card_bg'],
-                                fg=self.theme_manager.colors['dark']['fg'], 
-                                width=int(17), justify=tk.LEFT, anchor='w',)
+                                fg=self.theme_manager.colors['dark']['fg'],
+                                justify=tk.CENTER)
+            message_label.pack(expand=True)
+            return
+
+        # Obtener colores del tema actual
+        is_dark = self.clipboard_manager.is_dark_mode
+        theme = self.theme_manager.colors['dark' if is_dark else 'light']
+        bg_color = theme['card_bg']
+        
+        # Usar los mismos colores de highlight que la navegación
+        highlight_color = self.clipboard_manager.navigation.current_strategy.state['highlight_colors'][
+            'dark' if is_dark else 'light']['normal']
+        icon_highlight_color = self.clipboard_manager.navigation.current_strategy.state['highlight_colors'][
+            'dark' if is_dark else 'light']['icon']
+
+        for group_id, group_info in self.groups.items():
+            # Crear card del grupo
+            group_card = tk.Frame(self.groups_frame, 
+                                bg=bg_color, 
+                                cursor="hand2")
+            group_card.pack(fill=tk.X, padx=4, pady=2)
+
+            # Labels de información
+            name_label = tk.Label(group_card, 
+                                text=group_info['name'], 
+                                font=("Segoe UI", 10, "bold"),
+                                bg=bg_color,
+                                fg=theme['fg'], 
+                                width=int(17), 
+                                justify=tk.LEFT, 
+                                anchor='w')
             name_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-            count_label = tk.Label(group_card, text=f"Items: {len(group_info['items'])}",
-                                bg=self.theme_manager.colors['dark']['card_bg'],
-                                fg=self.theme_manager.colors['dark']['fg'])
+            count_label = tk.Label(group_card, 
+                                text=f"Items: {len(group_info['items'])}",
+                                bg=bg_color,
+                                fg=theme['fg'])
             count_label.pack(side=tk.LEFT, padx=5, pady=2)
-            
+
             # Frame para los iconos
-            icons_frame = tk.Frame(group_card, bg=self.theme_manager.colors['dark']['card_bg'])
+            icons_frame = tk.Frame(group_card, 
+                                bg=bg_color)
             icons_frame.pack(side=tk.RIGHT, padx=3)
 
-            edit_button = tk.Button(icons_frame, text="✏️", command=lambda gid=group_id: self.edit_group(gid),
-                        font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+            # Crear los botones de iconos
+            edit_button = tk.Button(icons_frame, 
+                                text="✏️", 
+                                command=lambda gid=group_id: self.edit_group(gid),
+                                font=('Segoe UI', 10), 
+                                bd=0, 
+                                highlightthickness=0,
+                                padx=4,
+                                bg=bg_color,
+                                fg=theme['fg'])
             edit_button.pack(side=tk.LEFT)
 
-            delete_button = tk.Button(icons_frame, text="❌", command=lambda gid=group_id: self.delete_group(gid),
-                          font=('Segoe UI', 10), bd=0, highlightthickness=0, padx=4,
-                          bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                          fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+            delete_button = tk.Button(icons_frame, 
+                                    text="❌", 
+                                    command=lambda gid=group_id: self.delete_group(gid),
+                                    font=('Segoe UI', 10), 
+                                    bd=0, 
+                                    highlightthickness=0, 
+                                    padx=4,
+                                    bg=bg_color,
+                                    fg=theme['fg'])
             delete_button.pack(side=tk.LEFT)
 
-        # logger.debug(f"Grupos refrescados: {len(self.groups)} grupos")
+            # Funciones de hover para la card completa
+            def on_card_enter(e, card=group_card, components=[name_label, count_label, icons_frame]):
+                card.configure(bg=highlight_color)
+                for component in components:
+                    component.configure(bg=highlight_color)
+                # Actualizar el fondo de los iconos al color de highlight normal
+                for button in icons_frame.winfo_children():
+                    button.configure(bg=highlight_color)
 
-            
-            
+            def on_card_leave(e, card=group_card, components=[name_label, count_label, icons_frame]):
+                card.configure(bg=bg_color)
+                for component in components:
+                    component.configure(bg=bg_color)
+                # Restaurar el color base de los iconos
+                for button in icons_frame.winfo_children():
+                    button.configure(bg=bg_color)
+
+            # Funciones de hover para los iconos individuales
+            def on_icon_enter(e, button):
+                # Usar el color de highlight para iconos
+                button.configure(bg=icon_highlight_color)
+
+            def on_icon_leave(e, button):
+                # Restaurar al color de highlight normal si la card está resaltada,
+                # o al color base si no lo está
+                parent_bg = button.master.cget('bg')
+                button.configure(bg=parent_bg)
+
+            # Vincular eventos hover para la card
+            for widget in [group_card, name_label, count_label]:
+                widget.bind("<Enter>", on_card_enter)
+                widget.bind("<Leave>", on_card_leave)
+
+            # Vincular eventos hover para los iconos
+            for button in [edit_button, delete_button]:
+                button.bind("<Enter>", lambda e, btn=button: on_icon_enter(e, btn))
+                button.bind("<Leave>", lambda e, btn=button: on_icon_leave(e, btn))
+
+            # Agregar el bind para el clic en la tarjeta completa
+            group_card.bind("<Button-1>", 
+                        lambda e, gid=group_id: self.show_group_content(gid))
+            name_label.bind("<Button-1>", 
+                        lambda e, gid=group_id: self.show_group_content(gid))
+            count_label.bind("<Button-1>", 
+                            lambda e, gid=group_id: self.show_group_content(gid))
+
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
         # Asegúrate de que cada item pinned tenga la estructura correcta
@@ -842,11 +1012,20 @@ class GroupManager:
         self.show_edit_group_dialog(group_id)
 
     def delete_group(self, group_id):
-        # if tk.messagebox.askyesno("Eliminar Grupo", "¿Está seguro de que desea eliminar este grupo?"):
         del self.groups[group_id]
-        self.refresh_groups()
         self.save_groups()
-
+        
+        # Resetear la navegación a los botones superiores si no quedan grupos
+        if not self.groups:
+            self.clipboard_manager.navigation.current_strategy.state['current_selection'] = {
+                'type': 'top_buttons',
+                'index': 0
+            }
+        
+        self.refresh_groups()
+        # Actualizar la navegación
+        self.clipboard_manager.navigation.current_strategy.update_highlights()
+            
     def add_item_to_group(self, item_id, group_id):
         if group_id in self.groups:
             item_data = self.clipboard_manager.clipboard_items.get(item_id)
@@ -879,12 +1058,18 @@ class GroupManager:
     # ----------------------------------------------------------------------
     
     def show_group_dialog(self, group_id=None):
+        """Muestra el diálogo para crear o editar un grupo"""
         is_edit = group_id is not None
+        
+        # Ocultar la ventana de grupos actual
+        if hasattr(self, 'groups_window') and self.groups_window:
+            self.groups_window.withdraw()
+        
         dialog = tk.Toplevel(self.master)
         dialog.title("Editar Grupo" if is_edit else "Nuevo Grupo")
         
-        x = self.clipboard_manager.window_x + 40
-        y = self.clipboard_manager.window_y + 40
+        x = self.clipboard_manager.window_x
+        y = self.clipboard_manager.window_y
         
         dialog.geometry(f"200x114+{x}+{y}")
         
@@ -902,7 +1087,12 @@ class GroupManager:
                             fg=self.theme_manager.colors['dark']['fg'])
         title_label.pack(side=tk.LEFT, padx=0)
 
-        close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
+        def close_dialog():
+            dialog.destroy()
+            # Volver a mostrar la ventana de grupos
+            self.show_groups_window()
+
+        close_button = tk.Button(title_frame, text="❌", command=close_dialog,
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'])
@@ -936,9 +1126,11 @@ class GroupManager:
                 else:
                     new_group_id = str(uuid.uuid4())
                     self.groups[new_group_id] = {'name': name, 'items': []}
-                self.refresh_groups()
                 self.save_groups()
                 dialog.destroy()
+                # Volver a mostrar la ventana de grupos y refrescar
+                self.show_groups_window()
+                self.refresh_groups()
 
         save_button = tk.Button(content_frame, text="Guardar", command=save_group,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
@@ -962,10 +1154,17 @@ class GroupManager:
 
         title_frame.bind('<Button-1>', start_move)
         title_frame.bind('<B1-Motion>', on_move)
+        
+        # Configurar eventos de teclado
+        dialog.bind('<Key>', self.clipboard_manager.key_handler.handle_key_press)
+        dialog.bind('<Escape>', lambda e: close_dialog())
+        dialog.bind('<Return>', lambda e: save_group())
 
-        dialog.focus_set()
+        # Establecer el foco en el diálogo y la entrada
+        dialog.focus_force()
+        dialog.grab_set()  # Hacer el diálogo modal
         name_entry.focus()
-
+        
     def add_group(self):
         self.show_group_dialog()
 
@@ -1014,6 +1213,14 @@ class GroupContentManager:
     def show_group_content(self, group_id):
         """Muestra el contenido de un grupo específico"""
         self.current_group_id = group_id  # Guardar el ID del grupo actual
+        
+        # Si existe una ventana anterior, destruirla para evitar problemas de estado
+        if hasattr(self, 'content_window') and self.content_window:
+            self.content_window.destroy()
+            
+        # Siempre crear una nueva ventana
+        if self.content_window is not None:
+            self.content_window.destroy()
         
         # Crear o mostrar la ventana de contenido
         if self.content_window is None or not self.content_window.winfo_exists():
@@ -1097,6 +1304,7 @@ class GroupContentManager:
             # Configurar la navegación y los atajos de teclado
             def after_dialog_shown():
                 self.content_window.focus_force()
+                self.content_window.grab_set()  # Asegurar que la ventana tenga el foco exclusivo
                 self.manager.navigation.set_strategy('group_content')
                 self.manager.group_content_screen_keys.activate()
                 self.manager.navigation.initialize_focus()
@@ -1109,6 +1317,9 @@ class GroupContentManager:
                     self.manager.groups_screen_keys.deactivate()
                 if hasattr(self.manager, 'select_group_screen_keys'):
                     self.manager.select_group_screen_keys.deactivate()
+            
+            # Dar tiempo a que la ventana se muestre completamente
+            self.content_window.after(100, after_dialog_shown)
             
             # Dar tiempo a que la ventana se muestre completamente
             self.content_window.after(100, after_dialog_shown)
@@ -1157,11 +1368,13 @@ class GroupContentManager:
             if hasattr(self, 'canvas'):
                 self.scroll_position = self.canvas.yview()[0]
                 
-            self.content_window.withdraw()
+            # self.content_window.withdraw()
+            self.content_window.destroy()
+            self.content_window = None
             
-            # Restaurar la navegación de grupos
-            self.manager.group_manager.show_groups_window()
-            self.manager.navigation.set_strategy('groups')
+            # # Restaurar la navegación de grupos
+            # self.manager.group_manager.show_groups_window()
+            # self.manager.navigation.set_strategy('groups')
 
     def start_move(self, event):
         self.x = event.x
@@ -1256,8 +1469,13 @@ class GroupContentManager:
         self.manager.group_manager.groups[group_id]['items'] = [item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] != item_id]
         self.manager.group_manager.save_groups()
         self.refresh_group_content(group_id)
+        self.manager.group_manager._initialize_content_view()
 
     def edit_group_item(self, group_id, item_id):
+        """Muestra el diálogo para editar un item del grupo"""
+        # Primero, cerrar la ventana de contenido del grupo
+        self.close_content_window(group_id)
+        
         item = next((item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] == item_id), None)
         if not item:
             return
@@ -1265,8 +1483,8 @@ class GroupContentManager:
         dialog = tk.Toplevel(self.master)
         dialog.title("Editar Item")
         
-        x = self.manager.window_x + 40
-        y = self.manager.window_y + 40
+        x = self.manager.window_x
+        y = self.manager.window_y 
         
         if isinstance(item['text'], dict):
             text = item['text'].get('text', '')
@@ -1292,7 +1510,12 @@ class GroupContentManager:
                             fg=self.theme_manager.colors['dark']['fg'])
         title_label.pack(side=tk.LEFT, padx=0)
 
-        close_button = tk.Button(title_frame, text="❌", command=dialog.destroy,
+        def close_edit_dialog():
+            dialog.destroy()
+            # Volver a mostrar la ventana de grupos después de cerrar el diálogo
+            self.manager.group_manager.show_groups_window()
+
+        close_button = tk.Button(title_frame, text="❌", command=close_edit_dialog,
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'])
@@ -1338,11 +1561,13 @@ class GroupContentManager:
                     item['text'] = {'text': new_text, 'formatted': original_format}
                 self.manager.group_manager.save_groups()
                 dialog.destroy()
-                self.refresh_group_content(group_id)
+                # Volver a mostrar la ventana de grupos después de guardar
+                self.manager.group_manager.show_groups_window()
 
         save_button = tk.Button(content_frame, text="Guardar", command=save_item,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
+                                fg=self.theme_manager.colors['dark']['button_fg'],
+                                relief=tk.FLAT, bd=0, padx=4, pady=8)
         save_button.pack(fill=tk.X, pady=(0, 5))
 
         # Código para hacer la ventana arrastrable
@@ -1842,6 +2067,8 @@ class KeyHandler:
         """Alterna la visibilidad de la ventana principal"""
         logger.debug("Toggling window")
         if not self.manager.is_visible:
+            # Asegurarse de que estamos en la estrategia principal
+            self.manager.navigation.set_strategy('main')
             self.show_window()
         else:
             self.hide_window()
@@ -1866,6 +2093,8 @@ class KeyHandler:
             self.manager.window_x = window_x
             self.manager.window_y = window_y
             
+            # Asegurarse de que estamos en la navegación principal
+            self.manager.navigation.set_strategy('main')
             self._show_and_focus_window()
             
             # Inicializar el foco y la navegación
@@ -1873,6 +2102,9 @@ class KeyHandler:
             
         except Exception as e:
             logger.error(f"Error showing window: {e}")
+            # En caso de error, intentar restablecer a un estado conocido
+            self.manager.navigation.set_strategy('main')
+            self.manager.show_main_screen()
             
     def _show_and_focus_window(self) -> None:
         """Muestra y enfoca la ventana principal"""
@@ -2148,8 +2380,17 @@ class Navigation:
             logger.error(f"Error initializing navigation strategies: {e}")
             raise
 
+    def clean_current_strategy(self):
+        """Limpia el estado de la estrategia actual antes de cambiar"""
+        if self.current_strategy:
+            if hasattr(self.current_strategy, 'clean'):
+                self.current_strategy.clean()
+            self.current_strategy = None
+
     def set_strategy(self, screen_type: str) -> None:
         try:
+            self.clean_current_strategy()  # Limpiar estrategia actual
+            
             screen_mapping = {
                 'main': ScreenType.MAIN,
                 'groups': ScreenType.GROUPS,
@@ -2645,6 +2886,8 @@ from typing import List, Optional, Dict
 import tkinter as tk
 import logging
 
+from navigation_groups_screen import GroupScreenElement
+
 logger = logging.getLogger(__name__)
 
 class GroupContentElement(Enum):
@@ -2679,9 +2922,10 @@ class GroupContentScreenNavigation:
         """Inicializa el foco en la pantalla de contenido de grupo"""
         if self.get_cards_count() > 0:
             self.state['current_selection'] = {'type': 'content_cards', 'index': 0}
-        else:
+        elif self.get_cards_count() == 0:
             self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
         
+        self.navigation_state['enabled'] = True
         self.update_highlights()
         self.ensure_visible()
         logger.debug(f"Group content focus initialized: {self.state['current_selection']}")
@@ -2700,24 +2944,19 @@ class GroupContentScreenNavigation:
         current_index = self.state['current_selection']['index']
 
         if direction > 0:  # Down
-            if current_type == GroupContentElement.TOP_BUTTONS.value:
+            if current_type == GroupScreenElement.TOP_BUTTONS.value:
+                # Solo bajar a las tarjetas si hay grupos
                 if self.get_cards_count() > 0:
                     self.state['current_selection'] = {
-                        'type': GroupContentElement.CONTENT_CARDS.value,
+                        'type': GroupScreenElement.GROUP_CARDS.value,
                         'index': 0
                     }
-            elif current_type == GroupContentElement.CONTENT_CARDS.value:
-                if current_index < self.get_cards_count() - 1:
-                    self.state['current_selection']['index'] = current_index + 1
         else:  # Up
-            if current_type == GroupContentElement.CONTENT_CARDS.value:
-                if current_index > 0:
-                    self.state['current_selection']['index'] = current_index - 1
-                else:
-                    self.state['current_selection'] = {
-                        'type': GroupContentElement.TOP_BUTTONS.value,
-                        'index': 0
-                    }
+            if current_type == GroupScreenElement.GROUP_CARDS.value:
+                self.state['current_selection'] = {
+                    'type': GroupScreenElement.TOP_BUTTONS.value,
+                    'index': 0
+                }
 
     def navigate_horizontal(self, event) -> None:
         """Gestiona la navegación horizontal"""
@@ -2731,24 +2970,17 @@ class GroupContentScreenNavigation:
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
 
-        if direction > 0:  # Right
-            if current_type == GroupContentElement.CONTENT_CARDS.value:
+        if current_type == GroupScreenElement.TOP_BUTTONS.value:
+            # Siempre permitir navegación horizontal en botones superiores
+            new_index = (current_index + direction) % 2  # Solo 2 botones: add y close
+            self.state['current_selection']['index'] = new_index
+        elif current_type == GroupScreenElement.GROUP_CARDS.value and self.get_cards_count() > 0:
+            # Solo permitir navegación horizontal en tarjetas si existen
+            if direction > 0:  # Right
                 self.state['current_selection'] = {
-                    'type': GroupContentElement.ICONS.value,
-                    'index': current_index * 2  # Solo 2 iconos por tarjeta
+                    'type': GroupScreenElement.ICONS.value,
+                    'index': current_index * 2
                 }
-            elif current_type == GroupContentElement.ICONS.value:
-                if current_index % 2 < 1:  # Si no es el último icono
-                    self.state['current_selection']['index'] = current_index + 1
-        else:  # Left
-            if current_type == GroupContentElement.ICONS.value:
-                if current_index % 2 > 0:  # Si no es el primer icono
-                    self.state['current_selection']['index'] = current_index - 1
-                else:
-                    self.state['current_selection'] = {
-                        'type': GroupContentElement.CONTENT_CARDS.value,
-                        'index': current_index // 2
-                    }
 
     def activate_selected(self, event=None) -> None:
         """Activa el elemento seleccionado actualmente"""
@@ -2832,12 +3064,20 @@ class GroupContentScreenNavigation:
 
     def _get_close_button(self) -> Optional[tk.Button]:
         """Obtiene el botón de cerrar"""
-        if hasattr(self.manager.group_manager.group_content_manager, 'content_window'):
-            for child in self.manager.group_manager.group_content_manager.content_window.winfo_children():
-                if isinstance(child, tk.Frame):
-                    for button in child.winfo_children():
-                        if isinstance(button, tk.Button) and button['text'] == "❌":
-                            return button
+        try:
+            if (hasattr(self.manager.group_manager.group_content_manager, 'content_window') and 
+                self.manager.group_manager.group_content_manager.content_window and 
+                self.manager.group_manager.group_content_manager.content_window.winfo_exists()):
+                
+                for child in self.manager.group_manager.group_content_manager.content_window.winfo_children():
+                    if isinstance(child, tk.Frame):
+                        for button in child.winfo_children():
+                            if isinstance(button, tk.Button) and button['text'] == "❌":
+                                return button
+        except Exception as e:
+            logger.error(f"Error getting close button: {e}")
+            # Si hay un error, volver a la navegación principal
+            self.manager.navigation.set_strategy('main')
         return None
 
     def _get_content_cards(self) -> List[tk.Frame]:
@@ -2896,14 +3136,37 @@ class GroupContentScreenNavigation:
 
     def _activate_card(self, index: int) -> None:
         """Activa una tarjeta (pegar contenido)"""
-        group_items = self.manager.group_manager.groups[self.manager.group_content_manager.current_group_id]['items']
+        group_items = self.manager.group_manager.groups[self.manager.group_manager.group_content_manager.current_group_id]['items']
         if index < len(group_items):
             item = group_items[index]
-            # Usar el manejador de teclas para pegar el contenido
+            
+            # Ocultar todas las ventanas antes de pegar el contenido
+            if hasattr(self.manager.group_manager.group_content_manager, 'content_window') and \
+            self.manager.group_manager.group_content_manager.content_window:
+                self.manager.group_manager.group_content_manager.content_window.withdraw()
+                
+            if hasattr(self.manager.group_manager, 'groups_window') and \
+            self.manager.group_manager.groups_window:
+                self.manager.group_manager.groups_window.withdraw()
+                
+            if hasattr(self.manager, 'root'):
+                self.manager.root.withdraw()
+            
+            # Pegar el contenido
             self.manager.key_handler.paste_content(item['text'])
-            # Cerrar la ventana después de pegar
-            self.manager.group_content_manager.close_content_window(self.manager.group_content_manager.current_group_id)
-
+            
+            # Limpiar referencias a las ventanas
+            if hasattr(self.manager.group_manager.group_content_manager, 'content_window'):
+                self.manager.group_manager.group_content_manager.content_window.destroy()
+                self.manager.group_manager.group_content_manager.content_window = None
+                
+            if hasattr(self.manager.group_manager, 'groups_window'):
+                self.manager.group_manager.groups_window.destroy()
+                self.manager.group_manager.groups_window = None
+            
+            # Restablecer la navegación a la pantalla principal
+            self.manager.navigation.set_strategy('main')
+                
     def _activate_icon(self, index: int) -> None:
         """Activa un icono"""
         group_items = self.manager.group_manager.groups[self.manager.group_manager.group_content_manager.current_group_id]['items']
@@ -3652,7 +3915,7 @@ class SelectGroupScreenNavigation:
             
         if self.get_options_count() > 0:
             self.state['current_selection'] = {'type': 'group_options', 'index': 0}
-        else:
+        elif self.get_options_count() == 0:
             self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
         
         self.navigation_state['enabled'] = True
@@ -4455,6 +4718,25 @@ class ClipboardManager:
         self.theme_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 0))
         self.clear_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 1))
         self.close_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 2))
+        
+         # Obtener colores del tema
+        theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
+        
+        def create_hover_effect(button):
+            def on_enter(e):
+                button.configure(bg=theme['active_bg'], fg=theme['active_fg'])
+            def on_leave(e):
+                button.configure(bg=theme['button_bg'], fg=theme['button_fg'])
+            button.bind('<Enter>', on_enter)
+            button.bind('<Leave>', on_leave)
+
+        # Aplicar efectos hover a los botones principales
+        for button in [self.button1, self.button2, self.button3]:
+            create_hover_effect(button)
+
+        # Aplicar efectos hover a los botones de la barra de título
+        for button in [self.theme_button, self.clear_button, self.close_button]:
+            create_hover_effect(button)
 
     def activate_button(self, button_type: str, index: int) -> None:
         """Activa un botón específico"""

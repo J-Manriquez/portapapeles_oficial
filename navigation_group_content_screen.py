@@ -5,6 +5,8 @@ from typing import List, Optional, Dict
 import tkinter as tk
 import logging
 
+from navigation_groups_screen import GroupScreenElement
+
 logger = logging.getLogger(__name__)
 
 class GroupContentElement(Enum):
@@ -39,9 +41,10 @@ class GroupContentScreenNavigation:
         """Inicializa el foco en la pantalla de contenido de grupo"""
         if self.get_cards_count() > 0:
             self.state['current_selection'] = {'type': 'content_cards', 'index': 0}
-        else:
+        elif self.get_cards_count() == 0:
             self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
         
+        self.navigation_state['enabled'] = True
         self.update_highlights()
         self.ensure_visible()
         logger.debug(f"Group content focus initialized: {self.state['current_selection']}")
@@ -60,24 +63,19 @@ class GroupContentScreenNavigation:
         current_index = self.state['current_selection']['index']
 
         if direction > 0:  # Down
-            if current_type == GroupContentElement.TOP_BUTTONS.value:
+            if current_type == GroupScreenElement.TOP_BUTTONS.value:
+                # Solo bajar a las tarjetas si hay grupos
                 if self.get_cards_count() > 0:
                     self.state['current_selection'] = {
-                        'type': GroupContentElement.CONTENT_CARDS.value,
+                        'type': GroupScreenElement.GROUP_CARDS.value,
                         'index': 0
                     }
-            elif current_type == GroupContentElement.CONTENT_CARDS.value:
-                if current_index < self.get_cards_count() - 1:
-                    self.state['current_selection']['index'] = current_index + 1
         else:  # Up
-            if current_type == GroupContentElement.CONTENT_CARDS.value:
-                if current_index > 0:
-                    self.state['current_selection']['index'] = current_index - 1
-                else:
-                    self.state['current_selection'] = {
-                        'type': GroupContentElement.TOP_BUTTONS.value,
-                        'index': 0
-                    }
+            if current_type == GroupScreenElement.GROUP_CARDS.value:
+                self.state['current_selection'] = {
+                    'type': GroupScreenElement.TOP_BUTTONS.value,
+                    'index': 0
+                }
 
     def navigate_horizontal(self, event) -> None:
         """Gestiona la navegación horizontal"""
@@ -91,24 +89,17 @@ class GroupContentScreenNavigation:
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
 
-        if direction > 0:  # Right
-            if current_type == GroupContentElement.CONTENT_CARDS.value:
+        if current_type == GroupScreenElement.TOP_BUTTONS.value:
+            # Siempre permitir navegación horizontal en botones superiores
+            new_index = (current_index + direction) % 2  # Solo 2 botones: add y close
+            self.state['current_selection']['index'] = new_index
+        elif current_type == GroupScreenElement.GROUP_CARDS.value and self.get_cards_count() > 0:
+            # Solo permitir navegación horizontal en tarjetas si existen
+            if direction > 0:  # Right
                 self.state['current_selection'] = {
-                    'type': GroupContentElement.ICONS.value,
-                    'index': current_index * 2  # Solo 2 iconos por tarjeta
+                    'type': GroupScreenElement.ICONS.value,
+                    'index': current_index * 2
                 }
-            elif current_type == GroupContentElement.ICONS.value:
-                if current_index % 2 < 1:  # Si no es el último icono
-                    self.state['current_selection']['index'] = current_index + 1
-        else:  # Left
-            if current_type == GroupContentElement.ICONS.value:
-                if current_index % 2 > 0:  # Si no es el primer icono
-                    self.state['current_selection']['index'] = current_index - 1
-                else:
-                    self.state['current_selection'] = {
-                        'type': GroupContentElement.CONTENT_CARDS.value,
-                        'index': current_index // 2
-                    }
 
     def activate_selected(self, event=None) -> None:
         """Activa el elemento seleccionado actualmente"""
@@ -192,12 +183,20 @@ class GroupContentScreenNavigation:
 
     def _get_close_button(self) -> Optional[tk.Button]:
         """Obtiene el botón de cerrar"""
-        if hasattr(self.manager.group_manager.group_content_manager, 'content_window'):
-            for child in self.manager.group_manager.group_content_manager.content_window.winfo_children():
-                if isinstance(child, tk.Frame):
-                    for button in child.winfo_children():
-                        if isinstance(button, tk.Button) and button['text'] == "❌":
-                            return button
+        try:
+            if (hasattr(self.manager.group_manager.group_content_manager, 'content_window') and 
+                self.manager.group_manager.group_content_manager.content_window and 
+                self.manager.group_manager.group_content_manager.content_window.winfo_exists()):
+                
+                for child in self.manager.group_manager.group_content_manager.content_window.winfo_children():
+                    if isinstance(child, tk.Frame):
+                        for button in child.winfo_children():
+                            if isinstance(button, tk.Button) and button['text'] == "❌":
+                                return button
+        except Exception as e:
+            logger.error(f"Error getting close button: {e}")
+            # Si hay un error, volver a la navegación principal
+            self.manager.navigation.set_strategy('main')
         return None
 
     def _get_content_cards(self) -> List[tk.Frame]:
@@ -256,14 +255,37 @@ class GroupContentScreenNavigation:
 
     def _activate_card(self, index: int) -> None:
         """Activa una tarjeta (pegar contenido)"""
-        group_items = self.manager.group_manager.groups[self.manager.group_content_manager.current_group_id]['items']
+        group_items = self.manager.group_manager.groups[self.manager.group_manager.group_content_manager.current_group_id]['items']
         if index < len(group_items):
             item = group_items[index]
-            # Usar el manejador de teclas para pegar el contenido
+            
+            # Ocultar todas las ventanas antes de pegar el contenido
+            if hasattr(self.manager.group_manager.group_content_manager, 'content_window') and \
+            self.manager.group_manager.group_content_manager.content_window:
+                self.manager.group_manager.group_content_manager.content_window.withdraw()
+                
+            if hasattr(self.manager.group_manager, 'groups_window') and \
+            self.manager.group_manager.groups_window:
+                self.manager.group_manager.groups_window.withdraw()
+                
+            if hasattr(self.manager, 'root'):
+                self.manager.root.withdraw()
+            
+            # Pegar el contenido
             self.manager.key_handler.paste_content(item['text'])
-            # Cerrar la ventana después de pegar
-            self.manager.group_content_manager.close_content_window(self.manager.group_content_manager.current_group_id)
-
+            
+            # Limpiar referencias a las ventanas
+            if hasattr(self.manager.group_manager.group_content_manager, 'content_window'):
+                self.manager.group_manager.group_content_manager.content_window.destroy()
+                self.manager.group_manager.group_content_manager.content_window = None
+                
+            if hasattr(self.manager.group_manager, 'groups_window'):
+                self.manager.group_manager.groups_window.destroy()
+                self.manager.group_manager.groups_window = None
+            
+            # Restablecer la navegación a la pantalla principal
+            self.manager.navigation.set_strategy('main')
+                
     def _activate_icon(self, index: int) -> None:
         """Activa un icono"""
         group_items = self.manager.group_manager.groups[self.manager.group_manager.group_content_manager.current_group_id]['items']

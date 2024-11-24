@@ -127,6 +127,8 @@ class KeyHandler:
         """Alterna la visibilidad de la ventana principal"""
         logger.debug("Toggling window")
         if not self.manager.is_visible:
+            # Asegurarse de que estamos en la estrategia principal
+            self.manager.navigation.set_strategy('main')
             self.show_window()
         else:
             self.hide_window()
@@ -151,6 +153,8 @@ class KeyHandler:
             self.manager.window_x = window_x
             self.manager.window_y = window_y
             
+            # Asegurarse de que estamos en la navegación principal
+            self.manager.navigation.set_strategy('main')
             self._show_and_focus_window()
             
             # Inicializar el foco y la navegación
@@ -158,6 +162,9 @@ class KeyHandler:
             
         except Exception as e:
             logger.error(f"Error showing window: {e}")
+            # En caso de error, intentar restablecer a un estado conocido
+            self.manager.navigation.set_strategy('main')
+            self.manager.show_main_screen()
             
     def _show_and_focus_window(self) -> None:
         """Muestra y enfoca la ventana principal"""
