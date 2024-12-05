@@ -27,7 +27,7 @@ class GroupContentManager:
             text = text_data.get('text', '')
         else:
             text = str(text_data)
-        
+
         lines = len(text.split('\n'))
         if lines > 2:
             content_height = min(lines * (self.line_height*2), 7 * self.line_height)  # Máximo 4 líneas
@@ -38,28 +38,28 @@ class GroupContentManager:
     def show_group_content(self, group_id):
         """Muestra el contenido de un grupo específico"""
         self.current_group_id = group_id  # Guardar el ID del grupo actual
-        
+
         # Si existe una ventana anterior, destruirla para evitar problemas de estado
         if hasattr(self, 'content_window') and self.content_window:
             self.content_window.destroy()
-            
+
         # Siempre crear una nueva ventana
         if self.content_window is not None:
             self.content_window.destroy()
-        
+
         # Crear o mostrar la ventana de contenido
         if self.content_window is None or not self.content_window.winfo_exists():
             self.content_window = tk.Toplevel(self.master)
             self.content_window.title(f"Contenido del Grupo: {self.manager.group_manager.groups[group_id]['name']}")
-            
+
             # Configurar dimensiones y posición
             window_width = self.settings_manager.settings['width']
             window_height = self.settings_manager.settings['height']
-            x = self.manager.window_x 
-            y = self.manager.window_y 
-            
+            x = self.manager.window_x
+            y = self.manager.window_y
+
             self.content_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-            
+
             # Configurar apariencia de la ventana
             self.content_window.overrideredirect(True)
             self.content_window.configure(bg=self.theme_manager.colors['dark']['bg'])
@@ -69,15 +69,15 @@ class GroupContentManager:
             title_frame = tk.Frame(self.content_window, bg=self.theme_manager.colors['dark']['bg'])
             title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
 
-            title_label = tk.Label(title_frame, 
-                                text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}", 
+            title_label = tk.Label(title_frame,
+                                text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}",
                                 font=('Segoe UI', 10, 'bold'),
                                 bg=self.theme_manager.colors['dark']['bg'],
                                 fg=self.theme_manager.colors['dark']['fg'])
             title_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-            close_button = tk.Button(title_frame, 
-                                text="❌", 
+            close_button = tk.Button(title_frame,
+                                text="❌",
                                 command=lambda: self.close_content_window(group_id),
                                 font=('Segoe UI', 10, 'bold'),
                                 bd=0, padx=10, width=5, height=2,
@@ -85,36 +85,49 @@ class GroupContentManager:
                                 fg=self.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
+            # Agregar atributo para tracking del estado de highlight
+            close_button._is_highlighted = False
+            close_button._mouse_over = False
+
             # Configurar efecto hover para el botón de cerrar
             def on_close_button_enter(event):
-                close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
-                    'dark' if self.manager.is_dark_mode else 'light']['normal'])
+                nav = self.manager.navigation.current_strategy
+                if nav.last_keyboard_selection is None:
+                    close_button._mouse_over = True
+                    close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
+                        'dark' if self.manager.is_dark_mode else 'light']['normal'])
+                else:
+                    nav.last_keyboard_selection = None
+                    nav._clear_all_highlights()
 
             def on_close_button_leave(event):
-                close_button.configure(bg=self.theme_manager.colors['dark']['button_bg'])
+                close_button._mouse_over = False
+                nav = self.manager.navigation.current_strategy
+                if nav.last_keyboard_selection is None and not close_button._is_highlighted:
+                    close_button.configure(bg=self.theme_manager.colors['dark']['button_bg'])
 
             close_button.bind('<Enter>', on_close_button_enter)
             close_button.bind('<Leave>', on_close_button_leave)
 
             # Canvas y scroll para los items
-            self.canvas = tk.Canvas(self.content_window, 
-                                bg=self.theme_manager.colors['dark']['bg'], 
+            self.canvas = tk.Canvas(self.content_window,
+                                bg=self.theme_manager.colors['dark']['bg'],
                                 highlightthickness=0)
             self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-            self.scrollbar = ttk.Scrollbar(self.content_window, 
-                                        orient="vertical", 
+            self.scrollbar = ttk.Scrollbar(self.content_window,
+                                        orient="vertical",
                                         command=self.canvas.yview)
             self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
             self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
             # Frame para los items
-            self.items_frame = tk.Frame(self.canvas, 
+            self.items_frame = tk.Frame(self.canvas,
                                     bg=self.theme_manager.colors['dark']['bg'])
-            self.canvas_window = self.canvas.create_window((0, 0), 
-                                                        window=self.items_frame, 
-                                                        anchor='nw', 
+            self.canvas_window = self.canvas.create_window((0, 0),
+                                                        window=self.items_frame,
+                                                        anchor='nw',
                                                         width=window_width)
 
             # Configurar el desplazamiento con la rueda del ratón
@@ -127,16 +140,16 @@ class GroupContentManager:
             def _configure_inner_frame(event):
                 if self.canvas.winfo_exists():
                     self.canvas.itemconfig(self.canvas_window, width=event.width)
-            
+
             self.canvas.bind('<Configure>', _configure_inner_frame)
 
             # Hacer la ventana arrastrable
             title_frame.bind('<Button-1>', self.start_move)
             title_frame.bind('<B1-Motion>', self.on_move)
-            
+
             # Vincular eventos de teclado
             self.content_window.bind('<Key>', self.manager.key_handler.handle_key_press)
-            
+
             # Configurar la navegación y los atajos de teclado
             def after_dialog_shown():
                 self.content_window.focus_force()
@@ -145,7 +158,7 @@ class GroupContentManager:
                 self.manager.group_content_screen_keys.activate()
                 self.manager.navigation.initialize_focus()
                 self.manager.navigation.update_highlights()
-                
+
                 # Desactivar otras configuraciones de teclas
                 if hasattr(self.manager, 'main_screen_keys'):
                     self.manager.main_screen_keys.deactivate()
@@ -153,10 +166,10 @@ class GroupContentManager:
                     self.manager.groups_screen_keys.deactivate()
                 if hasattr(self.manager, 'select_group_screen_keys'):
                     self.manager.select_group_screen_keys.deactivate()
-            
+
             # Dar tiempo a que la ventana se muestre completamente
             self.content_window.after(100, after_dialog_shown)
-            
+
             # Dar tiempo a que la ventana se muestre completamente
             self.content_window.after(100, after_dialog_shown)
 
@@ -166,7 +179,7 @@ class GroupContentManager:
             self.content_window.lift()
             self.content_window.attributes('-topmost', True)
             self.content_window.after_idle(self.content_window.attributes, '-topmost', False)
-            
+
             # Actualizar el título
             for widget in self.content_window.winfo_children():
                 if isinstance(widget, tk.Frame):
@@ -182,12 +195,12 @@ class GroupContentManager:
         # Restaurar la posición del scroll si existe
         if hasattr(self, 'scroll_position'):
             self.canvas.yview_moveto(self.scroll_position)
-            
+
         # Asegurarse de que el foco y la navegación estén correctamente configurados
         self.content_window.after(200, lambda: self.manager.navigation.current_strategy.initialize_focus())
-        
+
         logger.debug(f"Grupo content window shown for group {group_id}")
-    
+
     def _initialize_content_view(self):
         """Inicializa la vista de contenido después de mostrar la ventana"""
         self.content_window.focus_force()
@@ -199,15 +212,15 @@ class GroupContentManager:
         if self.content_window:
             # Desactivar la configuración de teclas actual
             self.manager.group_content_screen_keys.deactivate()
-            
+
             # Guardar la posición del scroll si es necesario
             if hasattr(self, 'canvas'):
                 self.scroll_position = self.canvas.yview()[0]
-                
+
             # self.content_window.withdraw()
             self.content_window.destroy()
             self.content_window = None
-            
+
             # Restaurar la navegación de grupos
             self.manager.group_manager.show_groups_window()
             self.manager.navigation.set_strategy('groups')
@@ -222,12 +235,12 @@ class GroupContentManager:
         x = self.content_window.winfo_x() + deltax
         y = self.content_window.winfo_y() + deltay
         self.content_window.geometry(f"+{x}+{y}")
-        
+
     def refresh_group_content(self, group_id):
         # Limpiar el frame de items existente
         for widget in self.items_frame.winfo_children():
             widget.destroy()
-        
+
         window_width = self.settings_manager.settings['width']
         window_height = self.settings_manager.settings['height'] - 40  # Ajuste para la barra de título
 
@@ -237,9 +250,9 @@ class GroupContentManager:
         for item in self.manager.group_manager.groups[group_id]['items']:
             card_width = window_width - 4  # Ajuste mínimo para el padding
             card_height = max(self.min_card_height, self.calculate_card_height(item['text']))
-    
+
             bg_color = theme['card_bg']
-    
+
             card_container = tk.Frame(self.items_frame, width=card_width, height=card_height, bg=bg_color)
             card_container.pack(fill=tk.X, padx=6, pady=(4,0))
             card_container.pack_propagate(False)  # Evita que el contenido afecte el tamaño del contenedor
@@ -277,22 +290,22 @@ class GroupContentManager:
                 width=int(24)
             )
             text_label.pack(padx=6, pady=(0,4), fill=tk.X, expand=True, side=tk.TOP)
-            
+
             icons_frame = tk.Frame(card_container, bg=bg_color)
             icons_frame.pack(side=tk.RIGHT, padx=3)
 
-            edit_button = tk.Button(icons_frame, text="✏️", 
+            edit_button = tk.Button(icons_frame, text="✏️",
                                     command=lambda i=item['id']: self.edit_group_item(group_id, i),
                                     font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
                                     bg=bg_color, fg=theme['fg'])
             edit_button.pack(side=tk.LEFT)
 
-            delete_button = tk.Button(icons_frame, text="❌", 
+            delete_button = tk.Button(icons_frame, text="❌",
                                     command=lambda i=item['id']: self.remove_item_from_group(group_id, i, self.items_frame),
                                     font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
                                     bg=bg_color, fg=theme['fg'])
             delete_button.pack(side=tk.LEFT)
-            
+
             # Obtener colores del tema actual
             is_dark = self.manager.is_dark_mode
             theme = self.theme_manager.colors['dark' if is_dark else 'light']
@@ -304,80 +317,93 @@ class GroupContentManager:
             icon_highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
                 'dark' if is_dark else 'light']['icon']
 
-            # Funciones de hover
-            def on_enter(e, card=card_container, components=[text_frame, icons_frame]):
-                card_container._mouse_over = True  # Marcar que el ratón está sobre la tarjeta
-                card_container.configure(bg=highlight_color)
-                text_frame.configure(bg=highlight_color)
-                text_label.configure(bg=highlight_color)
-                if item_name:
-                    item_name_label.configure(bg=highlight_color)
-                icons_frame.configure(bg=highlight_color)
-                for component in components:
-                    component.configure(bg=highlight_color)
-                # Actualizar el fondo de los iconos al color de highlight normal
-                for button in icons_frame.winfo_children():
-                    button.configure(bg=highlight_color)
-                for btn in [edit_button, delete_button]:
-                    # Solo cambiar el color de los botones si no están siendo hover
-                    if not hasattr(btn, '_mouse_over') or not btn._mouse_over:
-                        btn.configure(bg=highlight_color)
-            
-            def on_leave(event):
-                card_container._mouse_over = False  # Marcar que el ratón ya no está sobre la tarjeta
-                # Solo restaurar los colores si la tarjeta no está seleccionada
-                current_selection = self.manager.navigation.current_strategy.state['current_selection']
-                if (current_selection['type'] != 'content_cards' or 
-                    current_selection['index'] != len(self.items_frame.winfo_children()) - 1):
-                    card_container.configure(bg=bg_color)
-                    text_frame.configure(bg=bg_color)
-                    text_label.configure(bg=bg_color)
-                    if item_name:
-                        item_name_label.configure(bg=bg_color)
-                    icons_frame.configure(bg=bg_color)
-                    for btn in [edit_button, delete_button]:
-                        if not hasattr(btn, '_mouse_over') or not btn._mouse_over:
-                            btn.configure(bg=bg_color)
-            
-            # Funciones de hover para los iconos individuales
-            def on_icon_enter(event, button):
-                button._mouse_over = True  # Marcar que el ratón está sobre el icono
-                button.configure(bg=icon_highlight_color)
+            # Modificar las funciones de hover
+            def create_hover_handlers(card, text_frm, text_lbl, icons_frm, name_lbl=None):
+                def on_enter(e):
+                    nav = self.manager.navigation.current_strategy
+                    if nav.last_keyboard_selection is None:
+                        card.configure(bg=highlight_color)
+                        text_frm.configure(bg=highlight_color)
+                        text_lbl.configure(bg=highlight_color)
+                        icons_frm.configure(bg=highlight_color)
+                        if name_lbl:
+                            name_lbl.configure(bg=highlight_color)
+                        for btn in icons_frm.winfo_children():
+                            if not hasattr(btn, '_mouse_over') or not btn._mouse_over:
+                                btn.configure(bg=highlight_color)
+                    else:
+                        # Desactivar la selección por teclado cuando se usa el mouse
+                        nav.last_keyboard_selection = None
+                        nav._clear_all_highlights()
 
-            def on_icon_leave(event, button):
-                button._mouse_over = False  # Marcar que el ratón ya no está sobre el icono
-                # Restaurar al color de highlight normal si la card está resaltada,
-                # o al color base si no lo está
-                parent_bg = card_container.cget('bg')
-                button.configure(bg=parent_bg)
+                def on_leave(e):
+                    nav = self.manager.navigation.current_strategy
+                    if nav.last_keyboard_selection is None:
+                        card.configure(bg=bg_color)
+                        text_frm.configure(bg=bg_color)
+                        text_lbl.configure(bg=bg_color)
+                        icons_frm.configure(bg=bg_color)
+                        if name_lbl:
+                            name_lbl.configure(bg=bg_color)
+                        for btn in icons_frm.winfo_children():
+                            if not hasattr(btn, '_mouse_over') or not btn._mouse_over:
+                                btn.configure(bg=bg_color)
 
-            # Inicializar el estado del mouse
+                return on_enter, on_leave
+
+            def create_icon_hover_handlers(button, card):
+                def on_icon_enter(e):
+                    button._mouse_over = True
+                    nav = self.manager.navigation.current_strategy
+                    if nav.last_keyboard_selection is None:
+                        button.configure(bg=icon_highlight_color)
+                    else:
+                        nav.last_keyboard_selection = None
+                        nav._clear_all_highlights()
+
+                def on_icon_leave(e):
+                    button._mouse_over = False
+                    nav = self.manager.navigation.current_strategy
+                    if nav.last_keyboard_selection is None:
+                        parent_bg = button.master.cget('bg')
+                        button.configure(bg=parent_bg)
+
+                return on_icon_enter, on_icon_leave
+
+            # Inicializar estados de hover
             card_container._mouse_over = False
+            edit_button._mouse_over = False
+            delete_button._mouse_over = False
+
+            # Vincular eventos hover para la card y sus componentes
+            enter_handler, leave_handler = create_hover_handlers(
+                card_container, text_frame, text_label, icons_frame,
+                item_name_label if item_name else None
+            )
+
+            # Vincular eventos para la tarjeta y sus componentes
+            components = [card_container, text_frame, text_label, icons_frame]
+            if item_name:
+                components.append(item_name_label)
+
+            for widget in components:
+                widget.bind('<Enter>', enter_handler)
+                widget.bind('<Leave>', leave_handler)
+
+            # Vincular eventos hover para los iconos
             for btn in [edit_button, delete_button]:
-                btn._mouse_over = False
+                icon_enter, icon_leave = create_icon_hover_handlers(btn, card_container)
+                btn.bind('<Enter>', icon_enter)
+                btn.bind('<Leave>', icon_leave)
 
-            # Vincular eventos hover para la card
-            # widgets_to_bind = [card_container, text_frame, text_label, icons_frame]
-            # if item_name:
-            #     widgets_to_bind.append(item_name_label)
-
-            # for widget in widgets_to_bind:
-            #     widget.bind('<Enter>', on_enter)
-            #     widget.bind('<Leave>', on_leave)
-
-            # Vincular eventos hover para los iconos individuales
-            for btn in [edit_button, delete_button]:
-                btn.bind('<Enter>', lambda e, b=btn: on_icon_enter(e, b))
-                btn.bind('<Leave>', lambda e, b=btn: on_icon_leave(e, b))
-            
         # Actualizar el scrollregion después de añadir todos los widgets
         self.items_frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
-        
+
         # Después de actualizar el contenido:
         if hasattr(self.manager.navigation, 'current_strategy'):
             self.manager.navigation.current_strategy.update_highlights()
-        
+
     def remove_item_from_group(self, group_id, item_id, items_frame):
         self.manager.group_manager.groups[group_id]['items'] = [item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] != item_id]
         self.manager.group_manager.save_groups()
@@ -388,29 +414,29 @@ class GroupContentManager:
         """Muestra el diálogo para editar un item del grupo"""
         # Primero, cerrar la ventana de contenido del grupo
         self.close_content_window(group_id)
-        
+
         item = next((item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] == item_id), None)
         if not item:
             return
 
         dialog = tk.Toplevel(self.master)
         dialog.title("Editar Item")
-        
+
         x = self.manager.window_x
-        y = self.manager.window_y 
-        
+        y = self.manager.window_y
+
         if isinstance(item['text'], dict):
             text = item['text'].get('text', '')
             original_format = item['text'].get('formatted', {})
         else:
             text = str(item['text'])
             original_format = {}
-        
+
         text_lines = text.count('\n') + 1
         initial_height = min(150 + (text_lines * 20), 600)
-        
+
         dialog.geometry(f"300x{initial_height}+{x}+{y}")
-        
+
         dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
@@ -433,7 +459,7 @@ class GroupContentManager:
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'])
         close_button.pack(side=tk.RIGHT)
-        
+
         content_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
         content_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=0)
 
