@@ -16,6 +16,7 @@ class GroupsScreenNavigation:
     def __init__(self, manager):
         self.manager = manager
         self.navigation_state = {'enabled': True}
+        self.last_keyboard_selection = None
         self.navigation_order = [
             GroupScreenElement.TOP_BUTTONS,
             GroupScreenElement.GROUP_CARDS
@@ -23,7 +24,7 @@ class GroupsScreenNavigation:
         self.current_element: Optional[GroupScreenElement] = None
         self.current_index: int = 0
         self.state: Dict = self._initialize_state()
-        logger.debug("GroupsScreenNavigation initialized")
+        # logger.debug("GroupsScreenNavigation initialized")
 
     def _initialize_state(self) -> Dict:
         """Inicializa el estado de navegación"""
@@ -41,19 +42,19 @@ class GroupsScreenNavigation:
             self.state['current_selection'] = {'type': 'group_cards', 'index': 0}
         else:
             self.state['current_selection'] = {'type': 'top_buttons', 'index': 0}
-        
+
         self.navigation_state['enabled'] = True
         self.update_highlights()
-        logger.debug(f"Groups focus initialized: {self.state['current_selection']}")
+        # logger.debug(f"Groups focus initialized: {self.state['current_selection']}")
 
     def navigate_vertical(self, event) -> None:
         """Gestiona la navegación vertical"""
         direction = 1 if event.keysym == 'Down' else -1
         self._update_selection_vertical(direction)
+        # Restaurar la selección por teclado
+        self.last_keyboard_selection = self.state['current_selection'].copy()
         self.update_highlights()
         self.ensure_visible()
-        logger.debug(f"Vertical navigation: {event.keysym}")
-
     def _update_selection_vertical(self, direction: int) -> None:
         """Actualiza la selección actual en dirección vertical"""
         current_type = self.state['current_selection']['type']
@@ -83,8 +84,9 @@ class GroupsScreenNavigation:
         """Gestiona la navegación horizontal"""
         direction = 1 if event.keysym == 'Right' else -1
         self._update_selection_horizontal(direction)
+        # Restaurar la selección por teclado
+        self.last_keyboard_selection = self.state['current_selection'].copy()
         self.update_highlights()
-        logger.debug(f"Horizontal navigation: {event.keysym}")
 
     def _update_selection_horizontal(self, direction: int) -> None:
         """Actualiza la selección actual en dirección horizontal"""
@@ -129,13 +131,13 @@ class GroupsScreenNavigation:
 
         if handler := actions.get(current_type):
             handler(current_index)
-            logger.debug(f"Activated {current_type} at index {current_index}")
+            # logger.debug(f"Activated {current_type} at index {current_index}")
 
     def update_highlights(self) -> None:
         """Actualiza los destacados visuales"""
         self._clear_all_highlights()
         self._highlight_current_selection()
-        logger.debug("Highlights updated")
+        # logger.debug("Highlights updated")
 
     def _clear_all_highlights(self) -> None:
         """Limpia todos los destacados visuales"""
@@ -153,6 +155,97 @@ class GroupsScreenNavigation:
         for card in self.manager.group_manager.groups_frame.winfo_children():
             self._reset_card_colors(card, base_color, button_color)
 
+    def _highlight_current_selection(self) -> None:
+        """Aplica el destacado al elemento actualmente seleccionado"""
+        self._clear_all_highlights()
+
+        current_type = self.state['current_selection']['type']
+        current_index = self.state['current_selection']['index']
+
+         # Guardar la última selección por teclado
+        self.last_keyboard_selection = {
+            'type': current_type,
+            'index': current_index
+        }
+        self._apply_highlight(current_type, current_index)
+
+
+        highlight_color = self._get_highlight_color()
+        icon_highlight_color = self._get_icon_highlight_color()
+
+        # Marcar todas las tarjetas como no resaltadas primero
+        cards = self.manager.group_manager.groups_frame.winfo_children()
+        for card in cards:
+            if hasattr(card, '_is_highlighted'):
+                card._is_highlighted = False
+
+        if current_type == GroupScreenElement.TOP_BUTTONS.value:
+            buttons = self.get_top_buttons()
+            if 0 <= current_index < len(buttons):
+                buttons[current_index].configure(bg=highlight_color)
+
+        elif current_type == GroupScreenElement.GROUP_CARDS.value:
+            if current_index < len(cards):
+                card = cards[current_index]
+                card._is_highlighted = True
+                self._highlight_card(card, highlight_color)
+
+        elif current_type == GroupScreenElement.ICONS.value:
+            card_index = current_index // 2
+            icon_index = current_index % 2
+
+            if card_index < len(cards):
+                card = cards[card_index]
+                card._is_highlighted = True
+                self._highlight_card(card, highlight_color)
+
+                icons_frame = self._find_icons_frame(card)
+                if icons_frame and icon_index < len(icons_frame.winfo_children()):
+                    icons = icons_frame.winfo_children()
+                    # Resetear todos los iconos al color de highlight normal
+                    for icon in icons:
+                        icon.configure(bg=highlight_color)
+                    # Resaltar el icono seleccionado
+                    icons[icon_index].configure(bg=icon_highlight_color)
+
+    def _apply_highlight(self, selection_type, index):
+        """Aplica el highlight según el tipo y índice de selección"""
+        highlight_color = self._get_highlight_color()
+        icon_highlight_color = self._get_icon_highlight_color()
+        cards = self.manager.group_manager.groups_frame.winfo_children()
+
+        # Limpiar estado de highlight de todas las tarjetas
+        for card in cards:
+            if hasattr(card, '_is_highlighted'):
+                card._is_highlighted = False
+
+        if selection_type == GroupScreenElement.TOP_BUTTONS.value:
+            buttons = self.get_top_buttons()
+            if 0 <= index < len(buttons):
+                buttons[index].configure(bg=highlight_color)
+
+        elif selection_type == GroupScreenElement.GROUP_CARDS.value:
+            if index < len(cards):
+                card = cards[index]
+                card._is_highlighted = True
+                self._highlight_card(card, highlight_color)
+
+        elif selection_type == GroupScreenElement.ICONS.value:
+            card_index = index // 2
+            icon_index = index % 2
+
+            if card_index < len(cards):
+                card = cards[card_index]
+                card._is_highlighted = True
+                self._highlight_card(card, highlight_color)
+
+                icons_frame = self._find_icons_frame(card)
+                if icons_frame and icon_index < len(icons_frame.winfo_children()):
+                    icons = icons_frame.winfo_children()
+                    for icon in icons:
+                        icon.configure(bg=highlight_color)
+                    icons[icon_index].configure(bg=icon_highlight_color)
+
     def _highlight_card(self, card: tk.Frame, color: str) -> None:
         """Resalta una tarjeta específica y sus elementos"""
         card.configure(bg=color)
@@ -163,8 +256,6 @@ class GroupsScreenNavigation:
                     if isinstance(subchild, tk.Label):
                         subchild.configure(bg=color)
                     elif isinstance(subchild, tk.Button):
-                        # No cambiar el color de los botones aquí
-                        # a menos que estemos en modo tarjeta
                         if self.state['current_selection']['type'] == GroupScreenElement.GROUP_CARDS.value:
                             subchild.configure(bg=color)
             elif isinstance(child, tk.Label):
@@ -175,6 +266,8 @@ class GroupsScreenNavigation:
 
     def _reset_card_colors(self, card: tk.Frame, base_color: str, button_color: str) -> None:
         """Resetea los colores de una tarjeta específica y sus elementos"""
+        if hasattr(card, '_is_highlighted'):
+            card._is_highlighted = False
         card.configure(bg=base_color)
         for child in card.winfo_children():
             if isinstance(child, tk.Frame):
@@ -188,48 +281,26 @@ class GroupsScreenNavigation:
                 child.configure(bg=base_color)
             elif isinstance(child, tk.Button):
                 child.configure(bg=button_color)
-    
-    def _highlight_current_selection(self) -> None:
-        """Aplica el destacado al elemento actualmente seleccionado"""
-        current_type = self.state['current_selection']['type']
-        current_index = self.state['current_selection']['index']
-        highlight_color = self._get_highlight_color()
-        icon_highlight_color = self._get_icon_highlight_color()
 
-        if current_type == GroupScreenElement.TOP_BUTTONS.value:
-            buttons = self.get_top_buttons()
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
 
-        elif current_type == GroupScreenElement.GROUP_CARDS.value:
-            cards = self.get_group_cards()
-            if current_index < len(cards):
-                self._highlight_card(cards[current_index], highlight_color)
+    def _clear_all_highlights(self) -> None:
+        """Limpia todos los destacados visuales"""
+        theme = self.manager.theme_manager.colors[
+            'dark' if self.manager.is_dark_mode else 'light'
+        ]
+        base_color = theme['card_bg']
+        button_color = theme['button_bg']
 
-        elif current_type == GroupScreenElement.ICONS.value:
-            cards = self.get_group_cards()
-            card_index = current_index // 2
-            icon_index = current_index % 2
+        # Limpiar botones superiores
+        for button in self.get_top_buttons():
+            button.configure(bg=button_color)
 
-            if card_index < len(cards):
-                card = cards[card_index]
-                # Resaltar la tarjeta completa
-                self._highlight_card(card, highlight_color)
+        # Limpiar tarjetas y sus iconos
+        for card in self.manager.group_manager.groups_frame.winfo_children():
+            if hasattr(card, '_is_highlighted'):
+                card._is_highlighted = False
+            self._reset_card_colors(card, base_color, button_color)
 
-                # Resaltar el icono específico
-                icons_frame = self._find_icons_frame(card)
-                if icons_frame:
-                    # Primero resetear todos los iconos al color base
-                    for icon in icons_frame.winfo_children():
-                        icon.configure(bg=highlight_color)
-                    
-                    # Luego resaltar el icono seleccionado
-                    if icon_index < len(icons_frame.winfo_children()):
-                        icons_frame.winfo_children()[icon_index].configure(bg=icon_highlight_color)
-
-        # Forzar la actualización visual
-        self.manager.root.update_idletasks()
-    
     def _get_highlight_color(self) -> str:
         """Obtiene el color de resaltado según el tema actual"""
         theme_type = 'dark' if self.manager.is_dark_mode else 'light'
@@ -239,7 +310,7 @@ class GroupsScreenNavigation:
         """Obtiene el color de resaltado para iconos según el tema actual"""
         theme_type = 'dark' if self.manager.is_dark_mode else 'light'
         return self.state['highlight_colors'][theme_type]['icon']
-    
+
     def _find_icons_frame(self, card: tk.Frame) -> Optional[tk.Frame]:
         """Encuentra el frame de iconos en una tarjeta"""
         for child in card.winfo_children():
@@ -266,7 +337,7 @@ class GroupsScreenNavigation:
         card_index = index // 2
         icon_index = index % 2
         groups = list(self.manager.group_manager.groups.items())
-        
+
         if card_index < len(groups):
             group_id, _ = groups[card_index]
             actions = {
@@ -283,7 +354,7 @@ class GroupsScreenNavigation:
             current_index = self.state['current_selection']['index']
             card_index = current_index // 2 if current_type == GroupScreenElement.ICONS.value else current_index
             cards = self.get_group_cards()
-            
+
             if card_index < len(cards):
                 card = cards[card_index]
                 bbox = self.manager.group_manager.canvas.bbox("all")

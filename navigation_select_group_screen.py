@@ -22,7 +22,7 @@ class SelectGroupScreenNavigation:
         self.current_element: Optional[SelectGroupScreenElement] = None
         self.current_index: int = 0
         self.state: Dict = self._initialize_state()
-        logger.debug("SelectGroupScreenNavigation initialized")
+        # logger.debug("SelectGroupScreenNavigation initialized")
 
     def ensure_window_focus(self) -> None:
         """Asegura que la ventana de selección de grupo mantenga el foco"""
@@ -52,7 +52,7 @@ class SelectGroupScreenNavigation:
         
         self.navigation_state['enabled'] = True
         self.update_highlights()
-        logger.debug(f"Select group focus initialized: {self.state['current_selection']}")
+        # logger.debug(f"Select group focus initialized: {self.state['current_selection']}")
 
     def navigate_vertical(self, event) -> None:
         """Gestiona la navegación vertical"""
@@ -60,7 +60,7 @@ class SelectGroupScreenNavigation:
         self._update_selection_vertical(direction)
         self.update_highlights()
         self.ensure_visible()
-        logger.debug(f"Vertical navigation: {event.keysym}")
+        # logger.debug(f"Vertical navigation: {event.keysym}")
 
     def _update_selection_vertical(self, direction: int) -> None:
         """Actualiza la selección actual en dirección vertical"""
@@ -107,7 +107,7 @@ class SelectGroupScreenNavigation:
         """Actualiza los destacados visuales"""
         self._clear_all_highlights()
         self._highlight_current_selection()
-        logger.debug("Highlights updated")
+        # logger.debug("Highlights updated")
 
     def _clear_all_highlights(self) -> None:
         """Limpia todos los destacados visuales"""

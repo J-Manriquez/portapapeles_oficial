@@ -24,7 +24,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
         self.screen_name = "group_content"
         self.actions = {}
         self.setup_keys()
-        logger.debug("GroupContentScreenKeyConfig initialized")
+        # logger.debug("GroupContentScreenKeyConfig initialized")
 
     def setup_keys(self) -> None:
         """Configura las teclas específicas para la pantalla de contenido de grupo"""
@@ -47,14 +47,14 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
         self.register_action(GroupContentScreenAction.DELETE_ITEM,
                            self.handle_delete_item)
         
-        logger.debug("Group content screen keys setup completed")
+        # logger.debug("Group content screen keys setup completed")
 
     def register_action(self, action: GroupContentScreenAction, callback: callable) -> None:
         """Registra una acción con su callback correspondiente"""
         self.actions[action] = callback
         if isinstance(action.value, str):
             self.register_hotkey(action.value, callback)
-        logger.debug(f"Registered action: {action.name}")
+        # logger.debug(f"Registered action: {action.name}")
 
     def handle_navigation(self, direction: str) -> None:
         """Maneja los eventos de navegación"""
@@ -68,13 +68,13 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
             self.manager.navigation.navigate_vertical(event)
         else:
             self.manager.navigation.navigate_horizontal(event)
-        logger.debug(f"Group content screen navigation: {direction}")
+        # logger.debug(f"Group content screen navigation: {direction}")
 
     def handle_activation(self):
         """Maneja la activación del elemento seleccionado"""
-        print("GroupContentScreenKeyConfig: Handling activation")  # Debug
+        # print("GroupContentScreenKeyConfig: Handling activation")  # Debug
         self.manager.navigation.current_strategy.activate_selected()
-        logger.debug("Group content screen item activated")
+        # logger.debug("Group content screen item activated")
 
     def handle_back(self):
         """Maneja el evento de retroceso a la pantalla de grupos"""
@@ -82,7 +82,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
             self.manager.group_content_manager.close_content_window(
                 self.manager.group_content_manager.current_group_id
             )
-        logger.debug("Handled back action")
+        # logger.debug("Handled back action")
 
     def handle_edit_item(self):
         """Maneja el atajo para editar el item seleccionado"""
@@ -97,7 +97,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
                     self.manager.group_content_manager.current_group_id,
                     item['id']
                 )
-        logger.debug("Handled edit item action")
+        # logger.debug("Handled edit item action")
 
     def handle_delete_item(self):
         """Maneja el atajo para eliminar el item seleccionado"""
@@ -113,7 +113,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
                     item['id'],
                     self.manager.group_content_manager.items_frame
                 )
-        logger.debug("Handled delete item action")
+        # logger.debug("Handled delete item action")
 
     def activate(self) -> None:
         """Activa la configuración de teclas para la pantalla de contenido de grupo"""
@@ -121,7 +121,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
         for action, callback in self.actions.items():
             if isinstance(action.value, str):
                 self.key_handler.register_screen_hotkey('group_content', action.value, callback)
-        logger.info("Group content screen key configuration activated")
+        # logger.info("Group content screen key configuration activated")
         
     def deactivate(self) -> None:
         """Desactiva la configuración de teclas de la pantalla de contenido de grupo"""
@@ -129,4 +129,4 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
         for action in self.actions:
             if isinstance(action.value, str) and action.value.startswith('alt+'):
                 self.key_handler.global_hotkeys.unregister_hotkey(action.value)
-        logger.info("Group content screen key configuration deactivated")
+        # logger.info("Group content screen key configuration deactivated")

@@ -1,31 +1,5 @@
 {
     "groups": {
-        "b1b7bb9c-0ebf-43ef-85e6-945e2f6f8d68": {
-            "name": "hola",
-            "items": [
-                {
-                    "id": "29e2c747-f468-4ba0-880a-0520e8c75f16",
-                    "text": {
-                        "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
-                        "formatted": {
-                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
-                            "size": null,
-                            "color": null,
-                            "bold": false,
-                            "italic": false,
-                            "rtf": null,
-                            "html": true,
-                            "underline": null,
-                            "strikethrough": null,
-                            "superscript": null,
-                            "subscript": null,
-                            "background_color": null,
-                            "alignment": null
-                        }
-                    }
-                }
-            ]
-        },
         "2b13e6da-7eb2-4b6a-9161-b1e755d49292": {
             "name": "xs",
             "items": [
@@ -61,8 +35,60 @@
                             "alignment": null
                         }
                     }
+                },
+                {
+                    "id": "29e2c747-f468-4ba0-880a-0520e8c75f16",
+                    "text": {
+                        "text": "# Asegurar que la ventana correcta tiene el foco\r\n    if self.current_screen == 'main':\r\n        self.manager.root.focus_force()\r\n    elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):\r\n        self.manager.select_group_dialog.focus_force()",
+                        "formatted": {
+                            "font": "ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace",
+                            "size": null,
+                            "color": null,
+                            "bold": false,
+                            "italic": false,
+                            "rtf": null,
+                            "html": true,
+                            "underline": null,
+                            "strikethrough": null,
+                            "superscript": null,
+                            "subscript": null,
+                            "background_color": null,
+                            "alignment": null
+                        }
+                    }
                 }
             ]
+        },
+        "2e3e31bb-dc1e-4878-95bc-f4cde89e366b": {
+            "name": "hola",
+            "items": [
+                {
+                    "id": "b613aa01-13ba-419e-9ef2-ceef812653b4",
+                    "text": {
+                        "text": "close_settings_window",
+                        "formatted": {
+                            "font": "Consolas, 'Courier New', monospace",
+                            "size": null,
+                            "color": null,
+                            "bold": false,
+                            "italic": false,
+                            "rtf": null,
+                            "html": true,
+                            "underline": null,
+                            "strikethrough": null,
+                            "superscript": null,
+                            "subscript": null,
+                            "background_color": null,
+                            "alignment": null
+                        }
+                    },
+                    "name": ""
+                }
+            ]
+        },
+        "f77c906c-9508-4d50-ace1-4075d7258f1b": {
+            "name": "xas",
+            "items": []
         }
     },
     "pinned_items": {

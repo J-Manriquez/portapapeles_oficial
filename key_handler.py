@@ -26,21 +26,21 @@ class GlobalHotkeyManager:
             keyboard.remove_hotkey(key)
         self._hotkeys[key] = callback
         keyboard.add_hotkey(key, callback)
-        logger.debug(f"Registered global hotkey: {key}")
+        # logger.debug(f"Registered global hotkey: {key}")
     
     def unregister_hotkey(self, key: str) -> None:
         """Elimina un atajo global"""
         if key in self._hotkeys:
             keyboard.remove_hotkey(key)
             del self._hotkeys[key]
-            logger.debug(f"Unregistered global hotkey: {key}")
+            # logger.debug(f"Unregistered global hotkey: {key}")
     
     def update_hotkey(self, old_key: Optional[str], new_key: str, callback: Callable) -> None:
         """Actualiza un atajo existente con una nueva tecla"""
         if old_key:
             self.unregister_hotkey(old_key)
         self.register_hotkey(new_key, callback)
-        logger.debug(f"Updated hotkey from {old_key} to {new_key}")
+        # logger.debug(f"Updated hotkey from {old_key} to {new_key}")
 
 class KeyHandler:
     """Coordinador principal del sistema de teclas"""
@@ -65,18 +65,18 @@ class KeyHandler:
         if screen not in self.screen_specific_hotkeys:
             self.screen_specific_hotkeys[screen] = {}
         self.screen_specific_hotkeys[screen][key] = callback
-        logger.debug(f"Registered screen hotkey: {key} for screen {screen}")
+        # logger.debug(f"Registered screen hotkey: {key} for screen {screen}")
 
     def unregister_screen_hotkey(self, screen: str, key: str) -> None:
         """Elimina un atajo de teclado específico de una pantalla"""
         if screen in self.screen_specific_hotkeys and key in self.screen_specific_hotkeys[screen]:
             del self.screen_specific_hotkeys[screen][key]
-            logger.debug(f"Unregistered screen hotkey: {key} for screen {screen}")
+            # logger.debug(f"Unregistered screen hotkey: {key} for screen {screen}")
 
     def set_current_screen(self, screen: str) -> None:
         """Establece la pantalla actual para manejar los atajos de teclado"""
         self.current_screen = screen
-        logger.debug(f"Set current screen to: {screen}")
+        # logger.debug(f"Set current screen to: {screen}")
         
         # Limpiar los atajos anteriores
         self.screen_specific_hotkeys = {}
@@ -87,13 +87,13 @@ class KeyHandler:
 
     def handle_key_press(self, event):
         """Maneja las pulsaciones de teclas"""
-        print(f"KeyHandler received key: {event.keysym}")  # Debug
+        # print(f"KeyHandler received key: {event.keysym}")  # Debug
         key = event.keysym.lower()
         
         # Manejar teclas específicas de la pantalla actual
         if self.current_screen in self.screen_specific_hotkeys:
             if key in self.screen_specific_hotkeys[self.current_screen]:
-                print(f"Executing screen-specific handler for {key}")  # Debug
+                # print(f"Executing screen-specific handler for {key}")  # Debug
                 self.screen_specific_hotkeys[self.current_screen][key]()
                 return True
         
@@ -104,7 +104,7 @@ class KeyHandler:
         
         # Manejar teclas globales
         if key in self.global_hotkeys._hotkeys:
-            print(f"Executing global handler for {key}")  # Debug
+            # print(f"Executing global handler for {key}")  # Debug
             self.global_hotkeys._hotkeys[key]()
             return True
             
@@ -125,7 +125,7 @@ class KeyHandler:
         
     def toggle_window(self) -> None:
         """Alterna la visibilidad de la ventana principal"""
-        logger.debug("Toggling window")
+        # logger.debug("Toggling window")
         if not self.manager.is_visible:
             # Asegurarse de que estamos en la estrategia principal
             self.manager.navigation.set_strategy('main')

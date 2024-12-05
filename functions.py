@@ -10,7 +10,7 @@ import win32gui # type: ignore
 import time
 import sys
 from tkinter import ttk
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup # type: ignore
 from utils import measure_time, process_text
 
 # Definir CF_HTML ya que no está en win32con

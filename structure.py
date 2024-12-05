@@ -4,8 +4,8 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 import threading
-import win32gui
-import pyautogui
+# import win32gui
+# import pyautogui
 
 from functions import Functions
 from keys_group_content_screen import GroupContentScreenKeyConfig
@@ -260,7 +260,7 @@ class ClipboardManager:
             
             # Vincular eventos de teclado
             def handle_key(event):
-                print(f"Root received key event: {event.keysym}")  # Debug
+                # print(f"Root received key event: {event.keysym}")  # Debug
                 if self.is_visible:
                     self.navigation.handle_keyboard_event(event)
             
@@ -269,7 +269,7 @@ class ClipboardManager:
             # Establecer estrategia inicial
             self.navigation.set_strategy('main')
             
-            print("Keyboard system initialized")  # Debug
+            # print("Keyboard system initialized")  # Debug
             
         except Exception as e:
             logger.error(f"Error setting up keyboard system: {e}")
@@ -277,7 +277,7 @@ class ClipboardManager:
 
     def _handle_keypress(self, event):
         """Manejador central de eventos de teclado"""
-        print(f"Root received key event: {event.keysym}")  # Debug
+        # print(f"Root received key event: {event.keysym}")  # Debug
         if self.is_visible:
             self.navigation.handle_keyboard_event(event)
 
@@ -285,7 +285,7 @@ class ClipboardManager:
         """Vincula los eventos de teclado a la ventana principal"""
         try:
             self.root.bind('<Key>', self.handle_keyboard_event)
-            logger.debug("Keyboard events bound successfully")
+            # logger.debug("Keyboard events bound successfully")
         except Exception as e:
             logger.error(f"Error binding keyboard events: {e}")
             raise
@@ -295,7 +295,7 @@ class ClipboardManager:
         try:
             self.main_screen_keys = MainScreenKeyConfig(self.key_handler, self)
             self.main_screen_navigation = MainScreenNavigation(self)
-            logger.debug("Screen keys configured successfully")
+            # logger.debug("Screen keys configured successfully")
         except Exception as e:
             logger.error(f"Error setting up screen keys: {e}")
             raise

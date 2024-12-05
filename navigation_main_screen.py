@@ -23,7 +23,7 @@ class MainScreenKeyConfig(ScreenKeyConfig):
         self.screen_name = "main"
         self.actions: Dict[MainScreenAction, Callable] = {}
         self.setup_keys()
-        logger.debug("MainScreenKeyConfig initialized")
+        # logger.debug("MainScreenKeyConfig initialized")
 
     def setup_keys(self) -> None:
         """Configura las teclas específicas para la pantalla principal"""
@@ -47,14 +47,14 @@ class MainScreenKeyConfig(ScreenKeyConfig):
         self.register_action(MainScreenAction.CLEAR_HISTORY, 
                            self.manager.functions.clear_history)
         
-        logger.debug("Main screen keys setup completed")
+        # logger.debug("Main screen keys setup completed")
 
     def register_action(self, action: MainScreenAction, callback: Callable) -> None:
         """Registra una acción con su callback correspondiente"""
         self.actions[action] = callback
         if isinstance(action.value, str):
             self.register_hotkey(action.value, callback)
-        logger.debug(f"Registered action: {action.name}")
+        # logger.debug(f"Registered action: {action.name}")
 
     def handle_navigation(self, direction: str) -> None:
         """Maneja los eventos de navegación"""
@@ -68,13 +68,13 @@ class MainScreenKeyConfig(ScreenKeyConfig):
             self.manager.navigation.navigate_vertical(event)
         else:
             self.manager.navigation.navigate_horizontal(event)
-        logger.debug(f"Main screen navigation: {direction}")
+        # logger.debug(f"Main screen navigation: {direction}")
         
     def handle_activation(self):
         """Maneja la activación del elemento seleccionado"""
-        print("MainScreenKeyConfig: Handling activation")  # Debug
+        # print("MainScreenKeyConfig: Handling activation")  # Debug
         self.manager.navigation.current_strategy.activate_selected()
-        logger.debug("Main screen item activated")
+        # logger.debug("Main screen item activated")
 
     def activate(self) -> None:
         """Activa la configuración de teclas para la pantalla principal"""
@@ -82,7 +82,7 @@ class MainScreenKeyConfig(ScreenKeyConfig):
         for action, callback in self.actions.items():
             if isinstance(action.value, str) and action.value.startswith('alt+'):
                 self.key_handler.global_hotkeys.register_hotkey(action.value, callback)
-        logger.info("Main screen key configuration activated")
+        # logger.info("Main screen key configuration activated")
 
     def deactivate(self) -> None:
         """Desactiva la configuración de teclas de la pantalla principal"""
@@ -90,7 +90,7 @@ class MainScreenKeyConfig(ScreenKeyConfig):
         for action in self.actions:
             if isinstance(action.value, str) and action.value.startswith('alt+'):
                 self.key_handler.global_hotkeys.unregister_hotkey(action.value)
-        logger.info("Main screen key configuration deactivated")
+        # logger.info("Main screen key configuration deactivated")
 # navigation_main_screen.py
 
 from enum import Enum
@@ -118,7 +118,7 @@ class MainScreenNavigation:
         self.current_element: Optional[MainScreenElement] = None
         self.current_index: int = 0
         self.state: Dict = self._initialize_state()
-        logger.debug("MainScreenNavigation initialized")
+        # logger.debug("MainScreenNavigation initialized")
 
     def _initialize_state(self) -> Dict:
         """Inicializa el estado de navegación"""
@@ -145,7 +145,7 @@ class MainScreenNavigation:
         # Actualizar los highlights después de inicializar el foco
         self.update_highlights()
         
-        logger.debug(f"Main screen focus initialized: {self.state['current_selection']}")
+        # logger.debug(f"Main screen focus initialized: {self.state['current_selection']}")
 
     def navigate_vertical(self, event) -> None:
         """Gestiona la navegación vertical"""
@@ -153,14 +153,14 @@ class MainScreenNavigation:
         self._update_selection_vertical(direction)
         self.update_highlights()
         self.ensure_visible()
-        logger.debug(f"Vertical navigation: {event.keysym}")
+        # logger.debug(f"Vertical navigation: {event.keysym}")
 
     def _update_selection_vertical(self, direction: int) -> None:
         """Actualiza la selección actual en dirección vertical"""
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
         
-        print(f"Before navigation: type={current_type}, index={current_index}")  # Debug
+        # print(f"Before navigation: type={current_type}, index={current_index}")  # Debug
 
         if direction > 0:  # Down
             if current_type == MainScreenElement.TOP_BUTTONS.value:
@@ -192,7 +192,7 @@ class MainScreenNavigation:
                     'index': 0
                 }
         
-        print(f"After navigation: type={self.state['current_selection']['type']}, index={self.state['current_selection']['index']}")  # Debug
+        # print(f"After navigation: type={self.state['current_selection']['type']}, index={self.state['current_selection']['index']}")  # Debug
         
         # Actualizar visualización
         self.update_highlights()
@@ -200,11 +200,11 @@ class MainScreenNavigation:
     
     def navigate_horizontal(self, event) -> None:
         """Gestiona la navegación horizontal"""
-        print(f"MainScreenNavigation: Navigating horizontally {event.keysym}")  # Debug
+        # print(f"MainScreenNavigation: Navigating horizontally {event.keysym}")  # Debug
         direction = 1 if event.keysym == 'Right' else -1
         self._update_selection_horizontal(direction)
         self.update_highlights()
-        logger.debug(f"Horizontal navigation: {event.keysym}")
+        # logger.debug(f"Horizontal navigation: {event.keysym}")
 
     def get_button_count(self, button_type: str) -> int:
         """Obtiene el número de botones según el tipo"""
@@ -219,7 +219,7 @@ class MainScreenNavigation:
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
         
-        print(f"Horizontal navigation - Before: type={current_type}, index={current_index}")  # Debug
+        # print(f"Horizontal navigation - Before: type={current_type}, index={current_index}")  # Debug
 
         if direction > 0:  # Right
             if current_type in [MainScreenElement.TOP_BUTTONS.value, 
@@ -248,20 +248,20 @@ class MainScreenNavigation:
                         'index': current_index // 3
                     }
         
-        print(f"Horizontal navigation - After: type={self.state['current_selection']['type']}, index={self.state['current_selection']['index']}")  # Debug
+        # print(f"Horizontal navigation - After: type={self.state['current_selection']['type']}, index={self.state['current_selection']['index']}")  # Debug
         
         # Actualizar visualización
         self.update_highlights()
 
     def activate_selected(self, event=None):
         """Activa el elemento seleccionado actualmente"""
-        print(f"MainScreenNavigation: Attempting to activate selection")  # Debug
-        print(f"Current selection state: {self.state['current_selection']}")  # Debug
+        # print(f"MainScreenNavigation: Attempting to activate selection")  # Debug
+        # print(f"Current selection state: {self.state['current_selection']}")  # Debug
         
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
         
-        print(f"Activating: {current_type} at index {current_index}")  # Debug
+        # print(f"Activating: {current_type} at index {current_index}")  # Debug
 
         # Mapeo de tipos a funciones de activación
         actions = {
@@ -272,14 +272,14 @@ class MainScreenNavigation:
         }
 
         if handler := actions.get(current_type):
-            print(f"Executing handler for {current_type}")  # Debug
+            # print(f"Executing handler for {current_type}")  # Debug
             handler(current_index)
         else:
             print(f"No handler found for type: {current_type}")  # Debug
             
     def update_highlights(self) -> None:
         """Actualiza los destacados visuales"""
-        print("Updating highlights")  # Debug
+        # print("Updating highlights")  # Debug
         self._clear_all_highlights()
         
         current_type = self.state['current_selection']['type']
@@ -346,7 +346,7 @@ class MainScreenNavigation:
                 'type': MainScreenElement.TOP_BUTTONS.value, 
                 'index': 0
             }
-        logger.debug(f"Moved up to {self.state['current_selection']}")
+        # logger.debug(f"Moved up to {self.state['current_selection']}")
 
     def _move_down(self, current_type: str, current_index: int) -> None:
         """Maneja el movimiento hacia abajo"""
@@ -364,7 +364,7 @@ class MainScreenNavigation:
         elif current_type == MainScreenElement.CARDS.value:
             if current_index < self.get_cards_count() - 1:
                 self.state['current_selection']['index'] = current_index + 1
-        logger.debug(f"Moved down to {self.state['current_selection']}")
+        # logger.debug(f"Moved down to {self.state['current_selection']}")
 
     def _move_left(self, current_type: str, current_index: int) -> None:
         """Maneja el movimiento hacia la izquierda"""
@@ -380,7 +380,7 @@ class MainScreenNavigation:
                     'type': MainScreenElement.CARDS.value,
                     'index': current_index // 3
                 }
-        logger.debug(f"Moved left to {self.state['current_selection']}")
+        # logger.debug(f"Moved left to {self.state['current_selection']}")
 
     def _move_right(self, current_type: str, current_index: int) -> None:
         """Maneja el movimiento hacia la derecha"""
@@ -396,7 +396,7 @@ class MainScreenNavigation:
         elif current_type == MainScreenElement.ICONS.value:
             if current_index % 3 < 2:
                 self.state['current_selection']['index'] = current_index + 1
-        logger.debug(f"Moved right to {self.state['current_selection']}")
+        # logger.debug(f"Moved right to {self.state['current_selection']}")
 
     def _activate_main_button(self, index: int) -> None:
         """Activa un botón principal"""
@@ -408,7 +408,7 @@ class MainScreenNavigation:
         if action := actions.get(index):
             action_name, action_func = action
             action_func()
-            logger.debug(f"Activated main button '{action_name}' at index {index}")
+            # logger.debug(f"Activated main button '{action_name}' at index {index}")
     
     def _activate_top_button(self, index: int) -> None:
         """Activa un botón superior"""
@@ -420,7 +420,7 @@ class MainScreenNavigation:
         if action := actions.get(index):
             action_name, action_func = action
             action_func()
-            logger.debug(f"Activated top button '{action_name}' at index {index}")
+            # logger.debug(f"Activated top button '{action_name}' at index {index}")
             
     def _activate_card(self, index: int) -> None:
         """Activa una tarjeta (pegar contenido)"""
@@ -429,16 +429,16 @@ class MainScreenNavigation:
             item_id, item_data = items[index]
             clipboard_data = item_data['text']
             self.manager.key_handler.paste_content(clipboard_data)
-            logger.debug(f"Activated card at index {index}")
+            # logger.debug(f"Activated card at index {index}")
 
     def _activate_icon(self, index):
         """Activa un icono de tarjeta"""
-        print(f"Activating icon at index {index}")  # Debug
+        # print(f"Activating icon at index {index}")  # Debug
         items = list(self.manager.clipboard_items.keys())
         card_index = index // 3
         icon_position = index % 3
         
-        print(f"Card index: {card_index}, Icon position: {icon_position}")  # Debug
+        # print(f"Card index: {card_index}, Icon position: {icon_position}")  # Debug
         
         if card_index < len(items):
             item_id = items[card_index]
@@ -450,7 +450,7 @@ class MainScreenNavigation:
             
             if action := actions.get(icon_position):
                 action_name, action_func = action
-                print(f"Executing {action_name} action for icon")  # Debug
+                # print(f"Executing {action_name} action for icon")  # Debug
                 action_func()
             else:
                 print(f"No action found for icon position {icon_position}")  # Debug
@@ -593,7 +593,7 @@ class MainScreenNavigation:
 
     def update_highlights(self) -> None:
         """Actualiza los destacados visuales"""
-        print("Updating highlights")  # Debug
+        # print("Updating highlights")  # Debug
         self._clear_all_highlights()
         self._highlight_current_selection()
         
@@ -618,11 +618,11 @@ class MainScreenNavigation:
     
     def _handle_activation(self):
         """Maneja específicamente la activación por Enter"""
-        print("Handling Enter activation")  # Debug
+        # print("Handling Enter activation")  # Debug
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
         
-        print(f"Activating: type={current_type}, index={current_index}")  # Debug
+        # print(f"Activating: type={current_type}, index={current_index}")  # Debug
         
         activation_map = {
             'main_buttons': self._activate_main_button,
@@ -633,6 +633,6 @@ class MainScreenNavigation:
         
         if handler := activation_map.get(current_type):
             handler(current_index)
-            print(f"Activation handler executed for {current_type}")  # Debug
+            # print(f"Activation handler executed for {current_type}")  # Debug
         else:
             print(f"No activation handler found for {current_type}")  # Debug

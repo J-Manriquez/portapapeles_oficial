@@ -63,20 +63,25 @@ class GroupContentScreenNavigation:
         current_index = self.state['current_selection']['index']
 
         if direction > 0:  # Down
-            if current_type == GroupScreenElement.TOP_BUTTONS.value:
-                # Solo bajar a las tarjetas si hay grupos
+            if current_type == GroupContentElement.TOP_BUTTONS.value:
                 if self.get_cards_count() > 0:
                     self.state['current_selection'] = {
-                        'type': GroupScreenElement.GROUP_CARDS.value,
+                        'type': GroupContentElement.CONTENT_CARDS.value,
                         'index': 0
                     }
+            elif current_type == GroupContentElement.CONTENT_CARDS.value:
+                if current_index < self.get_cards_count() - 1:
+                    self.state['current_selection']['index'] = current_index + 1
         else:  # Up
-            if current_type == GroupScreenElement.GROUP_CARDS.value:
-                self.state['current_selection'] = {
-                    'type': GroupScreenElement.TOP_BUTTONS.value,
-                    'index': 0
-                }
-
+            if current_type == GroupContentElement.CONTENT_CARDS.value:
+                if current_index > 0:
+                    self.state['current_selection']['index'] = current_index - 1
+                else:
+                    self.state['current_selection'] = {
+                        'type': GroupContentElement.TOP_BUTTONS.value,
+                        'index': 0
+                    }
+    
     def navigate_horizontal(self, event) -> None:
         """Gestiona la navegación horizontal"""
         direction = 1 if event.keysym == 'Right' else -1
@@ -89,18 +94,25 @@ class GroupContentScreenNavigation:
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
 
-        if current_type == GroupScreenElement.TOP_BUTTONS.value:
-            # Siempre permitir navegación horizontal en botones superiores
-            new_index = (current_index + direction) % 2  # Solo 2 botones: add y close
-            self.state['current_selection']['index'] = new_index
-        elif current_type == GroupScreenElement.GROUP_CARDS.value and self.get_cards_count() > 0:
-            # Solo permitir navegación horizontal en tarjetas si existen
+        if current_type == GroupContentElement.CONTENT_CARDS.value:
             if direction > 0:  # Right
                 self.state['current_selection'] = {
-                    'type': GroupScreenElement.ICONS.value,
-                    'index': current_index * 2
+                    'type': GroupContentElement.ICONS.value,
+                    'index': current_index * 2  # Solo 2 iconos por tarjeta
                 }
-
+        elif current_type == GroupContentElement.ICONS.value:
+            if direction > 0:  # Right
+                if current_index % 2 == 0:  # Si estamos en el primer icono
+                    self.state['current_selection']['index'] = current_index + 1
+            else:  # Left
+                if current_index % 2 == 1:  # Si estamos en el segundo icono
+                    self.state['current_selection']['index'] = current_index - 1
+                else:  # Si estamos en el primer icono
+                    self.state['current_selection'] = {
+                        'type': GroupContentElement.CONTENT_CARDS.value,
+                        'index': current_index // 2
+                    }
+                    
     def activate_selected(self, event=None) -> None:
         """Activa el elemento seleccionado actualmente"""
         current_type = self.state['current_selection']['type']
@@ -129,15 +141,18 @@ class GroupContentScreenNavigation:
         base_color = theme['card_bg']
         button_color = theme['button_bg']
 
-        # Limpiar botón superior (cerrar)
-        close_button = self._get_close_button()
-        if close_button:
-            close_button.configure(bg=button_color)
+        # Limpiar botón de cerrar en la barra de título
+        if hasattr(self.manager.group_manager.group_content_manager, 'content_window'):
+            title_frame = self.manager.group_manager.group_content_manager.content_window.winfo_children()[0]
+            for child in title_frame.winfo_children():
+                if isinstance(child, tk.Button):
+                    if child['text'] == "❌":
+                        child.configure(bg=button_color)
 
         # Limpiar tarjetas y sus iconos
         for card in self._get_content_cards():
             self._reset_card_colors(card, base_color, button_color)
-
+            
     def _highlight_current_selection(self) -> None:
         """Aplica el destacado al elemento actualmente seleccionado"""
         current_type = self.state['current_selection']['type']
@@ -146,10 +161,13 @@ class GroupContentScreenNavigation:
         icon_highlight_color = self._get_icon_highlight_color()
 
         if current_type == GroupContentElement.TOP_BUTTONS.value:
-            close_button = self._get_close_button()
-            if close_button:
-                close_button.configure(bg=highlight_color)
-        
+            # Resaltar el botón de cerrar en la barra de título
+            title_frame = self.manager.group_manager.group_content_manager.content_window.winfo_children()[0]
+            for child in title_frame.winfo_children():
+                if isinstance(child, tk.Button):
+                    if child['text'] == "❌":  # Identificar el botón de cerrar
+                        child.configure(bg=highlight_color)
+
         elif current_type == GroupContentElement.CONTENT_CARDS.value:
             cards = self._get_content_cards()
             if current_index < len(cards):
@@ -166,11 +184,11 @@ class GroupContentScreenNavigation:
                 
                 icons_frame = self._find_icons_frame(card)
                 if icons_frame and icon_index < len(icons_frame.winfo_children()):
-                    icons = icons_frame.winfo_children()
-                    for icon in icons:
+                    
+                    for icon in icons_frame.winfo_children():
                         icon.configure(bg=highlight_color)
-                    icons[icon_index].configure(bg=icon_highlight_color)
-
+                    icons_frame.winfo_children()[icon_index].configure(bg=icon_highlight_color)
+    
     def _get_highlight_color(self) -> str:
         """Obtiene el color de resaltado según el tema actual"""
         theme_type = 'dark' if self.manager.is_dark_mode else 'light'
@@ -223,14 +241,16 @@ class GroupContentScreenNavigation:
                     if isinstance(subchild, tk.Label):
                         subchild.configure(bg=color)
                     elif isinstance(subchild, tk.Button):
+                        # Solo cambiar el color de los botones si estamos en modo tarjeta
                         if self.state['current_selection']['type'] == GroupContentElement.CONTENT_CARDS.value:
                             subchild.configure(bg=color)
             elif isinstance(child, tk.Label):
                 child.configure(bg=color)
             elif isinstance(child, tk.Button):
+                # Solo cambiar el color de los botones si estamos en modo tarjeta
                 if self.state['current_selection']['type'] == GroupContentElement.CONTENT_CARDS.value:
                     child.configure(bg=color)
-
+                    
     def _reset_card_colors(self, card: tk.Frame, base_color: str, button_color: str) -> None:
         """Resetea los colores de una tarjeta específica y sus elementos"""
         card.configure(bg=base_color)
@@ -312,8 +332,9 @@ class GroupContentScreenNavigation:
 
     def get_cards_count(self) -> int:
         """Obtiene el número de tarjetas en la vista actual"""
-        if hasattr(self.manager.group_manager.group_content_manager, 'items_frame'):
-            return len(self.manager.group_manager.group_content_manager.items_frame.winfo_children())
+        group_id = self.manager.group_manager.group_content_manager.current_group_id
+        if group_id in self.manager.group_manager.groups:
+            return len(self.manager.group_manager.groups[group_id]['items'])
         return 0
 
     def ensure_visible(self) -> None:

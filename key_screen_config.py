@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 import logging
 
-logger = logging.getLogger(__name__)
+# logger = logging.get# logger(__name__)
 
 class ScreenKeyConfig(ABC):
     def __init__(self, key_handler):
@@ -25,7 +25,7 @@ class ScreenKeyConfig(ABC):
         """
         self.hotkeys[key] = callback
         self.key_handler.register_screen_hotkey(self.screen_name, key, callback)
-        logger.debug(f"Registered hotkey '{key}' for screen '{self.screen_name}'")
+        # logger.debug(f"Registered hotkey '{key}' for screen '{self.screen_name}'")
 
     def unregister_all_hotkeys(self):
         """
@@ -34,7 +34,7 @@ class ScreenKeyConfig(ABC):
         for key in self.hotkeys:
             self.key_handler.unregister_screen_hotkey(self.screen_name, key)
         self.hotkeys.clear()
-        logger.debug(f"Unregistered all hotkeys for screen '{self.screen_name}'")
+        # logger.debug(f"Unregistered all hotkeys for screen '{self.screen_name}'")
 
     def activate(self):
         """
@@ -42,14 +42,14 @@ class ScreenKeyConfig(ABC):
         """
         self.key_handler.set_current_screen(self.screen_name)
         self.setup_keys()
-        logger.info(f"Activated key configuration for screen '{self.screen_name}'")
+        # logger.info(f"Activated key configuration for screen '{self.screen_name}'")
 
     def deactivate(self):
         """
         Desactivar la configuración de teclas para esta pantalla.
         """
         self.unregister_all_hotkeys()
-        logger.info(f"Deactivated key configuration for screen '{self.screen_name}'")
+        # logger.info(f"Deactivated key configuration for screen '{self.screen_name}'")
 
     @abstractmethod
     def handle_navigation(self, direction):

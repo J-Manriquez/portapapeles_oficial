@@ -85,6 +85,17 @@ class GroupContentManager:
                                 fg=self.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
+            # Configurar efecto hover para el botón de cerrar
+            def on_close_button_enter(event):
+                close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
+                    'dark' if self.manager.is_dark_mode else 'light']['normal'])
+
+            def on_close_button_leave(event):
+                close_button.configure(bg=self.theme_manager.colors['dark']['button_bg'])
+
+            close_button.bind('<Enter>', on_close_button_enter)
+            close_button.bind('<Leave>', on_close_button_leave)
+
             # Canvas y scroll para los items
             self.canvas = tk.Canvas(self.content_window, 
                                 bg=self.theme_manager.colors['dark']['bg'], 
@@ -197,9 +208,9 @@ class GroupContentManager:
             self.content_window.destroy()
             self.content_window = None
             
-            # # Restaurar la navegación de grupos
-            # self.manager.group_manager.show_groups_window()
-            # self.manager.navigation.set_strategy('groups')
+            # Restaurar la navegación de grupos
+            self.manager.group_manager.show_groups_window()
+            self.manager.navigation.set_strategy('groups')
 
     def start_move(self, event):
         self.x = event.x
@@ -281,7 +292,84 @@ class GroupContentManager:
                                     font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
                                     bg=bg_color, fg=theme['fg'])
             delete_button.pack(side=tk.LEFT)
+            
+            # Obtener colores del tema actual
+            is_dark = self.manager.is_dark_mode
+            theme = self.theme_manager.colors['dark' if is_dark else 'light']
+            bg_color = theme['card_bg']
 
+            # Usar los mismos colores de highlight que la navegación
+            highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+                'dark' if is_dark else 'light']['normal']
+            icon_highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+                'dark' if is_dark else 'light']['icon']
+
+            # Funciones de hover
+            def on_enter(e, card=card_container, components=[text_frame, icons_frame]):
+                card_container._mouse_over = True  # Marcar que el ratón está sobre la tarjeta
+                card_container.configure(bg=highlight_color)
+                text_frame.configure(bg=highlight_color)
+                text_label.configure(bg=highlight_color)
+                if item_name:
+                    item_name_label.configure(bg=highlight_color)
+                icons_frame.configure(bg=highlight_color)
+                for component in components:
+                    component.configure(bg=highlight_color)
+                # Actualizar el fondo de los iconos al color de highlight normal
+                for button in icons_frame.winfo_children():
+                    button.configure(bg=highlight_color)
+                for btn in [edit_button, delete_button]:
+                    # Solo cambiar el color de los botones si no están siendo hover
+                    if not hasattr(btn, '_mouse_over') or not btn._mouse_over:
+                        btn.configure(bg=highlight_color)
+            
+            def on_leave(event):
+                card_container._mouse_over = False  # Marcar que el ratón ya no está sobre la tarjeta
+                # Solo restaurar los colores si la tarjeta no está seleccionada
+                current_selection = self.manager.navigation.current_strategy.state['current_selection']
+                if (current_selection['type'] != 'content_cards' or 
+                    current_selection['index'] != len(self.items_frame.winfo_children()) - 1):
+                    card_container.configure(bg=bg_color)
+                    text_frame.configure(bg=bg_color)
+                    text_label.configure(bg=bg_color)
+                    if item_name:
+                        item_name_label.configure(bg=bg_color)
+                    icons_frame.configure(bg=bg_color)
+                    for btn in [edit_button, delete_button]:
+                        if not hasattr(btn, '_mouse_over') or not btn._mouse_over:
+                            btn.configure(bg=bg_color)
+            
+            # Funciones de hover para los iconos individuales
+            def on_icon_enter(event, button):
+                button._mouse_over = True  # Marcar que el ratón está sobre el icono
+                button.configure(bg=icon_highlight_color)
+
+            def on_icon_leave(event, button):
+                button._mouse_over = False  # Marcar que el ratón ya no está sobre el icono
+                # Restaurar al color de highlight normal si la card está resaltada,
+                # o al color base si no lo está
+                parent_bg = card_container.cget('bg')
+                button.configure(bg=parent_bg)
+
+            # Inicializar el estado del mouse
+            card_container._mouse_over = False
+            for btn in [edit_button, delete_button]:
+                btn._mouse_over = False
+
+            # Vincular eventos hover para la card
+            # widgets_to_bind = [card_container, text_frame, text_label, icons_frame]
+            # if item_name:
+            #     widgets_to_bind.append(item_name_label)
+
+            # for widget in widgets_to_bind:
+            #     widget.bind('<Enter>', on_enter)
+            #     widget.bind('<Leave>', on_leave)
+
+            # Vincular eventos hover para los iconos individuales
+            for btn in [edit_button, delete_button]:
+                btn.bind('<Enter>', lambda e, b=btn: on_icon_enter(e, b))
+                btn.bind('<Leave>', lambda e, b=btn: on_icon_leave(e, b))
+            
         # Actualizar el scrollregion después de añadir todos los widgets
         self.items_frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))

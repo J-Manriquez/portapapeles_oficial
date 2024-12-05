@@ -22,56 +22,60 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
         self.manager = manager
         self.screen_name = "groups"
         self.actions = {}
+        self.highlight_colors = {
+            'dark': {'normal': '#444444', 'icon': '#666666'},
+            'light': {'normal': '#cccccc', 'icon': '#aaaaaa'}
+        }
         self.setup_keys()
-        logger.debug("GroupsScreenKeyConfig initialized")
+        # logger.debug("GroupsScreenKeyConfig initialized")
 
     def setup_keys(self) -> None:
         """Configura las teclas específicas para la pantalla de grupos"""
-        self.register_action(GroupScreenAction.NAVIGATE_UP, 
+        self.register_action(GroupScreenAction.NAVIGATE_UP,
                            lambda: self.handle_navigation('up'))
-        self.register_action(GroupScreenAction.NAVIGATE_DOWN, 
+        self.register_action(GroupScreenAction.NAVIGATE_DOWN,
                            lambda: self.handle_navigation('down'))
-        self.register_action(GroupScreenAction.NAVIGATE_LEFT, 
+        self.register_action(GroupScreenAction.NAVIGATE_LEFT,
                            lambda: self.handle_navigation('left'))
-        self.register_action(GroupScreenAction.NAVIGATE_RIGHT, 
+        self.register_action(GroupScreenAction.NAVIGATE_RIGHT,
                            lambda: self.handle_navigation('right'))
-        self.register_action(GroupScreenAction.ACTIVATE, 
+        self.register_action(GroupScreenAction.ACTIVATE,
                            self.handle_activation)
-        
+
         # Atajos adicionales específicos de la pantalla de grupos
-        self.register_action(GroupScreenAction.ADD_GROUP, 
+        self.register_action(GroupScreenAction.ADD_GROUP,
                            self.manager.group_manager.add_group)
-        self.register_action(GroupScreenAction.BACK_TO_MAIN, 
+        self.register_action(GroupScreenAction.BACK_TO_MAIN,
                            self.manager.show_main_screen)
-        
-        logger.debug("Groups screen keys setup completed")
+
+        # logger.debug("Groups screen keys setup completed")
 
     def register_action(self, action: GroupScreenAction, callback: callable) -> None:
         """Registra una acción con su callback correspondiente"""
         self.actions[action] = callback
         if isinstance(action.value, str):
             self.register_hotkey(action.value, callback)
-        logger.debug(f"Registered action: {action.name}")
+        # logger.debug(f"Registered action: {action.name}")
 
     def handle_navigation(self, direction: str) -> None:
         """Maneja los eventos de navegación"""
         event = type('Event', (), {'keysym': direction.capitalize()})()
-        
+
         # Actualizar el estado de selección en el manager
         current_selection = self.manager.navigation.current_strategy.state['current_selection']
         self.manager.current_selection = current_selection
-        
+
         if direction in ['up', 'down']:
             self.manager.navigation.navigate_vertical(event)
         else:
             self.manager.navigation.navigate_horizontal(event)
-        logger.debug(f"Groups screen navigation: {direction}")
+        # logger.debug(f"Groups screen navigation: {direction}")
 
     def handle_activation(self):
         """Maneja la activación del elemento seleccionado"""
-        print("GroupsScreenKeyConfig: Handling activation")  # Debug
+        # print("GroupsScreenKeyConfig: Handling activation")  # Debug
         self.manager.navigation.current_strategy.activate_selected()
-        logger.debug("Groups screen item activated")
+        # logger.debug("Groups screen item activated")
 
     def activate(self) -> None:
         """Activa la configuración de teclas para la pantalla de grupos"""
@@ -79,7 +83,7 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
         for action, callback in self.actions.items():
             if isinstance(action.value, str) and action.value.startswith('alt+'):
                 self.key_handler.global_hotkeys.register_hotkey(action.value, callback)
-        logger.info("Groups screen key configuration activated")
+        # logger.info("Groups screen key configuration activated")
 
     def deactivate(self) -> None:
         """Desactiva la configuración de teclas de la pantalla de grupos"""
@@ -87,4 +91,4 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
         for action in self.actions:
             if isinstance(action.value, str) and action.value.startswith('alt+'):
                 self.key_handler.global_hotkeys.unregister_hotkey(action.value)
-        logger.info("Groups screen key configuration deactivated")
+        # logger.info("Groups screen key configuration deactivated")
