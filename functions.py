@@ -28,18 +28,18 @@ class Functions:
     def create_card(self, item_id, item_data, index):
         card_width = self.manager.window_width - 4  # Ajuste para el padding
         card_height = max(self.min_card_height, self.calculate_card_height(item_data['text']))
-        
+
         # Procesamos el texto para mostrarlo de forma limpia
         if isinstance(item_data['text'], dict):
             processed_text = process_text(item_data['text'].get('text', ''), 3)
         else:
             processed_text = process_text(str(item_data['text']), 3)
-        
+
         # Obtener colores del tema actual
         is_dark = self.manager.is_dark_mode
         theme = self.manager.theme_manager.colors['dark' if is_dark else 'light']
         bg_color = theme['card_bg']
-        
+
         # Usar los mismos colores de highlight que la navegación
         highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
             'dark' if is_dark else 'light']['normal']
@@ -54,7 +54,7 @@ class Functions:
         text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         processed_text = process_text(item_data['text'], 3)
-        
+
         text_label = tk.Label(text_frame, text=processed_text,
                             justify=tk.LEFT, anchor='w', padx=10, pady=5,
                             bg=bg_color,
@@ -71,7 +71,7 @@ class Functions:
                                 font=('Segoe UI', 10), bd=0,
                                 padx=2, bg=bg_color, fg=theme['fg'])
         arrow_button.pack(side=tk.LEFT)
-        
+
         pin_text = "📌" if item_data['pinned'] else "📍"
         pin_button = tk.Button(icons_frame, text=pin_text,
                             command=lambda: self.toggle_pin(item_id),
@@ -122,7 +122,7 @@ class Functions:
         for btn in [arrow_button, pin_button, delete_button]:
             btn.bind('<Enter>', lambda e, b=btn: on_icon_enter(e, b))
             btn.bind('<Leave>', lambda e, b=btn: on_icon_leave(e, b))
-            
+
         # Agregar bindings para la tarjeta completa
         card_container.bind('<Button-1>', lambda e: self.activate_card(index))
         text_label.bind('<Button-1>', lambda e: self.activate_card(index))
@@ -131,9 +131,9 @@ class Functions:
         arrow_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 0))
         pin_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 1))
         delete_button.bind('<Button-1>', lambda e: self.activate_card_icon(index, 2))
-        
+
         return card_container
-    
+
     def activate_card(self, index: int) -> None:
         """Activa una tarjeta específica"""
         self.manager.navigation.current_strategy.state['current_selection'] = {
@@ -149,7 +149,7 @@ class Functions:
             'index': card_index * 3 + icon_index
         }
         self.manager.navigation.current_strategy.activate_selected()
-        
+
     def calculate_card_height(self, text_data):
         if isinstance(text_data, dict):
             text = text_data.get('text', '')
@@ -158,15 +158,19 @@ class Functions:
         lines = len(text.split('\n'))
         content_height = min(lines * self.line_height, 4 * self.line_height)  # Máximo 4 líneas
         return min(max(content_height + 4, self.min_card_height), self.max_card_height)
-    
+
     @measure_time
     def refresh_cards(self):
         if not hasattr(self.manager, 'cards_frame') or not self.manager.cards_frame.winfo_exists():
             print("cards_frame no existe o ha sido destruido")
             return
+
+        # Resetear estados de navegación
+        self.manager.navigation.current_strategy.last_keyboard_selection = None
+
         # Eliminar tarjetas obsoletas
         existing_cards = {child.item_id: child for child in self.manager.cards_frame.winfo_children() if hasattr(child, 'item_id')}
-        
+
         for item_id in list(existing_cards.keys()):
             if item_id not in self.manager.clipboard_items:
                 existing_cards[item_id].destroy()
@@ -189,7 +193,8 @@ class Functions:
         self.recalculate_card_heights()
         # Asegurarse de que el scroll esté en la parte superior después de actualizar
         self.manager.canvas.yview_moveto(0)
-        
+
+        self.manager.navigation.update_highlights()
 
     def update_card(self, card, item_data):
         processed_text = process_text(item_data['text'], 3)
@@ -203,10 +208,10 @@ class Functions:
         pin_button = card.winfo_children()[1].winfo_children()[1]
         pin_text = "📌" if item_data['pinned'] else "📍"
         pin_button.config(text=pin_text)
-        
+
     def apply_theme_to_card(self, card, theme):
         card.configure(bg=theme['card_bg'])
-        
+
         for child in card.winfo_children():
             if isinstance(child, tk.Frame):
                 child.configure(bg=theme['card_bg'])
@@ -234,7 +239,7 @@ class Functions:
             self.refresh_cards()
             self.manager.group_manager.save_groups()  # Guardar después de eliminar un item
 
-    
+
     def clear_history(self):
         self.manager.clipboard_items = {k: v for k, v in self.manager.clipboard_items.items() if v['pinned']}
         self.refresh_cards()
@@ -268,7 +273,7 @@ class Functions:
             except Exception as e:
                 print(f"Error en monitor_clipboard: {e}")
             time.sleep(0.5)
-            
+
     def add_clipboard_item(self, new_id, new_item):
         # Asegúrate de que new_item['text'] siempre sea un diccionario
         if isinstance(new_item['text'], str):
@@ -293,22 +298,22 @@ class Functions:
             while format_id:
                 formats.append(format_id)
                 format_id = win32clipboard.EnumClipboardFormats(format_id)
-            
+
             text = None
             format_info = {}
-            
+
             if win32con.CF_UNICODETEXT in formats:
                 text = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
-            
+
             if win32con.CF_RTF in formats:
                 rtf_data = win32clipboard.GetClipboardData(win32con.CF_RTF)
                 format_info = self.extract_format_info_from_rtf(rtf_data)
             elif CF_HTML in formats:
                 html_data = win32clipboard.GetClipboardData(CF_HTML)
                 format_info = self.extract_format_info_from_html(html_data)
-            
+
             win32clipboard.CloseClipboard()
-            
+
             if text:
                 if format_info:
                     return {'text': text, 'formatted': format_info}
@@ -318,10 +323,10 @@ class Functions:
         except Exception as e:
             print(f"Error al obtener texto del portapapeles: {e}")
             return None
-        
+
     def extract_format_info_from_rtf(self, rtf_data):
         format_info = {'rtf': True}
-        
+
         # Extraer información de fuente
         font_match = re.search(r'\\fonttbl.*?{\\f0\\fnil (.*?);}', rtf_data)
         if font_match:
@@ -346,12 +351,12 @@ class Functions:
     def extract_format_info_from_html(self, html_data):
         format_info = {'html': True}
         soup = BeautifulSoup(html_data, 'html.parser')
-        
+
         # Buscar el primer elemento con estilo
         styled_element = soup.find(style=True)
         if styled_element:
             style = styled_element['style']
-            
+
             # Extraer información de fuente
             font_match = re.search(r'font-family:\s*(.*?);', style)
             if font_match:
@@ -372,18 +377,18 @@ class Functions:
         format_info['italic'] = bool(soup.find(['em', 'i']))
 
         return format_info
-    
+
     def exit_app(self):
         self.manager.root.quit()
         sys.exit()
-    
-    @measure_time    
+
+    @measure_time
     def toggle_paste_format(self):
         self.manager.paste_with_format = not self.manager.paste_with_format
         new_text = "Con formato" if self.manager.paste_with_format else "Sin formato"
         self.manager.button2.config(text=new_text)
         self.manager.navigation.update_highlights()
-        
+
     @measure_time
     def recalculate_card_heights(self):
         for card in self.manager.cards_frame.winfo_children():
@@ -391,73 +396,73 @@ class Functions:
                 item_data = self.manager.clipboard_items[card.item_id]
                 new_height = self.calculate_card_height(item_data['text'])
                 card.config(height=new_height)
-        
+
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
-        
+
     def show_select_group_screen(self, item_id):
         """Muestra la pantalla de selección de grupo"""
         self.root.withdraw()  # Ocultar ventana principal
-        
+
         def after_dialog_shown():
             if hasattr(self, 'select_group_dialog'):
                 self.select_group_dialog.focus_force()
                 self.navigation.set_strategy('select_group')
                 self.select_group_screen_keys.activate()
                 self.navigation.initialize_focus()
-        
+
         # Mostrar el diálogo de selección de grupo
         self.functions.on_arrow_click(item_id)
-        
+
         # Asegurar que el foco se mantenga después de mostrar la ventana
         self.root.after(100, after_dialog_shown)
-    
-    def on_arrow_click(self, item_id):        
+
+    def on_arrow_click(self, item_id):
         self.select_group(item_id)
-        
+
         # Asegurarse de que el diálogo se ha creado correctamente
         if hasattr(self.manager, 'select_group_dialog') and self.manager.select_group_dialog.winfo_exists():
             dialog = self.manager.select_group_dialog
-            
+
             # Vincular eventos de teclado
             dialog.bind('<Key>', self.manager.key_handler.handle_key_press)
             dialog.focus_force()
             dialog.grab_set()
-            
+
             # Configurar la navegación
             self.manager.navigation.set_strategy('select_group')
             self.manager.select_group_screen_keys.activate()
-            
+
             # Inicializar el foco y los highlights después de que la ventana sea visible
             self.manager.root.after(100, lambda: self.manager.navigation.initialize_focus())
-        
-    def select_group(self, item_id):        
+
+    def select_group(self, item_id):
         # Ocultar la ventana principal
         self.manager.root.withdraw()
         dialog = tk.Toplevel(self.manager.root)
         self.manager.select_group_dialog = dialog  # Guarda una referencia al diálogo
-        
+
         dialog.title("Seleccionar Grupo")
-        
+
         window_width = self.manager.settings['width']
         window_height = self.manager.settings['height']
-        
+
         x = self.manager.window_x
         y = self.manager.window_y
-        
+
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
-            
+
         dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
-        
+
         # Barra de título personalizada
         title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
         title_frame.pack(fill=tk.X, padx=5, pady=(0, 4))
         title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
                             bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
         title_label.pack(side=tk.LEFT, padx=5)
-        
+
         # Configurar efecto hover para el botón de cerrar
         def create_close_button_hover():
             close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_dialog(dialog),
@@ -465,19 +470,19 @@ class Functions:
                                 bg=self.manager.theme_manager.colors['dark']['button_bg'],
                                 fg=self.manager.theme_manager.colors['dark']['button_fg'])
             close_button.pack(side=tk.RIGHT)
-            
+
             def on_enter(e):
                 close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
                     'dark' if self.manager.is_dark_mode else 'light']['normal'])
-            
+
             def on_leave(e):
                 close_button.configure(bg=self.manager.theme_manager.colors['dark']['button_bg'])
-            
+
             close_button.bind('<Enter>', on_enter)
             close_button.bind('<Leave>', on_leave)
-            
+
         create_close_button_hover()
-        
+
         # Canvas para scroll y contenedor de grupos
         canvas = tk.Canvas(dialog, bg=dialog.cget('bg'), bd=0, highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=0)
@@ -487,14 +492,14 @@ class Functions:
         # Frame contenedor dentro del canvas para el scroll
         content_frame = tk.Frame(canvas, bg=dialog.cget('bg'))
         canvas_window = canvas.create_window((0, 0), window=content_frame, anchor='nw', width=295)
-        
+
         # Mostrar mensaje cuando no hay grupos
         if not self.manager.group_manager.groups:
-            message_frame = tk.Frame(content_frame, 
+            message_frame = tk.Frame(content_frame,
                                 bg=self.manager.theme_manager.colors['dark']['card_bg'])
             message_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=20)
-            
-            message_label = tk.Label(message_frame, 
+
+            message_label = tk.Label(message_frame,
                                 text='No hay grupos creados.\nCrea un nuevo grupo en la pantalla de grupos.',
                                 font=('Segoe UI', 10),
                                 bg=self.manager.theme_manager.colors['dark']['card_bg'],
@@ -512,21 +517,21 @@ class Functions:
                                     activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
                                     bd=0, padx=10, pady=5, width=30, anchor='w')
                 group_button.pack(fill=tk.X, pady=2)
-                
+
                 # Configurar hover para los botones de grupo
                 def create_hover_effect(button):
                     def on_enter(e):
                         button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
                             'dark' if self.manager.is_dark_mode else 'light']['normal'])
-                    
+
                     def on_leave(e):
                         button.configure(bg=self.manager.theme_manager.colors['dark']['button_bg'])
-                    
+
                     button.bind('<Enter>', on_enter)
                     button.bind('<Leave>', on_leave)
-                
+
                 create_hover_effect(group_button)
-        
+
         # Ajustar el ancho del frame contenedor al canvas
         def on_canvas_resize(event):
             canvas.itemconfig(canvas_window, width=event.width)
@@ -552,23 +557,23 @@ class Functions:
             dialog.geometry(f"+{x}+{y}")
         title_frame.bind('<Button-1>', start_move)
         title_frame.bind('<B1-Motion>', on_move)
-        
+
         # Configurar la navegación para la pantalla de selección de grupo
         self.manager.navigation.set_strategy('select_group')
         self.manager.select_group_screen_keys.activate()
-        
+
         dialog.focus_force()  # Forzar el foco en la ventana de diálogo
         dialog.grab_set()     # Hacer que la ventana sea modal
-        
+
         # Asegurarse de que el foco se mantenga después de mostrar la ventana
         self.manager.root.after(100, dialog.focus_force)
-        
+
         # Actualizar la navegación después de que la ventana esté visible
         self.manager.root.after(200, lambda: self.manager.navigation.initialize_focus())
-        
+
         # # Inicializar el foco y los highlights
         # self.manager.navigation.initialize_focus()
-    
+
     def close_dialog(self, dialog):
         """Cierra el diálogo y restaura el foco en la pantalla principal"""
         dialog.destroy()
@@ -582,10 +587,10 @@ class Functions:
             self.manager.select_group_screen_keys.deactivate()
             self.manager.navigation.initialize_focus()
             self.manager.navigation.update_highlights()
-        
+
         # Dar tiempo a que la ventana principal se muestre
         self.manager.root.after(100, restore_main_focus)
-    
+
     def add_to_group(self, item_id, group_id, dialog):
         self.manager.group_manager.add_item_to_group(item_id, group_id)
         dialog.destroy()

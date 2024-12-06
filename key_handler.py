@@ -220,11 +220,27 @@ class KeyHandler:
             self.manager.main_screen_keys.activate()
             self.manager.navigation.initialize_focus()
 
+            # Reinicializar los estados de hover
+            self.manager.navigation.current_strategy.last_keyboard_selection = None
+            self._reset_hover_states()
+
             # Refrescar la vista principal
             self.manager.functions.refresh_cards()
 
         except Exception as e:
             logger.error(f"Error showing main window: {e}")
+
+    def _reset_hover_states(self):
+        """Resetea todos los estados de hover de los elementos"""
+        if hasattr(self.manager, 'cards_frame'):
+            for card in self.manager.cards_frame.winfo_children():
+                for child in card.winfo_children():
+                    if isinstance(child, tk.Frame):
+                        for btn in child.winfo_children():
+                            if hasattr(btn, '_mouse_over'):
+                                btn._mouse_over = False
+                            if hasattr(btn, '_is_highlighted'):
+                                btn._is_highlighted = False
 
     # def show_window(self) -> None:
     #     """Muestra la ventana principal"""

@@ -278,10 +278,25 @@ class MainScreenNavigation:
         else:
             print(f"No handler found for type: {current_type}")  # Debug
 
+    # función para resetear estados de mouse over
+    def _reset_mouse_over_states(self):
+        """Resetea los estados de mouse over de todos los elementos"""
+        if hasattr(self.manager, 'cards_frame'):
+            for card in self.manager.cards_frame.winfo_children():
+                if hasattr(card, '_mouse_over'):
+                    card._mouse_over = False
+                for child in card.winfo_children():
+                    if isinstance(child, tk.Frame):
+                        for btn in child.winfo_children():
+                            if hasattr(btn, '_mouse_over'):
+                                btn._mouse_over = False
+
     def update_highlights(self) -> None:
         """Actualiza los destacados visuales"""
         # print("Updating highlights")  # Debug
         self._clear_all_highlights()
+
+        self._reset_mouse_over_states()
 
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
@@ -592,14 +607,7 @@ class MainScreenNavigation:
             elif isinstance(child, tk.Button):
                 child.configure(bg=button_color)
 
-    def update_highlights(self) -> None:
-        """Actualiza los destacados visuales"""
-        # print("Updating highlights")  # Debug
-        self._clear_all_highlights()
-        self._highlight_current_selection()
 
-        # Forzar la actualización visual
-        self.manager.root.update_idletasks()
 
     def ensure_visible(self) -> None:
         """Asegura que el elemento seleccionado esté visible"""
@@ -637,3 +645,4 @@ class MainScreenNavigation:
             # print(f"Activation handler executed for {current_type}")  # Debug
         else:
             print(f"No activation handler found for {current_type}")  # Debug
+
