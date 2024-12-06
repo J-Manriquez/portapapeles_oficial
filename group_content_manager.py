@@ -173,6 +173,9 @@ class GroupContentManager:
             # Dar tiempo a que la ventana se muestre completamente
             self.content_window.after(100, after_dialog_shown)
 
+            # Agregar vinculación de tecla para toda la ventana
+            self.content_window.bind('<Key>', self.manager.key_handler.handle_key_press)
+
         else:
             # Si la ventana ya existe, mostrarla y actualizarla
             self.content_window.deiconify()
@@ -420,6 +423,7 @@ class GroupContentManager:
             return
 
         dialog = tk.Toplevel(self.master)
+        self._edit_dialog = dialog  # Guardar referencia al diálogo
         dialog.title("Editar Item")
 
         x = self.manager.window_x
@@ -532,6 +536,9 @@ class GroupContentManager:
             dialog.geometry(f"300x{new_height}")
 
         text_entry.bind("<KeyRelease>", adjust_dialog_height)
+
+        # Agregar vinculación de tecla para el diálogo
+        dialog.bind('<Key>', self.manager.key_handler.handle_key_press)
 
         dialog.focus_set()
         name_entry.focus()

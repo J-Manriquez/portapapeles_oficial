@@ -32,7 +32,7 @@ class ClipboardManager:
 
         self.data_manager = DataManager()
         groups, pinned_items, settings = self.data_manager.load_data()
-        
+
         self.settings = settings
         self.settings_manager = SettingsManager(self.root, self)
         self.settings_manager.initialize_settings()
@@ -46,7 +46,7 @@ class ClipboardManager:
         self.root.attributes('-topmost', True)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)  # Manejar el cierre de la ventana
 
-        
+
         self.root.withdraw()
         self.is_visible = False
 
@@ -62,14 +62,14 @@ class ClipboardManager:
                     'text': {'text': item_data['text'], 'formatted': {}},
                     'pinned': item_data['pinned']
                 }
-                
+
         self.current_clipboard = ""
         self.selected_index = None
         self.current_selection = {'type': 'button', 'index': 0}
         self.is_dark_mode = True
-        
+
         self.paste_with_format = False
-        
+
         self.previous_window = None
         self.last_active_window = None
         self.selected_button = None
@@ -78,8 +78,11 @@ class ClipboardManager:
         self.total_buttons = 6
         self.top_buttons = 3
         self.icons_per_card = 3
-        
+
+        # Modificar la configuración del atajo principal
         self.hotkey = f"alt+{settings['hotkey']}"
+
+
 
         self.theme_manager = ThemeManager(self)
         self.functions = Functions(self)
@@ -91,42 +94,43 @@ class ClipboardManager:
         self.select_group_screen_keys = SelectGroupScreenKeyConfig(self.key_handler, self)
         self.group_content_screen_keys = GroupContentScreenKeyConfig(self.key_handler, self)
         self.main_screen_navigation = MainScreenNavigation(self)
-        
+
         # Inicialización del sistema de teclas y navegación
-        self.setup_keyboard_system() 
-        
+        self.setup_keyboard_system()
+
+        # Vincular el atajo a todas las ventanas posibles
         self.root.bind('<Key>', self.key_handler.handle_key_press)
-        
+
         self.group_manager.groups = groups
-        
+
         self.create_gui()
-        self.setup_button_bindings()  
+        self.setup_button_bindings()
         self.load_saved_data()
-        
+
         self.navigation = Navigation(self)
-        
+
         self.theme_manager.apply_theme()
 
         self.monitor_thread = threading.Thread(target=self.functions.monitor_clipboard, daemon=True)
         self.monitor_thread.start()
-                        
+
         if show_settings:
             self.root.after(100, self.settings_manager.show_settings_window)
-        
+
         self.root.after(1000, self.navigation.check_window_state)
-        
+
         # scroll
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-        
+
     def setup_key_bindings(self):
         self.key_handler.register_screen_hotkey('main', 'up', self.navigate_up)
         self.key_handler.register_screen_hotkey('main', 'down', self.navigate_down)
         self.key_handler.register_screen_hotkey('main', 'left', self.navigate_left)
         self.key_handler.register_screen_hotkey('main', 'right', self.navigate_right)
         self.key_handler.register_screen_hotkey('main', 'return', self.activate_selected)
-        
+
     def navigate_up(self):
         self.main_screen_navigation.navigate_vertical(type('Event', (), {'keysym': 'Up'})())
 
@@ -140,12 +144,12 @@ class ClipboardManager:
         self.main_screen_navigation.navigate_horizontal(type('Event', (), {'keysym': 'Right'})())
 
     def activate_selected(self):
-        self.main_screen_navigation.activate_selected()    
-    
+        self.main_screen_navigation.activate_selected()
+
     def force_update(self):
         self.root.update_idletasks()
         self.root.update()
-            
+
     def on_close(self):
         self.root.withdraw()
         self.is_visible = False
@@ -175,9 +179,9 @@ class ClipboardManager:
         main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
         main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
 
-        self.button1 = tk.Button(main_buttons_frame, text="Grupos", 
-                                 command=self.show_groups, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+        self.button1 = tk.Button(main_buttons_frame, text="Grupos",
+                                 command=self.show_groups, font=('Segoe UI', 10),
+                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                  fg=self.theme_manager.colors['dark']['button_fg'],
                                  relief=tk.FLAT,
                                  bd=0,
@@ -185,29 +189,29 @@ class ClipboardManager:
                                  pady=8)
         self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
-        self.button2 = tk.Button(main_buttons_frame, text="Sin formato", 
-                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+        self.button2 = tk.Button(main_buttons_frame, text="Sin formato",
+                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10),
+                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                  fg=self.theme_manager.colors['dark']['button_fg'],
                                  relief=tk.FLAT,
                                  bd=0,
                                  highlightthickness=1,
-                                 pady=8) 
+                                 pady=8)
         self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
-        self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo", 
-                                 command=self.functions.clear_history, font=('Segoe UI', 10), 
-                                 bg=self.theme_manager.colors['dark']['button_bg'], 
+        self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo",
+                                 command=self.functions.clear_history, font=('Segoe UI', 10),
+                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                  fg=self.theme_manager.colors['dark']['button_fg'],
                                  relief=tk.FLAT,
                                  bd=0,
                                  highlightthickness=1,
-                                 pady=8)                               
+                                 pady=8)
         self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
+
         self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
         self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
 
@@ -221,7 +225,7 @@ class ClipboardManager:
         self.title_label.bind('<Button-1>', self.start_move)
         self.title_label.bind('<ButtonRelease-1>', self.stop_move)
         self.title_label.bind('<B1-Motion>', self.on_move)
-        
+
         # Vincula eventos de scroll
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
@@ -235,20 +239,20 @@ class ClipboardManager:
         self.settings_manager.show_settings_window()
         self.navigation.set_strategy('settings')
         self.root.withdraw()
-        
+
     def refresh_main_screen(self):
         # Actualizar la región de desplazamiento
         self.canvas.update_idletasks()
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        
+
         # Volver a vincular eventos de scroll
         self.canvas.bind('<Configure>', self.on_canvas_configure)
         self.cards_frame.bind('<Configure>', self.on_frame_configure)
         self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
-        
+
         # Asegurarse de que el canvas tenga el foco
         self.canvas.focus_set()
-        
+
         # Refrescar las tarjetas
         self.functions.refresh_cards()
 
@@ -257,20 +261,20 @@ class ClipboardManager:
         try:
             # Configurar navegación
             self.navigation = Navigation(self)
-            
+
             # Vincular eventos de teclado
             def handle_key(event):
                 # print(f"Root received key event: {event.keysym}")  # Debug
                 if self.is_visible:
                     self.navigation.handle_keyboard_event(event)
-            
+
             self.root.bind('<KeyPress>', handle_key)
-            
+
             # Establecer estrategia inicial
             self.navigation.set_strategy('main')
-            
+
             # print("Keyboard system initialized")  # Debug
-            
+
         except Exception as e:
             logger.error(f"Error setting up keyboard system: {e}")
             raise
@@ -299,15 +303,15 @@ class ClipboardManager:
         except Exception as e:
             logger.error(f"Error setting up screen keys: {e}")
             raise
-        
+
     def register_global_shortcuts(self):
         """Registra los atajos de teclado globales básicos"""
         # Atajo principal de la aplicación
         self.key_handler.global_hotkeys.register_hotkey(
-            self.hotkey, 
+            self.hotkey,
             self.key_handler.toggle_window
         )
-        
+
         # Otros atajos globales que quieras añadir
         # self.key_handler.global_hotkeys.register_hotkey('alt+q', self.functions.exit_app)
         # etc...
@@ -328,27 +332,27 @@ class ClipboardManager:
     def show_main_screen(self):
         """Muestra la pantalla principal y configura su navegación"""
         self.navigation.set_strategy('main')
-        
+
         # Desactivar otras configuraciones de teclas
         if hasattr(self, 'groups_screen_keys'):
             self.groups_screen_keys.deactivate()
         if hasattr(self, 'select_group_screen_keys'):
             self.select_group_screen_keys.deactivate()
-        
+
         # Mostrar y enfocar la ventana principal
         self.root.deiconify()
         self.root.lift()
-        
+
         def setup_main_screen():
             self.root.focus_force()
             self.refresh_main_screen()
             self.main_screen_keys.activate()
             self.navigation.initialize_focus()
             self.navigation.update_highlights()
-        
+
         # Dar tiempo a que la ventana se muestre
         self.root.after(100, setup_main_screen)
-        
+
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()
         self.group_manager.groups = groups
@@ -394,18 +398,18 @@ class ClipboardManager:
         self.canvas.focus_set()
         # Scroll
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
+
     def on_scroll(self, *args):
         # Este método se llama cuando se realiza un scroll
         if len(args) == 3 and isinstance(args[2], str):
             self.canvas.yview_moveto(args[0])
         elif len(args) == 2 and isinstance(args[0], str):
             self.canvas.yview_scroll(int(args[1]), args[0])
-            
+
     def exit_app(self):
         self.root.quit()
         sys.exit()
-        
+
     def setup_button_bindings(self) -> None:
         """Configura los enlaces de botones para clic y Enter"""
         # Botones principales
@@ -417,10 +421,10 @@ class ClipboardManager:
         self.theme_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 0))
         self.clear_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 1))
         self.close_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 2))
-        
+
          # Obtener colores del tema
         theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
-        
+
         def create_hover_effect(button):
             def on_enter(e):
                 button.configure(bg=theme['active_bg'], fg=theme['active_fg'])

@@ -11,30 +11,30 @@ class SettingsManager:
         self.master = master
         self.clipboard_manager = clipboard_manager
         self.settings_window = None
-        self.settings = None      
-          
+        self.settings = None
+
     def initialize_settings(self):
         # Llama a este método después de que ClipboardManager haya inicializado completamente
         self.settings = self.clipboard_manager.settings
-        
+
     def save_settings(self):
         groups, pinned_items, _ = self.clipboard_manager.data_manager.load_data()
         self.clipboard_manager.data_manager.save_data(groups, pinned_items, self.settings)
-        
+
     def show_settings_window(self):
         if self.settings_window is None or not self.settings_window.winfo_exists():
             self.settings_window = tk.Toplevel(self.master)
             self.settings_window.title("Configuraciones")
-            
+
             window_width = self.settings['width']
             window_height = self.settings['height']
 
             # Usa las coordenadas de la ventana principal o una posición predeterminada
-            x = getattr(self.clipboard_manager, 'window_x', 0) 
+            x = getattr(self.clipboard_manager, 'window_x', 0)
             y = getattr(self.clipboard_manager, 'window_y', 0)
-            
+
             self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-            
+
             self.settings_window.overrideredirect(True)
             self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
             self.settings_window.attributes('-topmost', True)
@@ -43,12 +43,12 @@ class SettingsManager:
             title_frame = tk.Frame(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
             title_frame.pack(fill=tk.X, padx=6, pady=(0, 0))
 
-            title_label = tk.Label(title_frame, text="Configuraciones", font=('Segoe UI', 10, 'bold'), 
-                                   bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], 
+            title_label = tk.Label(title_frame, text="Configuraciones", font=('Segoe UI', 10, 'bold'),
+                                   bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
                                    fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
             title_label.pack(side=tk.LEFT, padx=5)
 
-            close_button = tk.Button(title_frame, text="❌", command=self.close_settings_window, 
+            close_button = tk.Button(title_frame, text="❌", command=self.close_settings_window,
                                      font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
                                      bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
                                      fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
@@ -85,15 +85,15 @@ class SettingsManager:
             canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
             # Crear cards de configuración
-            subtitle = tk.Label(self.settings_frame, text="Tecla de activación", 
+            subtitle = tk.Label(self.settings_frame, text="Tecla de activación",
                         font=('Segoe UI', 10, 'bold'),
                         bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
                         anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Alt+", self.settings['hotkey'])
-            
-            subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app", 
+
+            subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app",
                         font=('Segoe UI', 10, 'bold'),
                         bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
@@ -106,6 +106,9 @@ class SettingsManager:
             title_label.bind('<Button-1>', self.start_move)
             title_label.bind('<B1-Motion>', self.on_move)
 
+            # Agregar vinculación de tecla para toda la ventana
+            self.settings_window.bind('<Key>', self.clipboard_manager.key_handler.handle_key_press)
+
         else:
             self.settings_window.lift()
             self.settings_window.attributes('-topmost', True)
@@ -115,13 +118,13 @@ class SettingsManager:
         card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
         card.pack(fill=tk.X, padx=4, pady=2)
 
-        label = tk.Label(card, text=f"{setting_name}: {default_value}", 
+        label = tk.Label(card, text=f"{setting_name}: {default_value}",
                          bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
                          fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
                          anchor='w', padx=5, pady=5)
         label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        edit_button = tk.Button(card, text="✏️", 
+        edit_button = tk.Button(card, text="✏️",
                                 command=lambda: self.toggle_edit_mode(card, label, edit_button, setting_name, default_value),
                                 font=('Segoe UI', 10), bd=0,
                                 bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
@@ -146,7 +149,7 @@ class SettingsManager:
             entry.destroy()
             label.pack(side=tk.LEFT, fill=tk.X, expand=True)
             button.configure(text="✏️")
-            
+
             # Actualizar configuraciones
             if setting_name == "Alto":
                 self.settings['height'] = int(new_value)
@@ -157,14 +160,14 @@ class SettingsManager:
                 new_hotkey = 'alt+' + new_value
                 self.settings['hotkey'] = new_value  # Guarda solo la letra
                 self.clipboard_manager.key_handler.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
-                
+
             self.save_settings()
             self.restart_app()
-            
+
     def restart_app(self):
         python = sys.executable
         os.execl(python, python, *sys.argv, "--show-settings")
-            
+
     def start_move(self, event):
         self.x = event.x
         self.y = event.y
@@ -175,7 +178,7 @@ class SettingsManager:
         x = self.settings_window.winfo_x() + deltax
         y = self.settings_window.winfo_y() + deltay
         self.settings_window.geometry(f"+{x}+{y}")
-        
+
     def close_settings_window(self):
         self.settings_window.destroy()
         self.clipboard_manager.show_main_screen()

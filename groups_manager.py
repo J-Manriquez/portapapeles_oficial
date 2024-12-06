@@ -163,6 +163,10 @@ class GroupManager:
 
             # Inicializar el foco después de que la ventana esté visible
             self.groups_window.after(100, self.clipboard_manager.navigation.initialize_focus)
+
+            # Agregar vinculación de tecla para toda la ventana
+            self.groups_window.bind('<Key>', self.clipboard_manager.key_handler.handle_key_press)
+
         else:
             # logger.debug("Mostrando ventana de grupos existente")
             self.groups_window.deiconify()
@@ -424,6 +428,7 @@ class GroupManager:
             self.groups_window.withdraw()
 
         dialog = tk.Toplevel(self.master)
+        self._edit_dialog = dialog  # Guardar referencia al diálogo
         dialog.title("Editar Grupo" if is_edit else "Nuevo Grupo")
 
         x = self.clipboard_manager.window_x
@@ -522,6 +527,7 @@ class GroupManager:
         dialog.focus_force()
         dialog.grab_set()  # Hacer el diálogo modal
         name_entry.focus()
+
 
     def add_group(self):
         self.show_group_dialog()

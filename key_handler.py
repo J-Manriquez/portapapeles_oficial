@@ -9,17 +9,19 @@ import pyautogui
 import pyperclip
 import time
 import logging
+import tkinter as tk
+
 from typing import Dict, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
 class GlobalHotkeyManager:
     """Maneja los atajos de teclado globales de la aplicación"""
-    
+
     def __init__(self):
         self._hotkeys: Dict[str, Callable] = {}
         keyboard.unhook_all()
-    
+
     def register_hotkey(self, key: str, callback: Callable) -> None:
         """Registra un nuevo atajo global"""
         if key in self._hotkeys:
@@ -27,14 +29,14 @@ class GlobalHotkeyManager:
         self._hotkeys[key] = callback
         keyboard.add_hotkey(key, callback)
         # logger.debug(f"Registered global hotkey: {key}")
-    
+
     def unregister_hotkey(self, key: str) -> None:
         """Elimina un atajo global"""
         if key in self._hotkeys:
             keyboard.remove_hotkey(key)
             del self._hotkeys[key]
             # logger.debug(f"Unregistered global hotkey: {key}")
-    
+
     def update_hotkey(self, old_key: Optional[str], new_key: str, callback: Callable) -> None:
         """Actualiza un atajo existente con una nueva tecla"""
         if old_key:
@@ -44,7 +46,7 @@ class GlobalHotkeyManager:
 
 class KeyHandler:
     """Coordinador principal del sistema de teclas"""
-    
+
     def __init__(self, manager):
         self.manager = manager
         self.global_hotkeys = GlobalHotkeyManager()
@@ -52,14 +54,15 @@ class KeyHandler:
         # self.screen_specific_hotkeys: Dict[str, Dict[str, Callable]] = {}
         self.screen_specific_hotkeys = {}
         self.original_cursor_pos = None
-        
+        self.active_window = None  # rastrear la ventana activa
+
         # Inicializar el hotkey principal
         self.setup_main_hotkey()
-        
+
     def register_global_hotkey(self, key: str, callback: Callable) -> None:
         """Registra un atajo de teclado global"""
         self.global_hotkeys.register_hotkey(key, callback)
-        
+
     def register_screen_hotkey(self, screen: str, key: str, callback: Callable) -> None:
         """Registra un atajo de teclado específico para una pantalla"""
         if screen not in self.screen_specific_hotkeys:
@@ -77,10 +80,10 @@ class KeyHandler:
         """Establece la pantalla actual para manejar los atajos de teclado"""
         self.current_screen = screen
         # logger.debug(f"Set current screen to: {screen}")
-        
+
         # Limpiar los atajos anteriores
         self.screen_specific_hotkeys = {}
-        
+
         # Reconfigurar los atajos según la pantalla actual
         if screen == 'select_group':
             self.manager.select_group_screen_keys.setup_keys()
@@ -89,31 +92,31 @@ class KeyHandler:
         """Maneja las pulsaciones de teclas"""
         # print(f"KeyHandler received key: {event.keysym}")  # Debug
         key = event.keysym.lower()
-        
+
         # Manejar teclas específicas de la pantalla actual
         if self.current_screen in self.screen_specific_hotkeys:
             if key in self.screen_specific_hotkeys[self.current_screen]:
                 # print(f"Executing screen-specific handler for {key}")  # Debug
                 self.screen_specific_hotkeys[self.current_screen][key]()
                 return True
-        
+
         # Propagar el evento a la estrategia de navegación actual
         if self.manager.is_visible:
             self.manager.navigation.handle_keyboard_event(event)
             return True
-        
+
         # Manejar teclas globales
         if key in self.global_hotkeys._hotkeys:
             # print(f"Executing global handler for {key}")  # Debug
             self.global_hotkeys._hotkeys[key]()
             return True
-            
+
         # Asegurar que la ventana correcta tiene el foco
         if self.current_screen == 'main':
             self.manager.root.focus_force()
         elif self.current_screen == 'select_group' and hasattr(self.manager, 'select_group_dialog'):
             self.manager.select_group_dialog.focus_force()
-        
+
         return False
 
     def setup_main_hotkey(self) -> None:
@@ -122,50 +125,140 @@ class KeyHandler:
         if not hotkey.lower().startswith('alt+'):
             hotkey = 'alt+' + hotkey
         self.global_hotkeys.register_hotkey(hotkey, self.toggle_window)
-        
+
     def toggle_window(self) -> None:
-        """Alterna la visibilidad de la ventana principal"""
-        # logger.debug("Toggling window")
-        if not self.manager.is_visible:
-            # Asegurarse de que estamos en la estrategia principal
-            self.manager.navigation.set_strategy('main')
-            self.show_window()
-        else:
+        """Alterna la visibilidad de las ventanas"""
+        if self.check_open_windows():
+            # Si hay ventanas abiertas, ocultarlas
+            print('--CERRANDO SCREENS')
             self.hide_window()
-            
+            self.manager.is_visible = False  # Asegurar que el estado es correcto
+        else:
+            # Si no hay ventanas abiertas, mostrar la principal
+            self.show_window()
+            self.manager.is_visible = True  # Asegurar que el estado es correcto
+
+
+    def check_open_windows(self) -> bool:
+        """
+        Verifica si hay ventanas abiertas
+        Returns:
+            bool: True si hay ventanas abiertas, False en caso contrario
+        """
+        windows_status = [
+            # Ventana principal
+            self.manager.is_visible,
+
+            # Ventana de grupos
+            hasattr(self.manager.group_manager, 'groups_window') and
+            self.manager.group_manager.groups_window and
+            self.manager.group_manager.groups_window.winfo_exists() and
+            self.manager.group_manager.groups_window.winfo_viewable(),
+
+            # Ventana de contenido de grupo
+            hasattr(self.manager.group_manager.group_content_manager, 'content_window') and
+            self.manager.group_manager.group_content_manager.content_window and
+            self.manager.group_manager.group_content_manager.content_window.winfo_exists() and
+            self.manager.group_manager.group_content_manager.content_window.winfo_viewable(),
+
+            # Ventana de configuraciones
+            hasattr(self.manager.settings_manager, 'settings_window') and
+            self.manager.settings_manager.settings_window and
+            self.manager.settings_manager.settings_window.winfo_exists() and
+            self.manager.settings_manager.settings_window.winfo_viewable(),
+
+            # Diálogo de selección de grupo
+            hasattr(self.manager, 'select_group_dialog') and
+            self.manager.select_group_dialog and
+            self.manager.select_group_dialog.winfo_exists() and
+            self.manager.select_group_dialog.winfo_viewable(),
+
+            # Diálogo de edición de grupo
+            hasattr(self.manager.group_manager, '_edit_dialog') and
+            self.manager.group_manager._edit_dialog and
+            self.manager.group_manager._edit_dialog.winfo_exists() and
+            self.manager.group_manager._edit_dialog.winfo_viewable(),
+
+            # Diálogo de edición de texto de grupo
+            hasattr(self.manager.group_manager.group_content_manager, '_edit_dialog') and
+            self.manager.group_manager.group_content_manager._edit_dialog and
+            self.manager.group_manager.group_content_manager._edit_dialog.winfo_exists() and
+            self.manager.group_manager.group_content_manager._edit_dialog.winfo_viewable()
+        ]
+
+        return any(windows_status)
+
     def show_window(self) -> None:
-        """Muestra la ventana principal"""
+        """Muestra la ventana principal si no hay otras ventanas abiertas"""
         try:
             self.manager.previous_window = win32gui.GetForegroundWindow()
             self.original_cursor_pos = win32gui.GetCursorPos()
-            
+
             # Posicionar ventana
             mouse_x, mouse_y = pyautogui.position()
             window_x = mouse_x - self.manager.window_width // 2
             window_y = mouse_y - self.manager.window_height // 2
-            
+
             # Ajustar a los límites de la pantalla
             screen_width, screen_height = pyautogui.size()
             window_x = max(0, min(window_x, screen_width - self.manager.window_width))
             window_y = max(0, min(window_y, screen_height - self.manager.window_height))
-            
+
             self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{window_x}+{window_y}")
             self.manager.window_x = window_x
             self.manager.window_y = window_y
-            
-            # Asegurarse de que estamos en la navegación principal
+
+            # Mostrar la ventana principal
+            self.manager.root.deiconify()
+            self.manager.root.lift()
+            self.manager.root.focus_force()
+            self.manager.root.attributes('-topmost', True)
+            self.manager.is_visible = True
+
+            # Asegurar que estamos en la navegación principal
             self.manager.navigation.set_strategy('main')
-            self._show_and_focus_window()
-            
-            # Inicializar el foco y la navegación
+            self.manager.main_screen_keys.activate()
             self.manager.navigation.initialize_focus()
-            
+
+            # Refrescar la vista principal
+            self.manager.functions.refresh_cards()
+
         except Exception as e:
-            logger.error(f"Error showing window: {e}")
-            # En caso de error, intentar restablecer a un estado conocido
-            self.manager.navigation.set_strategy('main')
-            self.manager.show_main_screen()
-            
+            logger.error(f"Error showing main window: {e}")
+
+    # def show_window(self) -> None:
+    #     """Muestra la ventana principal"""
+    #     try:
+    #         self.manager.previous_window = win32gui.GetForegroundWindow()
+    #         self.original_cursor_pos = win32gui.GetCursorPos()
+
+    #         # Posicionar ventana
+    #         mouse_x, mouse_y = pyautogui.position()
+    #         window_x = mouse_x - self.manager.window_width // 2
+    #         window_y = mouse_y - self.manager.window_height // 2
+
+    #         # Ajustar a los límites de la pantalla
+    #         screen_width, screen_height = pyautogui.size()
+    #         window_x = max(0, min(window_x, screen_width - self.manager.window_width))
+    #         window_y = max(0, min(window_y, screen_height - self.manager.window_height))
+
+    #         self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{window_x}+{window_y}")
+    #         self.manager.window_x = window_x
+    #         self.manager.window_y = window_y
+
+    #         # Asegurarse de que estamos en la navegación principal
+    #         self.manager.navigation.set_strategy('main')
+    #         self._show_and_focus_window()
+
+    #         # Inicializar el foco y la navegación
+    #         self.manager.navigation.initialize_focus()
+
+    #     except Exception as e:
+    #         logger.error(f"Error showing window: {e}")
+    #         # En caso de error, intentar restablecer a un estado conocido
+    #         self.manager.navigation.set_strategy('main')
+    #         self.manager.show_main_screen()
+
     def _show_and_focus_window(self) -> None:
         """Muestra y enfoca la ventana principal"""
         self.manager.root.deiconify()
@@ -173,22 +266,72 @@ class KeyHandler:
         self.manager.root.attributes('-topmost', True)
         self.manager.is_visible = True
         self.manager.navigation.initialize_focus()
-        
+
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
-        
+
         self.manager.root.update_idletasks()
         self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
         self.manager.root.focus_force()
 
+    # def hide_window(self) -> None:
+    #     """Oculta la ventana principal"""
+    #     self.manager.root.withdraw()
+    #     self.manager.is_visible = False
+    #     self.restore_focus()
+    #     if self.original_cursor_pos:
+    #         win32api.SetCursorPos(self.original_cursor_pos)
+    #         self.original_cursor_pos = None
+
     def hide_window(self) -> None:
-        """Oculta la ventana principal"""
-        self.manager.root.withdraw()
-        self.manager.is_visible = False
-        self.restore_focus()
-        if self.original_cursor_pos:
-            win32api.SetCursorPos(self.original_cursor_pos)
-            self.original_cursor_pos = None
+        """Oculta la ventana actualmente activa"""
+        try:
+            # Ocultar ventana de grupos
+            if hasattr(self.manager.group_manager, 'groups_window') and \
+            self.manager.group_manager.groups_window and \
+            self.manager.group_manager.groups_window.winfo_exists():
+                self.manager.group_manager.groups_window.withdraw()
+
+            # Ocultar ventana de contenido de grupo
+            if hasattr(self.manager.group_manager.group_content_manager, 'content_window') and \
+            self.manager.group_manager.group_content_manager.content_window and \
+            self.manager.group_manager.group_content_manager.content_window.winfo_exists():
+                self.manager.group_manager.group_content_manager.content_window.withdraw()
+
+            # Ocultar ventana de configuraciones
+            if hasattr(self.manager.settings_manager, 'settings_window') and \
+            self.manager.settings_manager.settings_window and \
+            self.manager.settings_manager.settings_window.winfo_exists():
+                self.manager.settings_manager.settings_window.withdraw()
+
+            # Ocultar ventana de selección de grupo
+            if hasattr(self.manager, 'select_group_dialog') and \
+            self.manager.select_group_dialog and \
+            self.manager.select_group_dialog.winfo_exists():
+                try:
+                    self.manager.select_group_dialog.withdraw()
+                except tk.TclError:
+                    pass  # Ignorar si la ventana ya no existe
+
+            # Ocultar diálogo de edición de grupo
+            if hasattr(self.manager.group_manager, '_edit_dialog') and \
+            self.manager.group_manager._edit_dialog and \
+            self.manager.group_manager._edit_dialog.winfo_exists():
+                self.manager.group_manager._edit_dialog.withdraw()
+
+            # Ocultar diálogo de edición de texto de grupo
+            if hasattr(self.manager.group_manager.group_content_manager, '_edit_dialog') and \
+            self.manager.group_manager.group_content_manager._edit_dialog and \
+            self.manager.group_manager.group_content_manager._edit_dialog.winfo_exists():
+                self.manager.group_manager.group_content_manager._edit_dialog.withdraw()
+
+            # Ocultar ventana principal
+            self.manager.root.withdraw()
+            self.manager.is_visible = False
+            self.restore_focus()
+
+        except Exception as e:
+            logger.error(f"Error hiding active window: {e}")
 
     def restore_focus(self) -> None:
         """Restaura el foco a la ventana anterior"""
@@ -210,7 +353,7 @@ class KeyHandler:
         try:
             self.hide_window()
             current_cursor_pos = win32gui.GetCursorPos()
-            
+
             if isinstance(clipboard_data, dict):
                 text = clipboard_data.get('text', '')
                 format_info = clipboard_data.get('formatted', {})
@@ -226,20 +369,20 @@ class KeyHandler:
                 win32clipboard.CloseClipboard()
             else:
                 pyperclip.copy(text)
-            
+
             time.sleep(0.05)
-            
+
             if self.manager.previous_window:
                 win32gui.SetForegroundWindow(self.manager.previous_window)
                 time.sleep(0.05)
-                
+
                 win32api.SetCursorPos(current_cursor_pos)
-                
+
                 shell = win32com.client.Dispatch("WScript.Shell")
                 shell.SendKeys("^v")
-            
+
             self.original_cursor_pos = None
-            
+
         except Exception as e:
             print(f"Error en el proceso de pegado: {e}")
         finally:
