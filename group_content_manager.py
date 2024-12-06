@@ -22,6 +22,18 @@ class GroupContentManager:
         self.max_card_height = 120  # Altura máxima en píxeles (4 líneas + 2*2 padding)
         self.line_height = 10      # Altura estimada de una línea de texto
 
+    def _ensure_window_states(self):
+        """Asegura que las ventanas estén en el estado correcto"""
+        # Ocultar la ventana de grupos si está visible
+        if hasattr(self.manager.group_manager, 'groups_window') and \
+            self.manager.group_manager.groups_window and \
+            self.manager.group_manager.groups_window.winfo_exists():
+            self.manager.group_manager.groups_window.withdraw()
+
+        # Ocultar la ventana principal si está visible
+        if self.manager.root.winfo_viewable():
+            self.manager.root.withdraw()
+
     def calculate_card_height(self, text_data):
         if isinstance(text_data, dict):
             text = text_data.get('text', '')
@@ -38,6 +50,7 @@ class GroupContentManager:
     def show_group_content(self, group_id):
         """Muestra el contenido de un grupo específico"""
         self.current_group_id = group_id  # Guardar el ID del grupo actual
+        self._ensure_window_states()
 
         # Si existe una ventana anterior, destruirla para evitar problemas de estado
         if hasattr(self, 'content_window') and self.content_window:
@@ -151,27 +164,17 @@ class GroupContentManager:
             self.content_window.bind('<Key>', self.manager.key_handler.handle_key_press)
 
             # Configurar la navegación y los atajos de teclado
-            def after_dialog_shown():
+            # En show_group_content, reemplazar con:
+            def after_window_shown():
                 self.content_window.focus_force()
-                self.content_window.grab_set()  # Asegurar que la ventana tenga el foco exclusivo
+                self.content_window.grab_set()
                 self.manager.navigation.set_strategy('group_content')
                 self.manager.group_content_screen_keys.activate()
                 self.manager.navigation.initialize_focus()
                 self.manager.navigation.update_highlights()
 
-                # Desactivar otras configuraciones de teclas
-                if hasattr(self.manager, 'main_screen_keys'):
-                    self.manager.main_screen_keys.deactivate()
-                if hasattr(self.manager, 'groups_screen_keys'):
-                    self.manager.groups_screen_keys.deactivate()
-                if hasattr(self.manager, 'select_group_screen_keys'):
-                    self.manager.select_group_screen_keys.deactivate()
-
             # Dar tiempo a que la ventana se muestre completamente
-            self.content_window.after(100, after_dialog_shown)
-
-            # Dar tiempo a que la ventana se muestre completamente
-            self.content_window.after(100, after_dialog_shown)
+            self.content_window.after(100, after_window_shown)
 
             # Agregar vinculación de tecla para toda la ventana
             self.content_window.bind('<Key>', self.manager.key_handler.handle_key_press)
@@ -415,15 +418,25 @@ class GroupContentManager:
 
     def edit_group_item(self, group_id, item_id):
         """Muestra el diálogo para editar un item del grupo"""
-        # Primero, cerrar la ventana de contenido del grupo
-        self.close_content_window(group_id)
+        # Ocultar la ventana de contenido del grupo temporalmente
+        if self.content_window and self.content_window.winfo_exists():
+            self.content_window.withdraw()
+
+        # Desactivar las teclas de la pantalla de contenido
+        self.manager.group_content_screen_keys.deactivate()
 
         item = next((item for item in self.manager.group_manager.groups[group_id]['items'] if item['id'] == item_id), None)
         if not item:
             return
 
+        # Asegurarse de que la ventana de grupos esté oculta
+        if hasattr(self.manager.group_manager, 'groups_window') and \
+        self.manager.group_manager.groups_window and \
+        self.manager.group_manager.groups_window.winfo_exists():
+            self.manager.group_manager.groups_window.withdraw()
+
         dialog = tk.Toplevel(self.master)
-        self._edit_dialog = dialog  # Guardar referencia al diálogo
+        self._edit_dialog = dialog
         dialog.title("Editar Item")
 
         x = self.manager.window_x
@@ -455,15 +468,19 @@ class GroupContentManager:
 
         def close_edit_dialog():
             dialog.destroy()
-            # Volver a mostrar la ventana de grupos después de cerrar el diálogo
-            self.manager.group_manager.show_groups_window()
+            # Mostrar nuevamente la ventana de contenido del grupo
+            if hasattr(self, 'content_window') and self.content_window:
+                self.content_window.deiconify()
+                self.content_window.focus_force()
+                self.manager.navigation.set_strategy('group_content')
+                self.manager.group_content_screen_keys.activate()
+                self.manager.navigation.initialize_focus()
 
         close_button = tk.Button(title_frame, text="❌", command=close_edit_dialog,
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
                                 fg=self.theme_manager.colors['dark']['button_fg'])
         close_button.pack(side=tk.RIGHT)
-
         content_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
         content_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=0)
 
@@ -497,15 +514,19 @@ class GroupContentManager:
             if new_text:
                 item['name'] = new_name
                 if new_text != text:
-                    # Si el texto ha cambiado, eliminamos el formato
                     item['text'] = {'text': new_text, 'formatted': {}}
                 else:
-                    # Si el texto no ha cambiado, mantenemos el formato original
                     item['text'] = {'text': new_text, 'formatted': original_format}
                 self.manager.group_manager.save_groups()
                 dialog.destroy()
-                # Volver a mostrar la ventana de grupos después de guardar
-                self.manager.group_manager.show_groups_window()
+
+                # Restaurar la ventana de contenido del grupo
+                if hasattr(self, 'content_window') and self.content_window:
+                    self.content_window.deiconify()
+                    self.refresh_group_content(group_id)
+                    self.manager.navigation.set_strategy('group_content')
+                    self.manager.group_content_screen_keys.activate()
+                    self.content_window.focus_force()
 
         save_button = tk.Button(content_frame, text="Guardar", command=save_item,
                                 bg=self.theme_manager.colors['dark']['button_bg'],
@@ -542,5 +563,16 @@ class GroupContentManager:
 
         dialog.focus_set()
         name_entry.focus()
+
+        def after_dialog_shown():
+            dialog.focus_force()
+            dialog.grab_set()
+            self.manager.navigation.set_strategy('edit_dialog')
+            if hasattr(self.manager, 'edit_dialog_keys'):
+                self.manager.edit_dialog_keys.activate()
+            name_entry.focus_set()
+
+        # Dar tiempo a que el diálogo se muestre completamente
+        dialog.after(100, after_dialog_shown)
 
         adjust_dialog_height()
