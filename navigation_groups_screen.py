@@ -137,6 +137,8 @@ class GroupsScreenNavigation:
         """Actualiza los destacados visuales"""
         self._clear_all_highlights()
         self._highlight_current_selection()
+        self.manager.root.update_idletasks()
+        self.manager.root.after(10, self.manager.root.update)
         # logger.debug("Highlights updated")
 
     def _clear_all_highlights(self) -> None:
@@ -256,12 +258,14 @@ class GroupsScreenNavigation:
                     if isinstance(subchild, tk.Label):
                         subchild.configure(bg=color)
                     elif isinstance(subchild, tk.Button):
-                        if self.state['current_selection']['type'] == GroupScreenElement.GROUP_CARDS.value:
+                        if (self.state['current_selection']['type'] == GroupScreenElement.GROUP_CARDS.value or
+                            self.state['current_selection']['type'] == GroupScreenElement.ICONS.value):
                             subchild.configure(bg=color)
             elif isinstance(child, tk.Label):
                 child.configure(bg=color)
             elif isinstance(child, tk.Button):
-                if self.state['current_selection']['type'] == GroupScreenElement.GROUP_CARDS.value:
+                if (self.state['current_selection']['type'] == GroupScreenElement.GROUP_CARDS.value or
+                    self.state['current_selection']['type'] == GroupScreenElement.ICONS.value):
                     child.configure(bg=color)
 
     def _reset_card_colors(self, card: tk.Frame, base_color: str, button_color: str) -> None:

@@ -295,44 +295,8 @@ class MainScreenNavigation:
         """Actualiza los destacados visuales"""
         # print("Updating highlights")  # Debug
         self._clear_all_highlights()
-
         self._reset_mouse_over_states()
-
-        current_type = self.state['current_selection']['type']
-        current_index = self.state['current_selection']['index']
-        highlight_color = self._get_highlight_color()
-        icon_highlight_color = self._get_icon_highlight_color()
-
-        if current_type == MainScreenElement.MAIN_BUTTONS.value:
-            buttons = [self.manager.button1, self.manager.button2, self.manager.button3]
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-
-        elif current_type == MainScreenElement.TOP_BUTTONS.value:
-            buttons = [self.manager.theme_button, self.manager.clear_button, self.manager.close_button]
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-
-        elif current_type == MainScreenElement.CARDS.value:
-            cards = self.manager.cards_frame.winfo_children()
-            if current_index < len(cards):
-                self._highlight_card(cards[current_index], highlight_color)
-
-        elif current_type == MainScreenElement.ICONS.value:
-            card_index = current_index // 3
-            icon_position = current_index % 3
-            cards = self.manager.cards_frame.winfo_children()
-
-            if card_index < len(cards):
-                card = cards[card_index]
-                icons_frame = self._find_icons_frame(card)
-
-                if icons_frame and icon_position < len(icons_frame.winfo_children()):
-                    self._highlight_card(card, highlight_color)
-                    icons = icons_frame.winfo_children()
-                    if 0 <= icon_position < len(icons):
-                        icons[icon_position].configure(bg=icon_highlight_color)
-
+        self._highlight_current_selection()
         self.manager.root.update_idletasks()
         self.manager.root.after(10, self.manager.root.update)
 
