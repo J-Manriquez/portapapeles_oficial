@@ -11,7 +11,6 @@ class SelectGroupScreenAction(Enum):
     NAVIGATE_UP = "up"
     NAVIGATE_DOWN = "down"
     ACTIVATE = "return"
-    # BACK = "escape"
     BACK = "back"
 
 class SelectGroupScreenKeyConfig(ScreenKeyConfig):
@@ -31,12 +30,6 @@ class SelectGroupScreenKeyConfig(ScreenKeyConfig):
                            lambda: self.handle_navigation('down'))
         self.register_action(SelectGroupScreenAction.ACTIVATE,
                            self.handle_activation)
-        # self.register_action(SelectGroupScreenAction.BACK,
-                        #    self.handle_back)
-        # self.register_action(SelectGroupScreenAction.BACK,
-        #                    lambda: self.manager.functions.close_dialog(
-        #                        self.manager.select_group_dialog))
-        # Registrar la tecla de retroceso con manejo de errores
         try:
             back_key = self.manager.settings.get('back_key', 'backspace')
             self.register_hotkey(back_key,

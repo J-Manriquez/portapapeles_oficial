@@ -14,7 +14,6 @@ class GroupScreenAction(Enum):
     NAVIGATE_RIGHT = "right"
     ACTIVATE = "return"
     ADD_GROUP = "alt+n"
-    BACK_TO_MAIN = "escape"
     BACK = "back"
 
 class GroupsScreenKeyConfig(ScreenKeyConfig):
@@ -57,9 +56,6 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
         # Atajos adicionales específicos de la pantalla de grupos
         self.register_action(GroupScreenAction.ADD_GROUP,
                            self.manager.group_manager.add_group)
-        self.register_action(GroupScreenAction.BACK_TO_MAIN,
-                           self.manager.show_main_screen)
-
         # logger.debug("Groups screen keys setup completed")
 
     def register_action(self, action: GroupScreenAction, callback: callable) -> None:
