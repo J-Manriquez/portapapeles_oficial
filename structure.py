@@ -174,7 +174,7 @@ class ClipboardManager:
 
     def hide_main_window(self):
         """Oculta la ventana principal sin cerrar la aplicación"""
-        self.root.withdraw()
+        # self.root.withdraw()
         self.is_visible = False
 
         # Restaurar el foco a la ventana anterior si existe
@@ -203,7 +203,7 @@ class ClipboardManager:
         self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.show_settings, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
         self.clear_button.pack(side=tk.LEFT)
 
-        self.close_button = tk.Button(buttons_frame, text="❌", command=self.hide_main_window, font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
+        self.close_button = tk.Button(buttons_frame, text="❌", command=lambda: self.key_handler.hide_window(), font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
         self.close_button.pack(side=tk.LEFT)
 
         main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])

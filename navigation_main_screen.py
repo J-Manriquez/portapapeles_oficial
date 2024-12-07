@@ -395,7 +395,7 @@ class MainScreenNavigation:
         actions = {
             0: ('theme', self.manager.theme_manager.toggle_theme),
             1: ('settings', self.manager.show_settings),
-            2: ('exit', self.manager.functions.exit_app)
+            2: ('exit', self.manager.key_handler.hide_window)
         }
         if action := actions.get(index):
             action_name, action_func = action

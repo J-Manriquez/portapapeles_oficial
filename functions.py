@@ -87,31 +87,35 @@ class Functions:
 
         # Funciones de hover
         def on_enter(event):
-            card_container.configure(bg=highlight_color)
-            text_frame.configure(bg=highlight_color)
-            text_label.configure(bg=highlight_color)
-            icons_frame.configure(bg=highlight_color)
-            for btn in [arrow_button, pin_button, delete_button]:
-                btn.configure(bg=highlight_color)
+            if card_container.winfo_exists():
+                card_container.configure(bg=highlight_color)
+                text_frame.configure(bg=highlight_color)
+                text_label.configure(bg=highlight_color)
+                icons_frame.configure(bg=highlight_color)
+                for btn in [arrow_button, pin_button, delete_button]:
+                    btn.configure(bg=highlight_color)
 
         def on_leave(event):
-            card_container.configure(bg=bg_color)
-            text_frame.configure(bg=bg_color)
-            text_label.configure(bg=bg_color)
-            icons_frame.configure(bg=bg_color)
-            for btn in [arrow_button, pin_button, delete_button]:
-                btn.configure(bg=bg_color)
+            if card_container.winfo_exists():
+                card_container.configure(bg=bg_color)
+                text_frame.configure(bg=bg_color)
+                text_label.configure(bg=bg_color)
+                icons_frame.configure(bg=bg_color)
+                for btn in [arrow_button, pin_button, delete_button]:
+                    btn.configure(bg=bg_color)
 
         # Funciones de hover para los iconos individuales
         def on_icon_enter(event, button):
-            # Usar el color de highlight para iconos cuando el mouse está sobre ellos
-            button.configure(bg=icon_highlight_color)
+            if button.winfo_exists():
+                # Usar el color de highlight para iconos cuando el mouse está sobre ellos
+                button.configure(bg=icon_highlight_color)
 
         def on_icon_leave(event, button):
-            # Restaurar al color de highlight normal si la card está resaltada,
-            # o al color base si no lo está
-            parent_bg = icons_frame.cget('bg')
-            button.configure(bg=parent_bg)
+            if button.winfo_exists():
+                # Restaurar al color de highlight normal si la card está resaltada,
+                # o al color base si no lo está
+                parent_bg = icons_frame.cget('bg')
+                button.configure(bg=parent_bg)
 
         # Vincular eventos hover para la card
         for widget in [card_container, text_frame, text_label, icons_frame]:
