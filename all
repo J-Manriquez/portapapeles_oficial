@@ -6,6 +6,14 @@ import os
 class DataManager:
     def __init__(self, file_path='clipboard_data.json'):
         self.file_path = file_path
+        self.default_settings = {
+                    'height': 400,
+                    'width': 295,
+                    'hotkey': 'v',
+                    'back_key': 'backspace',
+                    'groups_key': 'g',
+                    'new_group_key': 'n',
+                }
 
     def save_data(self, groups, pinned_items, settings):
         data = {
@@ -19,23 +27,25 @@ class DataManager:
 
     def load_data(self):
         if not os.path.exists(self.file_path):
-            return {}, {}, {
-                'height': 400,
-                'width': 295,
-                'hotkey': 'v'
-            }
-        
+            return {}, {}, self.default_settings
+
         with open(self.file_path, 'r') as f:
             data = json.load(f)
-        
+
         groups = data.get('groups', {})
         pinned_items = self.decode_pinned_items(data.get('pinned_items', {}))
         settings = data.get('settings', {
             'height': 400,
             'width': 295,
-            'hotkey': 'v'
+            'hotkey': 'v',
+            'back_key': 'backspace',
+            'groups_key': 'g',
+            'new_group_key': 'n',
         })
-        
+
+        # Combinar configuraciones guardadas con valores predeterminados
+        settings = {**self.default_settings, **data.get('settings', {})}
+
         return groups, pinned_items, settings
 
     def decode_pinned_items(self, encoded_items):
@@ -46,7 +56,7 @@ class DataManager:
                 decoded_item['text'] = self.decode_formatted_text(item_data['text'])
             decoded_items[item_id] = decoded_item
         return decoded_items
-    
+
     def encode_pinned_items(self, pinned_items):
         encoded_items = {}
         for item_id, item_data in pinned_items.items():
@@ -70,7 +80,7 @@ class DataManager:
             # Si text_data es un diccionario, asumimos que tiene la estructura esperada
             text = text_data.get('text', '')
             formatted = text_data.get('formatted', {})
-            
+
             if isinstance(formatted, dict):
                 return {
                     'text': text,
@@ -102,12 +112,13 @@ class DataManager:
                 'text': str(text_data),
                 'format': {}
             }
-                    
+
     def decode_formatted_text(self, encoded_text):
         return {
             'text': encoded_text['text'],
             'formatted': encoded_text['format']
         }
+
 
 // Archivo: functions.py
 # functions.py
@@ -1245,7 +1256,26 @@ class GroupManager:
 
 
     def add_group(self):
-        self.show_group_dialog()
+        """Muestra el diálogo para crear un nuevo grupo"""
+        try:
+            # Verificar si el diálogo ya está abierto
+            if hasattr(self, '_edit_dialog') and self._edit_dialog and self._edit_dialog.winfo_exists():
+                self._edit_dialog.focus_force()
+                return
+
+            # Asegurarse de que todas las ventanas estén ocultas
+            if hasattr(self, 'groups_window') and self.groups_window:
+                self.groups_window.withdraw()
+
+            # Ocultar ventana principal si está visible
+            if self.manager.root.winfo_viewable():
+                self.manager.root.withdraw()
+
+            # Mostrar el diálogo de nuevo grupo
+            self.show_group_dialog()
+
+        except Exception as e:
+            logger.error(f"Error showing add group dialog: {e}")
 
     def edit_group(self, group_id):
         self.show_group_dialog(group_id)
@@ -1849,7 +1879,7 @@ class GroupScreenAction(Enum):
     NAVIGATE_RIGHT = "right"
     ACTIVATE = "return"
     ADD_GROUP = "alt+n"
-    BACK_TO_MAIN = "escape"
+    BACK = "back"
 
 class GroupsScreenKeyConfig(ScreenKeyConfig):
     def __init__(self, key_handler, manager):
@@ -1876,13 +1906,21 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
                            lambda: self.handle_navigation('right'))
         self.register_action(GroupScreenAction.ACTIVATE,
                            self.handle_activation)
+        # self.register_action(GroupScreenAction.BACK,
+        #                    lambda: self.manager.group_manager.close_groups_window())
+        try:
+            back_key = self.manager.settings.get('back_key', 'backspace')
+            self.register_hotkey(back_key,
+                            lambda: self.manager.group_manager.close_groups_window())
+        except Exception as e:
+            print(f"Error registering back key: {e}")
+            # Usar backspace como fallback
+            self.register_hotkey('backspace',
+                            lambda: self.manager.group_manager.close_groups_window())
 
         # Atajos adicionales específicos de la pantalla de grupos
         self.register_action(GroupScreenAction.ADD_GROUP,
                            self.manager.group_manager.add_group)
-        self.register_action(GroupScreenAction.BACK_TO_MAIN,
-                           self.manager.show_main_screen)
-
         # logger.debug("Groups screen keys setup completed")
 
     def register_action(self, action: GroupScreenAction, callback: callable) -> None:
@@ -1945,9 +1983,7 @@ class GroupContentScreenAction(Enum):
     NAVIGATE_LEFT = "left"
     NAVIGATE_RIGHT = "right"
     ACTIVATE = "return"
-    BACK_TO_GROUPS = "escape"
-    EDIT_ITEM = "alt+e"
-    DELETE_ITEM = "alt+d"
+
 
 class GroupContentScreenKeyConfig(ScreenKeyConfig):
     def __init__(self, key_handler, manager):
@@ -1960,25 +1996,30 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
 
     def setup_keys(self) -> None:
         """Configura las teclas específicas para la pantalla de contenido de grupo"""
-        self.register_action(GroupContentScreenAction.NAVIGATE_UP, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_UP,
                            lambda: self.handle_navigation('up'))
-        self.register_action(GroupContentScreenAction.NAVIGATE_DOWN, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_DOWN,
                            lambda: self.handle_navigation('down'))
-        self.register_action(GroupContentScreenAction.NAVIGATE_LEFT, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_LEFT,
                            lambda: self.handle_navigation('left'))
-        self.register_action(GroupContentScreenAction.NAVIGATE_RIGHT, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_RIGHT,
                            lambda: self.handle_navigation('right'))
-        self.register_action(GroupContentScreenAction.ACTIVATE, 
+        self.register_action(GroupContentScreenAction.ACTIVATE,
                            self.handle_activation)
-        
-        # Atajos adicionales específicos de la pantalla de contenido
-        self.register_action(GroupContentScreenAction.BACK_TO_GROUPS, 
-                           self.handle_back)
-        self.register_action(GroupContentScreenAction.EDIT_ITEM,
-                           self.handle_edit_item)
-        self.register_action(GroupContentScreenAction.DELETE_ITEM,
-                           self.handle_delete_item)
-        
+
+         # Registrar la tecla de retroceso con manejo de errores
+        try:
+            back_key = self.manager.settings.get('back_key', 'backspace')
+            self.register_hotkey(back_key,
+                            lambda: self.manager.group_manager.group_content_manager.close_content_window(
+                                self.manager.group_manager.group_content_manager.current_group_id))
+        except Exception as e:
+            print(f"Error registering back key: {e}")
+            # Usar backspace como fallback
+            self.register_hotkey('backspace',
+                            lambda: self.manager.group_manager.group_content_manager.close_content_window(
+                                self.manager.group_manager.group_content_manager.current_group_id))
+
         # logger.debug("Group content screen keys setup completed")
 
     def register_action(self, action: GroupContentScreenAction, callback: callable) -> None:
@@ -1991,11 +2032,11 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
     def handle_navigation(self, direction: str) -> None:
         """Maneja los eventos de navegación"""
         event = type('Event', (), {'keysym': direction.capitalize()})()
-        
+
         # Actualizar el estado de selección en el manager
         current_selection = self.manager.navigation.current_strategy.state['current_selection']
         self.manager.current_selection = current_selection
-        
+
         if direction in ['up', 'down']:
             self.manager.navigation.navigate_vertical(event)
         else:
@@ -2008,45 +2049,6 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
         self.manager.navigation.current_strategy.activate_selected()
         # logger.debug("Group content screen item activated")
 
-    def handle_back(self):
-        """Maneja el evento de retroceso a la pantalla de grupos"""
-        if hasattr(self.manager.group_content_manager, 'content_window'):
-            self.manager.group_content_manager.close_content_window(
-                self.manager.group_content_manager.current_group_id
-            )
-        # logger.debug("Handled back action")
-
-    def handle_edit_item(self):
-        """Maneja el atajo para editar el item seleccionado"""
-        current_selection = self.manager.navigation.current_strategy.state['current_selection']
-        if current_selection['type'] == 'content_cards':
-            group_items = self.manager.group_manager.groups[
-                self.manager.group_content_manager.current_group_id
-            ]['items']
-            if current_selection['index'] < len(group_items):
-                item = group_items[current_selection['index']]
-                self.manager.group_content_manager.edit_group_item(
-                    self.manager.group_content_manager.current_group_id,
-                    item['id']
-                )
-        # logger.debug("Handled edit item action")
-
-    def handle_delete_item(self):
-        """Maneja el atajo para eliminar el item seleccionado"""
-        current_selection = self.manager.navigation.current_strategy.state['current_selection']
-        if current_selection['type'] == 'content_cards':
-            group_items = self.manager.group_manager.groups[
-                self.manager.group_content_manager.current_group_id
-            ]['items']
-            if current_selection['index'] < len(group_items):
-                item = group_items[current_selection['index']]
-                self.manager.group_content_manager.remove_item_from_group(
-                    self.manager.group_content_manager.current_group_id,
-                    item['id'],
-                    self.manager.group_content_manager.items_frame
-                )
-        # logger.debug("Handled delete item action")
-
     def activate(self) -> None:
         """Activa la configuración de teclas para la pantalla de contenido de grupo"""
         super().activate()
@@ -2054,7 +2056,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
             if isinstance(action.value, str):
                 self.key_handler.register_screen_hotkey('group_content', action.value, callback)
         # logger.info("Group content screen key configuration activated")
-        
+
     def deactivate(self) -> None:
         """Desactiva la configuración de teclas de la pantalla de contenido de grupo"""
         super().deactivate()
@@ -2062,6 +2064,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
             if isinstance(action.value, str) and action.value.startswith('alt+'):
                 self.key_handler.global_hotkeys.unregister_hotkey(action.value)
         # logger.info("Group content screen key configuration deactivated")
+
 
 // Archivo: keys_main_screen.py
 # main_screen_keys.py
@@ -2109,7 +2112,7 @@ class SelectGroupScreenAction(Enum):
     NAVIGATE_UP = "up"
     NAVIGATE_DOWN = "down"
     ACTIVATE = "return"
-    BACK = "escape"
+    BACK = "back"
 
 class SelectGroupScreenKeyConfig(ScreenKeyConfig):
     def __init__(self, key_handler, manager):
@@ -2122,15 +2125,24 @@ class SelectGroupScreenKeyConfig(ScreenKeyConfig):
 
     def setup_keys(self) -> None:
         """Configura las teclas específicas para la pantalla de selección de grupo"""
-        self.register_action(SelectGroupScreenAction.NAVIGATE_UP, 
+        self.register_action(SelectGroupScreenAction.NAVIGATE_UP,
                            lambda: self.handle_navigation('up'))
-        self.register_action(SelectGroupScreenAction.NAVIGATE_DOWN, 
+        self.register_action(SelectGroupScreenAction.NAVIGATE_DOWN,
                            lambda: self.handle_navigation('down'))
-        self.register_action(SelectGroupScreenAction.ACTIVATE, 
+        self.register_action(SelectGroupScreenAction.ACTIVATE,
                            self.handle_activation)
-        self.register_action(SelectGroupScreenAction.BACK, 
-                           self.handle_back)
-        
+        try:
+            back_key = self.manager.settings.get('back_key', 'backspace')
+            self.register_hotkey(back_key,
+                            lambda: self.manager.functions.close_dialog(
+                                self.manager.select_group_dialog))
+        except Exception as e:
+            print(f"Error registering back key: {e}")
+            # Usar backspace como fallback
+            self.register_hotkey('backspace',
+                            lambda: self.manager.functions.close_dialog(
+                                self.manager.select_group_dialog))
+
         # logger.debug("Select group screen keys setup completed")
 
     def register_action(self, action: SelectGroupScreenAction, callback: callable) -> None:
@@ -2143,14 +2155,14 @@ class SelectGroupScreenKeyConfig(ScreenKeyConfig):
     def handle_navigation(self, direction: str) -> None:
         """Maneja los eventos de navegación"""
         event = type('Event', (), {'keysym': direction.capitalize()})()
-        
+
         # Actualizar el estado de selección en el manager
         current_selection = self.manager.navigation.current_strategy.state['current_selection']
         self.manager.current_selection = current_selection
-        
+
         if direction in ['up', 'down']:
             self.manager.navigation.navigate_vertical(event)
-        
+
         # logger.debug(f"Select group screen navigation: {direction}")
 
     def handle_activation(self):
@@ -2174,6 +2186,7 @@ class SelectGroupScreenKeyConfig(ScreenKeyConfig):
         """Desactiva la configuración de teclas de la pantalla de selección de grupo"""
         super().deactivate()
         # logger.info("Select group screen key configuration deactivated")
+
 
 // Archivo: key_handler.py
 # key_handler.py
@@ -2233,9 +2246,44 @@ class KeyHandler:
         self.screen_specific_hotkeys = {}
         self.original_cursor_pos = None
         self.active_window = None  # rastrear la ventana activa
-
+        self.last_keyboard_selection = None
         # Inicializar el hotkey principal
         self.setup_main_hotkey()
+
+        self.setup_additional_hotkeys()
+
+    def setup_additional_hotkeys(self):
+        """Configura los atajos adicionales"""
+        try:
+            # Tecla para mostrar grupos
+            groups_key = f"alt+{self.manager.settings.get('groups_key', 'g')}"
+            self.global_hotkeys.register_hotkey(groups_key, self.show_groups_screen)
+
+            # Tecla para nuevo grupo
+            new_group_key = f"alt+{self.manager.settings.get('new_group_key', 'n')}"
+            self.global_hotkeys.register_hotkey(new_group_key, self.show_new_group_dialog)
+
+            # logger.debug(f"Additional hotkeys registered: {groups_key}, {new_group_key}")
+        except Exception as e:
+            logger.error(f"Error setting up additional hotkeys:{e}")
+
+    def show_groups_screen(self):
+        """Maneja la apertura de la pantalla de grupos"""
+        self.hide_window()  # Oculta cualquier ventana abierta
+        self.manager.show_groups()
+
+    def show_new_group_dialog(self):
+        """Maneja la apertura del diálogo de nuevo grupo desde cualquier pantalla"""
+        try:
+            # Guardar la ventana activa antes de ocultarla
+            self.hide_window()  # Ocultar todas las ventanas activas
+
+            # Mostrar diálogo de nuevo grupo
+            if hasattr(self.manager.group_manager, 'add_group'):
+                self.manager.root.after(100, self.manager.group_manager.add_group)
+
+        except Exception as e:
+            logger.error(f"Error showing new group dialog: {e}")
 
     def register_global_hotkey(self, key: str, callback: Callable) -> None:
         """Registra un atajo de teclado global"""
@@ -2858,6 +2906,11 @@ class Navigation:
             key = event.keysym.lower()
             # print(f"Processing key: {key}")  # Debug
 
+            # Manejar la tecla de retroceso configurable
+            if key == self.manager.settings['back_key'].lower():
+                self.handle_back()
+                return
+
             # Manejar Enter explícitamente
             if key == "return":
                 # print("Enter key detected, activating selection")  # Debug
@@ -2873,12 +2926,22 @@ class Navigation:
         except Exception as e:
             logger.error(f"Error handling keyboard event: {e}")
 
-    def handle_escape(self) -> None:
-        """Maneja la tecla Escape según el contexto"""
-        if self.current_screen != ScreenType.MAIN:
-            self.manager.show_main_screen()
-        else:
-            self.manager.key_handler.hide_window()
+    def handle_back(self):
+        """Maneja el retroceso según la pantalla actual"""
+        if self.current_screen == ScreenType.GROUPS:
+            self.manager.group_manager.close_groups_window()
+        elif self.current_screen == ScreenType.GROUP_CONTENT:
+            self.manager.group_manager.group_content_manager.close_content_window(
+                self.manager.group_manager.group_content_manager.current_group_id)
+        elif self.current_screen == ScreenType.SELECT_GROUP:
+            self.manager.functions.close_dialog(self.manager.select_group_dialog)
+
+    # def handle_escape(self) -> None:
+    #     """Maneja la tecla Escape según el contexto"""
+    #     if self.current_screen != ScreenType.MAIN:
+    #         self.manager.show_main_screen()
+    #     else:
+    #         self.manager.key_handler.hide_window()
 
     def navigate_vertical(self, event) -> None:
         """Gestiona la navegación vertical"""
@@ -4743,12 +4806,38 @@ class SettingsManager:
 
             # Crear cards de configuración
             subtitle = tk.Label(self.settings_frame, text="Tecla de activación",
-                        font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                        anchor='w')
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
-            self.create_setting_card("Alt+", self.settings['hotkey'])
+            self.create_setting_card("Teclas Alt + Activacion: ", self.settings['hotkey'])
+
+            subtitle = tk.Label(self.settings_frame, text="Tecla de retroceso",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Tecla Retroceso: ", self.settings['back_key'])
+
+            # Tecla para mostrar grupos
+            subtitle = tk.Label(self.settings_frame, text="Tecla para mostrar grupos",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Teclas Alt + Grupos: ", self.settings.get('groups_key', 'g'))
+
+            # Tecla para nuevo grupo
+            subtitle = tk.Label(self.settings_frame, text="Tecla para nuevo grupo",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Teclas Alt + Nuevo Grupo: ", self.settings.get('new_group_key', 'n'))
 
             subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app",
                         font=('Segoe UI', 10, 'bold'),
@@ -4775,10 +4864,13 @@ class SettingsManager:
         card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
         card.pack(fill=tk.X, padx=4, pady=2)
 
-        label = tk.Label(card, text=f"{setting_name}: {default_value}",
-                         bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
-                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                         anchor='w', padx=5, pady=5)
+        # Modificar para mostrar el texto correcto según el tipo de configuración
+        display_text = f"{setting_name} {default_value}"
+
+        label = tk.Label(card, text=display_text,
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        anchor='w', padx=5, pady=5)
         label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         edit_button = tk.Button(card, text="✏️",
@@ -4792,8 +4884,8 @@ class SettingsManager:
         if button['text'] == "✏️":
             # Cambiar a modo edición
             entry = tk.Entry(card, bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                             fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                             insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
             entry.insert(0, current_value)
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
             label.pack_forget()
@@ -4802,21 +4894,61 @@ class SettingsManager:
             # Guardar cambios
             entry = [child for child in card.winfo_children() if isinstance(child, tk.Entry)][0]
             new_value = entry.get()
-            label.configure(text=f"{setting_name}: {new_value}")
+            label.configure(text=f"{setting_name} {new_value}")
             entry.destroy()
             label.pack(side=tk.LEFT, fill=tk.X, expand=True)
             button.configure(text="✏️")
 
             # Actualizar configuraciones
             if setting_name == "Alto":
-                self.settings['height'] = int(new_value)
+                new_height = int(new_value)
+                if new_height > 0:
+                    self.settings['height'] = new_height
+                    self.clipboard_manager.window_height = new_height
+
             elif setting_name == "Ancho":
-                self.settings['width'] = int(new_value)
-            elif setting_name == "Alt+":
+                new_width = int(new_value)
+                if new_width > 0:
+                    self.settings['width'] = new_width
+                    self.clipboard_manager.window_width = new_width
+
+            elif setting_name == "Tecla Retroceso: ":
+                self.settings['back_key'] = new_value
+                # Actualizar el atajo de retroceso
+                self.clipboard_manager.key_handler.global_hotkeys.register_hotkey(
+                    new_value,
+                    lambda: self.clipboard_manager.key_handler.handle_back()
+                    )
+
+            elif setting_name == "Teclas Alt + Activacion: ":
                 old_hotkey = self.settings['hotkey']
-                new_hotkey = 'alt+' + new_value
-                self.settings['hotkey'] = new_value  # Guarda solo la letra
-                self.clipboard_manager.key_handler.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
+                self.settings['hotkey'] = new_value
+                # Actualizar el atajo principal
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_hotkey}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.key_handler.toggle_window
+                )
+
+            elif setting_name == "Teclas Alt + Grupos: ":
+                old_key = self.settings.get('groups_key', 'g')
+                self.settings['groups_key'] = new_value
+                # Actualizar el atajo de grupos
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_key}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.key_handler.show_groups_screen
+                )
+
+            elif setting_name == "Teclas Alt + NuevoGrupo: ":
+                old_key = self.settings.get('new_group_key', 'n')
+                self.settings['new_group_key'] = new_value
+                # Actualizar el atajo de nuevo grupo
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_key}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.key_handler.show_new_group_dialog
+                )
 
             self.save_settings()
             self.restart_app()
@@ -4877,7 +5009,19 @@ class ClipboardManager:
         self.data_manager = DataManager()
         groups, pinned_items, settings = self.data_manager.load_data()
 
-        self.settings = settings
+        # Asegurar que todas las configuraciones necesarias existen
+        self.default_settings = {
+            'height': 400,
+            'width': 295,
+            'hotkey': 'v',
+            'back_key': 'backspace',
+            'groups_key': 'g',
+            'new_group_key': 'n',
+            **settings  # Esto sobreescribirá los valores por defecto si existen en settings
+        }
+
+        # Combinar configuraciones guardadas con valores predeterminados
+        self.settings = {**self.default_settings, **settings}
         self.settings_manager = SettingsManager(self.root, self)
         self.settings_manager.initialize_settings()
 
@@ -4885,6 +5029,9 @@ class ClipboardManager:
         self.window_height = settings['height']
         self.window_x = 0
         self.window_y = 0
+
+        # Aplicar dimensiones a la ventana root
+        self.root.geometry(f"{self.window_width}x{self.window_height}+{self.window_x}+{self.window_y}")
 
         self.root.overrideredirect(True)
         self.root.attributes('-topmost', True)
@@ -4962,6 +5109,10 @@ class ClipboardManager:
             self.root.after(100, self.settings_manager.show_settings_window)
 
         self.root.after(1000, self.navigation.check_window_state)
+
+        # Asegurarse de que la configuración de back_key existe
+        if 'back_key' not in self.settings:
+            self.settings['back_key'] = 'backspace'
 
         # scroll
         self.canvas.configure(yscrollcommand=self.scrollbar.set)

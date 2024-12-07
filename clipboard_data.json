@@ -139,8 +139,10 @@
     },
     "settings": {
         "height": 400,
-        "width": 295,
+        "width": 300,
         "hotkey": "z",
-        "back_key": "backspace"
+        "back_key": "backspace",
+        "groups_key": "g",
+        "new_group_key": "n"
     }
 }

@@ -55,9 +55,45 @@ class KeyHandler:
         self.screen_specific_hotkeys = {}
         self.original_cursor_pos = None
         self.active_window = None  # rastrear la ventana activa
-
+        self.last_keyboard_selection = None
         # Inicializar el hotkey principal
         self.setup_main_hotkey()
+
+        self.setup_additional_hotkeys()
+
+    def setup_additional_hotkeys(self):
+        """Configura los atajos adicionales"""
+        try:
+            # Tecla para mostrar grupos
+            groups_key = f"alt+{self.manager.settings.get('groups_key', 'g')}"
+            self.global_hotkeys.register_hotkey(groups_key, self.show_groups_screen)
+
+            # Tecla para nuevo grupo
+            new_group_key = f"alt+{self.manager.settings.get('new_group_key', 'n')}"
+            self.global_hotkeys.register_hotkey(new_group_key, self.show_new_group_dialog)
+
+            # logger.debug(f"Additional hotkeys registered: {groups_key}, {new_group_key}")
+        except Exception as e:
+            logger.error(f"Error setting up additional hotkeys:{e}")
+
+    def show_groups_screen(self):
+        """Maneja la apertura de la pantalla de grupos"""
+        self.hide_window()  # Oculta cualquier ventana abierta
+        self.manager.show_groups()
+
+    def show_new_group_dialog(self):
+        """Maneja la apertura del diálogo de nuevo grupo desde cualquier pantalla"""
+        try:
+            # Ocultar todas las ventanas activas
+            self.hide_window()  # Esto ocultará todas las ventanas activas
+
+            # Asegurarse de que el manager y group_manager existen
+            if hasattr(self.manager, 'group_manager'):
+                # Usar after para asegurar que las ventanas se hayan ocultado primero
+                self.manager.root.after(100, self.manager.group_manager.add_group)
+
+        except Exception as e:
+            logger.error(f"Error showing new group dialog: {e}")
 
     def register_global_hotkey(self, key: str, callback: Callable) -> None:
         """Registra un atajo de teclado global"""
@@ -289,15 +325,6 @@ class KeyHandler:
         self.manager.root.update_idletasks()
         self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
         self.manager.root.focus_force()
-
-    # def hide_window(self) -> None:
-    #     """Oculta la ventana principal"""
-    #     self.manager.root.withdraw()
-    #     self.manager.is_visible = False
-    #     self.restore_focus()
-    #     if self.original_cursor_pos:
-    #         win32api.SetCursorPos(self.original_cursor_pos)
-    #         self.original_cursor_pos = None
 
     def hide_window(self) -> None:
         """Oculta la ventana actualmente activa"""

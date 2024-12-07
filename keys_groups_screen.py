@@ -13,7 +13,7 @@ class GroupScreenAction(Enum):
     NAVIGATE_LEFT = "left"
     NAVIGATE_RIGHT = "right"
     ACTIVATE = "return"
-    ADD_GROUP = "alt+n"
+    # ADD_GROUP = "alt+n"
     BACK = "back"
 
 class GroupsScreenKeyConfig(ScreenKeyConfig):
@@ -53,9 +53,9 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
             self.register_hotkey('backspace',
                             lambda: self.manager.group_manager.close_groups_window())
 
-        # Atajos adicionales específicos de la pantalla de grupos
-        self.register_action(GroupScreenAction.ADD_GROUP,
-                           self.manager.group_manager.add_group)
+        # # Atajos adicionales específicos de la pantalla de grupos
+        # self.register_action(GroupScreenAction.ADD_GROUP,
+        #                    self.manager.group_manager.add_group)
         # logger.debug("Groups screen keys setup completed")
 
     def register_action(self, action: GroupScreenAction, callback: callable) -> None:

@@ -5,6 +5,14 @@ import os
 class DataManager:
     def __init__(self, file_path='clipboard_data.json'):
         self.file_path = file_path
+        self.default_settings = {
+                    'height': 400,
+                    'width': 295,
+                    'hotkey': 'v',
+                    'back_key': 'backspace',
+                    'groups_key': 'g',
+                    'new_group_key': 'n',
+                }
 
     def save_data(self, groups, pinned_items, settings):
         data = {
@@ -18,12 +26,7 @@ class DataManager:
 
     def load_data(self):
         if not os.path.exists(self.file_path):
-            return {}, {}, {
-                'height': 400,
-                'width': 295,
-                'hotkey': 'v',
-                'back_key': 'backspace'
-            }
+            return {}, {}, self.default_settings
 
         with open(self.file_path, 'r') as f:
             data = json.load(f)
@@ -34,8 +37,13 @@ class DataManager:
             'height': 400,
             'width': 295,
             'hotkey': 'v',
-            'back_key': 'backspace'
+            'back_key': 'backspace',
+            'groups_key': 'g',
+            'new_group_key': 'n',
         })
+
+        # Combinar configuraciones guardadas con valores predeterminados
+        settings = {**self.default_settings, **data.get('settings', {})}
 
         return groups, pinned_items, settings
 

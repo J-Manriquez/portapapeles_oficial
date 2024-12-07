@@ -86,20 +86,38 @@ class SettingsManager:
 
             # Crear cards de configuración
             subtitle = tk.Label(self.settings_frame, text="Tecla de activación",
-                        font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                        anchor='w')
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
-            self.create_setting_card("Alt+", self.settings['hotkey'])
+            self.create_setting_card("Teclas Alt + Activacion: ", self.settings['hotkey'])
 
             subtitle = tk.Label(self.settings_frame, text="Tecla de retroceso",
-                        font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                        anchor='w')
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
-            self.create_setting_card("Retroceso", str(self.settings['back_key']))
+            self.create_setting_card("Tecla Retroceso: ", self.settings['back_key'])
+
+            # Tecla para mostrar grupos
+            subtitle = tk.Label(self.settings_frame, text="Tecla para mostrar grupos",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Teclas Alt + Grupos: ", self.settings.get('groups_key', 'g'))
+
+            # Tecla para nuevo grupo
+            subtitle = tk.Label(self.settings_frame, text="Tecla para nuevo grupo",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Teclas Alt + Nuevo Grupo: ", self.settings.get('new_group_key', 'n'))
 
             subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app",
                         font=('Segoe UI', 10, 'bold'),
@@ -126,10 +144,13 @@ class SettingsManager:
         card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
         card.pack(fill=tk.X, padx=4, pady=2)
 
-        label = tk.Label(card, text=f"{setting_name}: {default_value}",
-                         bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
-                         fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                         anchor='w', padx=5, pady=5)
+        # Modificar para mostrar el texto correcto según el tipo de configuración
+        display_text = f"{setting_name} {default_value}"
+
+        label = tk.Label(card, text=display_text,
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        anchor='w', padx=5, pady=5)
         label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         edit_button = tk.Button(card, text="✏️",
@@ -143,8 +164,8 @@ class SettingsManager:
         if button['text'] == "✏️":
             # Cambiar a modo edición
             entry = tk.Entry(card, bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                             fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                             insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
             entry.insert(0, current_value)
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
             label.pack_forget()
@@ -153,23 +174,61 @@ class SettingsManager:
             # Guardar cambios
             entry = [child for child in card.winfo_children() if isinstance(child, tk.Entry)][0]
             new_value = entry.get()
-            label.configure(text=f"{setting_name}: {new_value}")
+            label.configure(text=f"{setting_name} {new_value}")
             entry.destroy()
             label.pack(side=tk.LEFT, fill=tk.X, expand=True)
             button.configure(text="✏️")
 
             # Actualizar configuraciones
             if setting_name == "Alto":
-                self.settings['height'] = int(new_value)
+                new_height = int(new_value)
+                if new_height > 0:
+                    self.settings['height'] = new_height
+                    self.clipboard_manager.window_height = new_height
+
             elif setting_name == "Ancho":
-                self.settings['width'] = int(new_value)
-            elif setting_name == "Retroceso":
+                new_width = int(new_value)
+                if new_width > 0:
+                    self.settings['width'] = new_width
+                    self.clipboard_manager.window_width = new_width
+
+            elif setting_name == "Tecla Retroceso: ":
                 self.settings['back_key'] = new_value
-            elif setting_name == "Alt+":
+                # Actualizar el atajo de retroceso
+                self.clipboard_manager.key_handler.global_hotkeys.register_hotkey(
+                    new_value,
+                    lambda: self.clipboard_manager.key_handler.handle_back()
+                    )
+
+            elif setting_name == "Teclas Alt + Activacion: ":
                 old_hotkey = self.settings['hotkey']
-                new_hotkey = 'alt+' + new_value
-                self.settings['hotkey'] = new_value  # Guarda solo la letra
-                self.clipboard_manager.key_handler.update_hotkey(f"alt+{old_hotkey}", new_hotkey)
+                self.settings['hotkey'] = new_value
+                # Actualizar el atajo principal
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_hotkey}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.key_handler.toggle_window
+                )
+
+            elif setting_name == "Teclas Alt + Grupos: ":
+                old_key = self.settings.get('groups_key', 'g')
+                self.settings['groups_key'] = new_value
+                # Actualizar el atajo de grupos
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_key}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.key_handler.show_groups_screen
+                )
+
+            elif setting_name == "Teclas Alt + NuevoGrupo: ":
+                old_key = self.settings.get('new_group_key', 'n')
+                self.settings['new_group_key'] = new_value
+                # Actualizar el atajo de nuevo grupo
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_key}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.key_handler.show_new_group_dialog
+                )
 
             self.save_settings()
             self.restart_app()

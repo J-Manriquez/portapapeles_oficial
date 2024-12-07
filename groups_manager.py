@@ -530,7 +530,32 @@ class GroupManager:
 
 
     def add_group(self):
-        self.show_group_dialog()
+        """Muestra el diálogo para crear un nuevo grupo"""
+        try:
+            # Verificar si el diálogo ya está abierto
+            if hasattr(self, '_edit_dialog') and self._edit_dialog and self._edit_dialog.winfo_exists():
+                self._edit_dialog.focus_force()
+                return
+
+            # Asegurarse de que todas las ventanas estén ocultas
+            # Ocultar ventana de grupos si está visible
+            if hasattr(self, 'groups_window') and self.groups_window:
+                self.groups_window.withdraw()
+
+            # Ocultar ventana de contenido de grupo si está visible
+            if hasattr(self.group_content_manager, 'content_window') and \
+            self.group_content_manager.content_window:
+                self.group_content_manager.content_window.withdraw()
+
+            # Ocultar ventana principal si está visible
+            if self.clipboard_manager.root.winfo_viewable():
+                self.clipboard_manager.root.withdraw()
+
+            # Mostrar el diálogo de nuevo grupo
+            self.show_group_dialog()
+
+        except Exception as e:
+            logger.error(f"Error showing add group dialog: {e}")
 
     def edit_group(self, group_id):
         self.show_group_dialog(group_id)

@@ -34,15 +34,18 @@ class ClipboardManager:
         groups, pinned_items, settings = self.data_manager.load_data()
 
         # Asegurar que todas las configuraciones necesarias existen
-        self.settings = {
+        self.default_settings = {
             'height': 400,
             'width': 295,
             'hotkey': 'v',
             'back_key': 'backspace',
+            'groups_key': 'g',
+            'new_group_key': 'n',
             **settings  # Esto sobreescribirá los valores por defecto si existen en settings
         }
 
-        self.settings = settings
+        # Combinar configuraciones guardadas con valores predeterminados
+        self.settings = {**self.default_settings, **settings}
         self.settings_manager = SettingsManager(self.root, self)
         self.settings_manager.initialize_settings()
 
@@ -50,6 +53,9 @@ class ClipboardManager:
         self.window_height = settings['height']
         self.window_x = 0
         self.window_y = 0
+
+        # Aplicar dimensiones a la ventana root
+        self.root.geometry(f"{self.window_width}x{self.window_height}+{self.window_x}+{self.window_y}")
 
         self.root.overrideredirect(True)
         self.root.attributes('-topmost', True)
