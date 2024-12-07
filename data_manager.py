@@ -21,20 +21,22 @@ class DataManager:
             return {}, {}, {
                 'height': 400,
                 'width': 295,
-                'hotkey': 'v'
+                'hotkey': 'v',
+                'back_key': 'backspace'
             }
-        
+
         with open(self.file_path, 'r') as f:
             data = json.load(f)
-        
+
         groups = data.get('groups', {})
         pinned_items = self.decode_pinned_items(data.get('pinned_items', {}))
         settings = data.get('settings', {
             'height': 400,
             'width': 295,
-            'hotkey': 'v'
+            'hotkey': 'v',
+            'back_key': 'backspace'
         })
-        
+
         return groups, pinned_items, settings
 
     def decode_pinned_items(self, encoded_items):
@@ -45,7 +47,7 @@ class DataManager:
                 decoded_item['text'] = self.decode_formatted_text(item_data['text'])
             decoded_items[item_id] = decoded_item
         return decoded_items
-    
+
     def encode_pinned_items(self, pinned_items):
         encoded_items = {}
         for item_id, item_data in pinned_items.items():
@@ -69,7 +71,7 @@ class DataManager:
             # Si text_data es un diccionario, asumimos que tiene la estructura esperada
             text = text_data.get('text', '')
             formatted = text_data.get('formatted', {})
-            
+
             if isinstance(formatted, dict):
                 return {
                     'text': text,
@@ -101,7 +103,7 @@ class DataManager:
                 'text': str(text_data),
                 'format': {}
             }
-                    
+
     def decode_formatted_text(self, encoded_text):
         return {
             'text': encoded_text['text'],

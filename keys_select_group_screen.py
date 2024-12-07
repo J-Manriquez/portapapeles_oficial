@@ -11,7 +11,8 @@ class SelectGroupScreenAction(Enum):
     NAVIGATE_UP = "up"
     NAVIGATE_DOWN = "down"
     ACTIVATE = "return"
-    BACK = "escape"
+    # BACK = "escape"
+    BACK = "back"
 
 class SelectGroupScreenKeyConfig(ScreenKeyConfig):
     def __init__(self, key_handler, manager):
@@ -24,15 +25,30 @@ class SelectGroupScreenKeyConfig(ScreenKeyConfig):
 
     def setup_keys(self) -> None:
         """Configura las teclas específicas para la pantalla de selección de grupo"""
-        self.register_action(SelectGroupScreenAction.NAVIGATE_UP, 
+        self.register_action(SelectGroupScreenAction.NAVIGATE_UP,
                            lambda: self.handle_navigation('up'))
-        self.register_action(SelectGroupScreenAction.NAVIGATE_DOWN, 
+        self.register_action(SelectGroupScreenAction.NAVIGATE_DOWN,
                            lambda: self.handle_navigation('down'))
-        self.register_action(SelectGroupScreenAction.ACTIVATE, 
+        self.register_action(SelectGroupScreenAction.ACTIVATE,
                            self.handle_activation)
-        self.register_action(SelectGroupScreenAction.BACK, 
-                           self.handle_back)
-        
+        # self.register_action(SelectGroupScreenAction.BACK,
+                        #    self.handle_back)
+        # self.register_action(SelectGroupScreenAction.BACK,
+        #                    lambda: self.manager.functions.close_dialog(
+        #                        self.manager.select_group_dialog))
+        # Registrar la tecla de retroceso con manejo de errores
+        try:
+            back_key = self.manager.settings.get('back_key', 'backspace')
+            self.register_hotkey(back_key,
+                            lambda: self.manager.functions.close_dialog(
+                                self.manager.select_group_dialog))
+        except Exception as e:
+            print(f"Error registering back key: {e}")
+            # Usar backspace como fallback
+            self.register_hotkey('backspace',
+                            lambda: self.manager.functions.close_dialog(
+                                self.manager.select_group_dialog))
+
         # logger.debug("Select group screen keys setup completed")
 
     def register_action(self, action: SelectGroupScreenAction, callback: callable) -> None:
@@ -45,14 +61,14 @@ class SelectGroupScreenKeyConfig(ScreenKeyConfig):
     def handle_navigation(self, direction: str) -> None:
         """Maneja los eventos de navegación"""
         event = type('Event', (), {'keysym': direction.capitalize()})()
-        
+
         # Actualizar el estado de selección en el manager
         current_selection = self.manager.navigation.current_strategy.state['current_selection']
         self.manager.current_selection = current_selection
-        
+
         if direction in ['up', 'down']:
             self.manager.navigation.navigate_vertical(event)
-        
+
         # logger.debug(f"Select group screen navigation: {direction}")
 
     def handle_activation(self):

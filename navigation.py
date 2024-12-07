@@ -129,6 +129,11 @@ class Navigation:
             key = event.keysym.lower()
             # print(f"Processing key: {key}")  # Debug
 
+            # Manejar la tecla de retroceso configurable
+            if key == self.manager.settings['back_key'].lower():
+                self.handle_back()
+                return
+
             # Manejar Enter explícitamente
             if key == "return":
                 # print("Enter key detected, activating selection")  # Debug
@@ -144,12 +149,22 @@ class Navigation:
         except Exception as e:
             logger.error(f"Error handling keyboard event: {e}")
 
-    def handle_escape(self) -> None:
-        """Maneja la tecla Escape según el contexto"""
-        if self.current_screen != ScreenType.MAIN:
-            self.manager.show_main_screen()
-        else:
-            self.manager.key_handler.hide_window()
+    def handle_back(self):
+        """Maneja el retroceso según la pantalla actual"""
+        if self.current_screen == ScreenType.GROUPS:
+            self.manager.group_manager.close_groups_window()
+        elif self.current_screen == ScreenType.GROUP_CONTENT:
+            self.manager.group_manager.group_content_manager.close_content_window(
+                self.manager.group_manager.group_content_manager.current_group_id)
+        elif self.current_screen == ScreenType.SELECT_GROUP:
+            self.manager.functions.close_dialog(self.manager.select_group_dialog)
+
+    # def handle_escape(self) -> None:
+    #     """Maneja la tecla Escape según el contexto"""
+    #     if self.current_screen != ScreenType.MAIN:
+    #         self.manager.show_main_screen()
+    #     else:
+    #         self.manager.key_handler.hide_window()
 
     def navigate_vertical(self, event) -> None:
         """Gestiona la navegación vertical"""

@@ -140,6 +140,7 @@
     "settings": {
         "height": 400,
         "width": 295,
-        "hotkey": "z"
+        "hotkey": "z",
+        "back_key": "backspace"
     }
 }

@@ -28,25 +28,38 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
 
     def setup_keys(self) -> None:
         """Configura las teclas específicas para la pantalla de contenido de grupo"""
-        self.register_action(GroupContentScreenAction.NAVIGATE_UP, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_UP,
                            lambda: self.handle_navigation('up'))
-        self.register_action(GroupContentScreenAction.NAVIGATE_DOWN, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_DOWN,
                            lambda: self.handle_navigation('down'))
-        self.register_action(GroupContentScreenAction.NAVIGATE_LEFT, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_LEFT,
                            lambda: self.handle_navigation('left'))
-        self.register_action(GroupContentScreenAction.NAVIGATE_RIGHT, 
+        self.register_action(GroupContentScreenAction.NAVIGATE_RIGHT,
                            lambda: self.handle_navigation('right'))
-        self.register_action(GroupContentScreenAction.ACTIVATE, 
+        self.register_action(GroupContentScreenAction.ACTIVATE,
                            self.handle_activation)
-        
+
+         # Registrar la tecla de retroceso con manejo de errores
+        try:
+            back_key = self.manager.settings.get('back_key', 'backspace')
+            self.register_hotkey(back_key,
+                            lambda: self.manager.group_manager.group_content_manager.close_content_window(
+                                self.manager.group_manager.group_content_manager.current_group_id))
+        except Exception as e:
+            print(f"Error registering back key: {e}")
+            # Usar backspace como fallback
+            self.register_hotkey('backspace',
+                            lambda: self.manager.group_manager.group_content_manager.close_content_window(
+                                self.manager.group_manager.group_content_manager.current_group_id))
+
         # Atajos adicionales específicos de la pantalla de contenido
-        self.register_action(GroupContentScreenAction.BACK_TO_GROUPS, 
-                           self.handle_back)
+        # self.register_action(GroupContentScreenAction.BACK_TO_GROUPS,
+        #                    self.handle_back)
         self.register_action(GroupContentScreenAction.EDIT_ITEM,
                            self.handle_edit_item)
         self.register_action(GroupContentScreenAction.DELETE_ITEM,
                            self.handle_delete_item)
-        
+
         # logger.debug("Group content screen keys setup completed")
 
     def register_action(self, action: GroupContentScreenAction, callback: callable) -> None:
@@ -59,11 +72,11 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
     def handle_navigation(self, direction: str) -> None:
         """Maneja los eventos de navegación"""
         event = type('Event', (), {'keysym': direction.capitalize()})()
-        
+
         # Actualizar el estado de selección en el manager
         current_selection = self.manager.navigation.current_strategy.state['current_selection']
         self.manager.current_selection = current_selection
-        
+
         if direction in ['up', 'down']:
             self.manager.navigation.navigate_vertical(event)
         else:
@@ -122,7 +135,7 @@ class GroupContentScreenKeyConfig(ScreenKeyConfig):
             if isinstance(action.value, str):
                 self.key_handler.register_screen_hotkey('group_content', action.value, callback)
         # logger.info("Group content screen key configuration activated")
-        
+
     def deactivate(self) -> None:
         """Desactiva la configuración de teclas de la pantalla de contenido de grupo"""
         super().deactivate()

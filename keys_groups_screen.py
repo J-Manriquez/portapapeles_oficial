@@ -15,6 +15,7 @@ class GroupScreenAction(Enum):
     ACTIVATE = "return"
     ADD_GROUP = "alt+n"
     BACK_TO_MAIN = "escape"
+    BACK = "back"
 
 class GroupsScreenKeyConfig(ScreenKeyConfig):
     def __init__(self, key_handler, manager):
@@ -41,6 +42,17 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
                            lambda: self.handle_navigation('right'))
         self.register_action(GroupScreenAction.ACTIVATE,
                            self.handle_activation)
+        # self.register_action(GroupScreenAction.BACK,
+        #                    lambda: self.manager.group_manager.close_groups_window())
+        try:
+            back_key = self.manager.settings.get('back_key', 'backspace')
+            self.register_hotkey(back_key,
+                            lambda: self.manager.group_manager.close_groups_window())
+        except Exception as e:
+            print(f"Error registering back key: {e}")
+            # Usar backspace como fallback
+            self.register_hotkey('backspace',
+                            lambda: self.manager.group_manager.close_groups_window())
 
         # Atajos adicionales específicos de la pantalla de grupos
         self.register_action(GroupScreenAction.ADD_GROUP,

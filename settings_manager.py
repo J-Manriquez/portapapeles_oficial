@@ -93,6 +93,14 @@ class SettingsManager:
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Alt+", self.settings['hotkey'])
 
+            subtitle = tk.Label(self.settings_frame, text="Tecla de retroceso",
+                        font=('Segoe UI', 10, 'bold'),
+                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Retroceso", str(self.settings['back_key']))
+
             subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app",
                         font=('Segoe UI', 10, 'bold'),
                         bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
@@ -155,6 +163,8 @@ class SettingsManager:
                 self.settings['height'] = int(new_value)
             elif setting_name == "Ancho":
                 self.settings['width'] = int(new_value)
+            elif setting_name == "Retroceso":
+                self.settings['back_key'] = new_value
             elif setting_name == "Alt+":
                 old_hotkey = self.settings['hotkey']
                 new_hotkey = 'alt+' + new_value

@@ -33,6 +33,15 @@ class ClipboardManager:
         self.data_manager = DataManager()
         groups, pinned_items, settings = self.data_manager.load_data()
 
+        # Asegurar que todas las configuraciones necesarias existen
+        self.settings = {
+            'height': 400,
+            'width': 295,
+            'hotkey': 'v',
+            'back_key': 'backspace',
+            **settings  # Esto sobreescribirá los valores por defecto si existen en settings
+        }
+
         self.settings = settings
         self.settings_manager = SettingsManager(self.root, self)
         self.settings_manager.initialize_settings()
@@ -118,6 +127,10 @@ class ClipboardManager:
             self.root.after(100, self.settings_manager.show_settings_window)
 
         self.root.after(1000, self.navigation.check_window_state)
+
+        # Asegurarse de que la configuración de back_key existe
+        if 'back_key' not in self.settings:
+            self.settings['back_key'] = 'backspace'
 
         # scroll
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
