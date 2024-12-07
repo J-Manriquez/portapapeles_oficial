@@ -161,15 +161,6 @@ class GroupsScreenNavigation:
 
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
-
-         # Guardar la última selección por teclado
-        self.last_keyboard_selection = {
-            'type': current_type,
-            'index': current_index
-        }
-        self._apply_highlight(current_type, current_index)
-
-
         highlight_color = self._get_highlight_color()
         icon_highlight_color = self._get_icon_highlight_color()
 
@@ -179,34 +170,35 @@ class GroupsScreenNavigation:
             if hasattr(card, '_is_highlighted'):
                 card._is_highlighted = False
 
-        if current_type == GroupScreenElement.TOP_BUTTONS.value:
-            buttons = self.get_top_buttons()
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-
-        elif current_type == GroupScreenElement.GROUP_CARDS.value:
+        if current_type == GroupScreenElement.GROUP_CARDS.value:
             if current_index < len(cards):
                 card = cards[current_index]
                 card._is_highlighted = True
                 self._highlight_card(card, highlight_color)
+                # Asegurarse de que el frame de iconos también se resalte
+                icons_frame = self._find_icons_frame(card)
+                if icons_frame:
+                    icons_frame.configure(bg=highlight_color)
+                    for icon in icons_frame.winfo_children():
+                        icon.configure(bg=highlight_color)
 
         elif current_type == GroupScreenElement.ICONS.value:
-            card_index = current_index // 2
+            card_index = current_index // 2  # Solo 2 iconos por tarjeta en grupos
             icon_index = current_index % 2
 
             if card_index < len(cards):
                 card = cards[card_index]
                 card._is_highlighted = True
                 self._highlight_card(card, highlight_color)
-
                 icons_frame = self._find_icons_frame(card)
-                if icons_frame and icon_index < len(icons_frame.winfo_children()):
-                    icons = icons_frame.winfo_children()
-                    # Resetear todos los iconos al color de highlight normal
-                    for icon in icons:
+                if icons_frame:
+                    icons_frame.configure(bg=highlight_color)
+                    for icon in icons_frame.winfo_children():
                         icon.configure(bg=highlight_color)
                     # Resaltar el icono seleccionado
-                    icons[icon_index].configure(bg=icon_highlight_color)
+                    icons = icons_frame.winfo_children()
+                    if 0 <= icon_index < len(icons):
+                        icons[icon_index].configure(bg=icon_highlight_color)
 
     def _apply_highlight(self, selection_type, index):
         """Aplica el highlight según el tipo y índice de selección"""

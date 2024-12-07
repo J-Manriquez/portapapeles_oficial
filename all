@@ -753,6 +753,9 @@ class GroupManager:
         self.scrollbar = None
         self.add_button = None
         self.close_button = None
+        # Constantes para dimensiones de cards de grupos
+        self.group_card_height = 50  # Altura fija para cards de grupos
+        self.group_card_padding = 4  # Padding consistente
 
     def show_group_content(self, group_id):
         if self.groups_window:
@@ -924,7 +927,6 @@ class GroupManager:
         self.groups_window.geometry(f"+{x}+{y}")
 
     def refresh_groups(self):
-        # logger.debug("Refrescando grupos")
         if self.groups_frame is None or not self.groups_frame.winfo_exists():
             return
 
@@ -958,68 +960,75 @@ class GroupManager:
         icon_highlight_color = self.clipboard_manager.navigation.current_strategy.state['highlight_colors'][
             'dark' if is_dark else 'light']['icon']
 
+        # Calcular el ancho fijo para todas las cards
+        card_width = self.settings['width'] - (self.group_card_padding * 2)
+
         for group_id, group_info in self.groups.items():
-            # Crear card del grupo
+            # Crear card del grupo con dimensiones fijas
             group_card = tk.Frame(self.groups_frame,
                                 bg=bg_color,
-                                cursor="hand2")
+                                cursor="hand2",
+                                width=card_width,
+                                height=self.group_card_height)
             group_card.pack(fill=tk.X, padx=4, pady=2)
+            group_card.pack_propagate(False)  # Mantener dimensiones fijas
+
+            # Frame interno para el contenido
+            content_frame = tk.Frame(group_card, bg=bg_color)
+            content_frame.pack(fill=tk.BOTH, expand=True)
 
             # Agregar atributo para tracking del estado de highlight
             group_card._is_highlighted = False
 
             # Labels de información
-            name_label = tk.Label(group_card,
+            name_label = tk.Label(content_frame,
                                 text=group_info['name'],
                                 font=("Segoe UI", 10, "bold"),
                                 bg=bg_color,
                                 fg=theme['fg'],
-                                width=int(17),
-                                justify=tk.LEFT,
                                 anchor='w')
             name_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-            count_label = tk.Label(group_card,
+            count_label = tk.Label(content_frame,
                                 text=f"Items: {len(group_info['items'])}",
                                 bg=bg_color,
                                 fg=theme['fg'])
-            count_label.pack(side=tk.LEFT, padx=5, pady=2)
+            count_label.pack(side=tk.LEFT, padx=5, pady=5)
 
             # Frame para los iconos
-            icons_frame = tk.Frame(group_card,
-                                bg=bg_color)
+            icons_frame = tk.Frame(content_frame, bg=bg_color)
             icons_frame.pack(side=tk.RIGHT, padx=3)
 
-            # Crear los botones de iconos
+            # Botones con dimensiones consistentes
+            button_config = {
+                'font': ('Segoe UI', 10),
+                'bd': 0,
+                'highlightthickness': 0,
+                'padx': 4,
+                'bg': bg_color,
+                'fg': theme['fg']
+            }
+
             edit_button = tk.Button(icons_frame,
                                 text="✏️",
                                 command=lambda gid=group_id: self.edit_group(gid),
-                                font=('Segoe UI', 10),
-                                bd=0,
-                                highlightthickness=0,
-                                padx=4,
-                                bg=bg_color,
-                                fg=theme['fg'])
+                                **button_config)
             edit_button.pack(side=tk.LEFT)
 
             delete_button = tk.Button(icons_frame,
                                     text="❌",
                                     command=lambda gid=group_id: self.delete_group(gid),
-                                    font=('Segoe UI', 10),
-                                    bd=0,
-                                    highlightthickness=0,
-                                    padx=4,
-                                    bg=bg_color,
-                                    fg=theme['fg'])
+                                    **button_config)
             delete_button.pack(side=tk.LEFT)
 
             # Nuevas funciones de hover mejoradas
-            def create_hover_handlers(card, name_lbl, count_lbl, icons_frm):
+            def create_hover_handlers(card, content_frm, name_lbl, count_lbl, icons_frm):
                 def on_enter(e):
                     # Solo aplicar hover si no hay selección por teclado activa
                     nav = self.clipboard_manager.navigation.current_strategy
                     if nav.last_keyboard_selection is None:
                         card.configure(bg=highlight_color)
+                        content_frm.configure(bg=highlight_color)
                         name_lbl.configure(bg=highlight_color)
                         count_lbl.configure(bg=highlight_color)
                         icons_frm.configure(bg=highlight_color)
@@ -1035,6 +1044,7 @@ class GroupManager:
                     nav = self.clipboard_manager.navigation.current_strategy
                     if nav.last_keyboard_selection is None:
                         card.configure(bg=bg_color)
+                        content_frm.configure(bg=bg_color)
                         name_lbl.configure(bg=bg_color)
                         count_lbl.configure(bg=bg_color)
                         icons_frm.configure(bg=bg_color)
@@ -1062,11 +1072,11 @@ class GroupManager:
 
             # Crear y vincular los manejadores de hover
             enter_handler, leave_handler = create_hover_handlers(
-                group_card, name_label, count_label, icons_frame
+                group_card, content_frame, name_label, count_label, icons_frame
             )
 
             # Vincular eventos hover para la card y sus componentes principales
-            for widget in [group_card, name_label, count_label, icons_frame]:
+            for widget in [group_card, content_frame, name_label, count_label, icons_frame]:
                 widget.bind('<Enter>', enter_handler)
                 widget.bind('<Leave>', leave_handler)
 
@@ -1083,6 +1093,11 @@ class GroupManager:
                         lambda e, gid=group_id: self.show_group_content(gid))
             count_label.bind("<Button-1>",
                             lambda e, gid=group_id: self.show_group_content(gid))
+
+        # Actualizar la región de scroll
+        if hasattr(self, 'canvas'):
+            self.canvas.update_idletasks()
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}
@@ -1264,12 +1279,18 @@ class GroupManager:
                 return
 
             # Asegurarse de que todas las ventanas estén ocultas
+            # Ocultar ventana de grupos si está visible
             if hasattr(self, 'groups_window') and self.groups_window:
                 self.groups_window.withdraw()
 
+            # Ocultar ventana de contenido de grupo si está visible
+            if hasattr(self.group_content_manager, 'content_window') and \
+            self.group_content_manager.content_window:
+                self.group_content_manager.content_window.withdraw()
+
             # Ocultar ventana principal si está visible
-            if self.manager.root.winfo_viewable():
-                self.manager.root.withdraw()
+            if self.clipboard_manager.root.winfo_viewable():
+                self.clipboard_manager.root.withdraw()
 
             # Mostrar el diálogo de nuevo grupo
             self.show_group_dialog()
@@ -1878,7 +1899,7 @@ class GroupScreenAction(Enum):
     NAVIGATE_LEFT = "left"
     NAVIGATE_RIGHT = "right"
     ACTIVATE = "return"
-    ADD_GROUP = "alt+n"
+    # ADD_GROUP = "alt+n"
     BACK = "back"
 
 class GroupsScreenKeyConfig(ScreenKeyConfig):
@@ -1918,9 +1939,9 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
             self.register_hotkey('backspace',
                             lambda: self.manager.group_manager.close_groups_window())
 
-        # Atajos adicionales específicos de la pantalla de grupos
-        self.register_action(GroupScreenAction.ADD_GROUP,
-                           self.manager.group_manager.add_group)
+        # # Atajos adicionales específicos de la pantalla de grupos
+        # self.register_action(GroupScreenAction.ADD_GROUP,
+        #                    self.manager.group_manager.add_group)
         # logger.debug("Groups screen keys setup completed")
 
     def register_action(self, action: GroupScreenAction, callback: callable) -> None:
@@ -2269,17 +2290,58 @@ class KeyHandler:
 
     def show_groups_screen(self):
         """Maneja la apertura de la pantalla de grupos"""
-        self.hide_window()  # Oculta cualquier ventana abierta
-        self.manager.show_groups()
+        try:
+            # Guardar las dimensiones actuales de las cards
+            current_dimensions = self._save_current_card_dimensions()
+
+            # Ocultar la ventana actual
+            self.hide_window()
+
+            # Mostrar la ventana de grupos
+            def show_groups():
+                self.manager.group_manager.show_groups_window()
+                # Restaurar las dimensiones de las cards
+                self._restore_card_dimensions(current_dimensions)
+
+            # Usar after para asegurar que la secuencia sea correcta
+            self.manager.root.after(100, show_groups)
+
+        except Exception as e:
+            logger.error(f"Error showing groups screen: {e}")
+
+    def _save_current_card_dimensions(self):
+        """Guarda las dimensiones actuales de las cards"""
+        dimensions = []
+        if hasattr(self.manager, 'cards_frame'):
+            for card in self.manager.cards_frame.winfo_children():
+                if hasattr(card, 'item_id'):
+                    dimensions.append({
+                        'id': card.item_id,
+                        'width': card.winfo_width(),
+                        'height': card.winfo_height()
+                    })
+        return dimensions
+
+    def _restore_card_dimensions(self, dimensions):
+        """Restaura las dimensiones guardadas de las cards"""
+        if hasattr(self.manager, 'cards_frame'):
+            for card in self.manager.cards_frame.winfo_children():
+                if hasattr(card, 'item_id'):
+                    for dim in dimensions:
+                        if dim['id'] == card.item_id:
+                            card.configure(width=dim['width'], height=dim['height'])
+                            card.pack_propagate(False)
+                            break
 
     def show_new_group_dialog(self):
         """Maneja la apertura del diálogo de nuevo grupo desde cualquier pantalla"""
         try:
-            # Guardar la ventana activa antes de ocultarla
-            self.hide_window()  # Ocultar todas las ventanas activas
+            # Ocultar todas las ventanas activas
+            self.hide_window()  # Esto ocultará todas las ventanas activas
 
-            # Mostrar diálogo de nuevo grupo
-            if hasattr(self.manager.group_manager, 'add_group'):
+            # Asegurarse de que el manager y group_manager existen
+            if hasattr(self.manager, 'group_manager'):
+                # Usar after para asegurar que las ventanas se hayan ocultado primero
                 self.manager.root.after(100, self.manager.group_manager.add_group)
 
         except Exception as e:
@@ -2515,15 +2577,6 @@ class KeyHandler:
         self.manager.root.update_idletasks()
         self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
         self.manager.root.focus_force()
-
-    # def hide_window(self) -> None:
-    #     """Oculta la ventana principal"""
-    #     self.manager.root.withdraw()
-    #     self.manager.is_visible = False
-    #     self.restore_focus()
-    #     if self.original_cursor_pos:
-    #         win32api.SetCursorPos(self.original_cursor_pos)
-    #         self.original_cursor_pos = None
 
     def hide_window(self) -> None:
         """Oculta la ventana actualmente activa"""
@@ -4307,30 +4360,14 @@ class MainScreenNavigation:
 
     def _highlight_current_selection(self) -> None:
         """Aplica el destacado al elemento actualmente seleccionado"""
+        self._clear_all_highlights()
+
         current_type = self.state['current_selection']['type']
         current_index = self.state['current_selection']['index']
         highlight_color = self._get_highlight_color()
         icon_highlight_color = self._get_icon_highlight_color()
 
-        if current_type == MainScreenElement.MAIN_BUTTONS.value:
-            buttons = [
-                self.manager.button1,
-                self.manager.button2,
-                self.manager.button3
-            ]
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-
-        elif current_type == MainScreenElement.TOP_BUTTONS.value:
-            buttons = [
-                self.manager.theme_button,
-                self.manager.clear_button,
-                self.manager.close_button
-            ]
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-
-        elif current_type == MainScreenElement.CARDS.value:
+        if current_type == MainScreenElement.CARDS.value:
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
                 self._highlight_card(cards[current_index], highlight_color)
@@ -4342,17 +4379,22 @@ class MainScreenNavigation:
 
             if card_index < len(cards):
                 card = cards[card_index]
-                # Resaltar la tarjeta completa
+                # Resaltar la tarjeta completa con el color normal
                 self._highlight_card(card, highlight_color)
 
-                # Resaltar el icono específico
-                icons_frame = self._find_icons_frame(card)
-                if icons_frame and icon_index < len(icons_frame.winfo_children()):
-                    # Resetear el color de todos los iconos primero
-                    for icon in icons_frame.winfo_children():
-                        icon.configure(bg=highlight_color)
-                    # Resaltar el icono seleccionado
-                    icons_frame.winfo_children()[icon_index].configure(bg=icon_highlight_color)
+                # Resaltar el contenedor de iconos
+                for child in card.winfo_children():
+                    if isinstance(child, tk.Frame) and len(child.winfo_children()) > 0:
+                        if all(isinstance(btn, tk.Button) for btn in child.winfo_children()):
+                            icons_frame = child
+                            icons_frame.configure(bg=highlight_color)
+                            # Resaltar todos los iconos con el color normal
+                            for btn in icons_frame.winfo_children():
+                                btn.configure(bg=highlight_color)
+                            # Resaltar el icono seleccionado con el color de icono
+                            icons = icons_frame.winfo_children()
+                            if 0 <= icon_index < len(icons):
+                                icons[icon_index].configure(bg=icon_highlight_color)
 
     def _highlight_card(self, card: tk.Frame, color: str) -> None:
         """Resalta una tarjeta específica y sus elementos"""
@@ -4364,8 +4406,6 @@ class MainScreenNavigation:
                     if isinstance(subchild, tk.Label):
                         subchild.configure(bg=color)
                     elif isinstance(subchild, tk.Button):
-                        # No cambiar el color de los botones aquí
-                        # a menos que estemos en modo tarjeta
                         if self.state['current_selection']['type'] == MainScreenElement.CARDS.value:
                             subchild.configure(bg=color)
             elif isinstance(child, tk.Label):

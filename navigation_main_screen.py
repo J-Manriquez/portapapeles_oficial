@@ -493,47 +493,35 @@ class MainScreenNavigation:
         highlight_color = self._get_highlight_color()
         icon_highlight_color = self._get_icon_highlight_color()
 
-        if current_type == MainScreenElement.MAIN_BUTTONS.value:
-            buttons = [
-                self.manager.button1,
-                self.manager.button2,
-                self.manager.button3
-            ]
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-
-        elif current_type == MainScreenElement.TOP_BUTTONS.value:
-            buttons = [
-                self.manager.theme_button,
-                self.manager.clear_button,
-                self.manager.close_button
-            ]
-            if 0 <= current_index < len(buttons):
-                buttons[current_index].configure(bg=highlight_color)
-
-        elif current_type == MainScreenElement.CARDS.value:
+        if current_type == MainScreenElement.CARDS.value:
             cards = self.manager.cards_frame.winfo_children()
             if current_index < len(cards):
-                self._highlight_card(cards[current_index], highlight_color)
+                card = cards[current_index]
+                self._highlight_card(card, highlight_color)
+                # Asegurarse de que el frame de iconos también se resalte
+                icons_frame = self._find_icons_frame(card)
+                if icons_frame:
+                    icons_frame.configure(bg=highlight_color)
+                    for icon in icons_frame.winfo_children():
+                        icon.configure(bg=highlight_color)
 
         elif current_type == MainScreenElement.ICONS.value:
-            cards = self.manager.cards_frame.winfo_children()
             card_index = current_index // 3
             icon_index = current_index % 3
+            cards = self.manager.cards_frame.winfo_children()
 
             if card_index < len(cards):
                 card = cards[card_index]
-                # Resaltar la tarjeta completa
                 self._highlight_card(card, highlight_color)
-
-                # Resaltar el icono específico
                 icons_frame = self._find_icons_frame(card)
-                if icons_frame and icon_index < len(icons_frame.winfo_children()):
-                    # Resetear el color de todos los iconos primero
+                if icons_frame:
+                    icons_frame.configure(bg=highlight_color)
                     for icon in icons_frame.winfo_children():
                         icon.configure(bg=highlight_color)
-                    # Resaltar el icono seleccionado
-                    icons_frame.winfo_children()[icon_index].configure(bg=icon_highlight_color)
+                    # Resaltar solo el icono seleccionado
+                    icons = icons_frame.winfo_children()
+                    if 0 <= icon_index < len(icons):
+                        icons[icon_index].configure(bg=icon_highlight_color)
 
     def _highlight_card(self, card: tk.Frame, color: str) -> None:
         """Resalta una tarjeta específica y sus elementos"""
@@ -545,8 +533,6 @@ class MainScreenNavigation:
                     if isinstance(subchild, tk.Label):
                         subchild.configure(bg=color)
                     elif isinstance(subchild, tk.Button):
-                        # No cambiar el color de los botones aquí
-                        # a menos que estemos en modo tarjeta
                         if self.state['current_selection']['type'] == MainScreenElement.CARDS.value:
                             subchild.configure(bg=color)
             elif isinstance(child, tk.Label):
