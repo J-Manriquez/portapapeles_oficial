@@ -78,8 +78,48 @@ class KeyHandler:
 
     def show_groups_screen(self):
         """Maneja la apertura de la pantalla de grupos"""
-        self.hide_window()  # Oculta cualquier ventana abierta
-        self.manager.show_groups()
+        try:
+            # Guardar las dimensiones actuales de las cards
+            current_dimensions = self._save_current_card_dimensions()
+
+            # Ocultar la ventana actual
+            self.hide_window()
+
+            # Mostrar la ventana de grupos
+            def show_groups():
+                self.manager.group_manager.show_groups_window()
+                # Restaurar las dimensiones de las cards
+                self._restore_card_dimensions(current_dimensions)
+
+            # Usar after para asegurar que la secuencia sea correcta
+            self.manager.root.after(100, show_groups)
+
+        except Exception as e:
+            logger.error(f"Error showing groups screen: {e}")
+
+    def _save_current_card_dimensions(self):
+        """Guarda las dimensiones actuales de las cards"""
+        dimensions = []
+        if hasattr(self.manager, 'cards_frame'):
+            for card in self.manager.cards_frame.winfo_children():
+                if hasattr(card, 'item_id'):
+                    dimensions.append({
+                        'id': card.item_id,
+                        'width': card.winfo_width(),
+                        'height': card.winfo_height()
+                    })
+        return dimensions
+
+    def _restore_card_dimensions(self, dimensions):
+        """Restaura las dimensiones guardadas de las cards"""
+        if hasattr(self.manager, 'cards_frame'):
+            for card in self.manager.cards_frame.winfo_children():
+                if hasattr(card, 'item_id'):
+                    for dim in dimensions:
+                        if dim['id'] == card.item_id:
+                            card.configure(width=dim['width'], height=dim['height'])
+                            card.pack_propagate(False)
+                            break
 
     def show_new_group_dialog(self):
         """Maneja la apertura del diálogo de nuevo grupo desde cualquier pantalla"""

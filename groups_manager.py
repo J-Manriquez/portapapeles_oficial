@@ -27,6 +27,9 @@ class GroupManager:
         self.scrollbar = None
         self.add_button = None
         self.close_button = None
+        # Constantes para dimensiones de cards de grupos
+        self.group_card_height = 50  # Altura fija para cards de grupos
+        self.group_card_padding = 4  # Padding consistente
 
     def show_group_content(self, group_id):
         if self.groups_window:
@@ -198,7 +201,6 @@ class GroupManager:
         self.groups_window.geometry(f"+{x}+{y}")
 
     def refresh_groups(self):
-        # logger.debug("Refrescando grupos")
         if self.groups_frame is None or not self.groups_frame.winfo_exists():
             return
 
@@ -232,68 +234,75 @@ class GroupManager:
         icon_highlight_color = self.clipboard_manager.navigation.current_strategy.state['highlight_colors'][
             'dark' if is_dark else 'light']['icon']
 
+        # Calcular el ancho fijo para todas las cards
+        card_width = self.settings['width'] - (self.group_card_padding * 2)
+
         for group_id, group_info in self.groups.items():
-            # Crear card del grupo
+            # Crear card del grupo con dimensiones fijas
             group_card = tk.Frame(self.groups_frame,
                                 bg=bg_color,
-                                cursor="hand2")
+                                cursor="hand2",
+                                width=card_width,
+                                height=self.group_card_height)
             group_card.pack(fill=tk.X, padx=4, pady=2)
+            group_card.pack_propagate(False)  # Mantener dimensiones fijas
+
+            # Frame interno para el contenido
+            content_frame = tk.Frame(group_card, bg=bg_color)
+            content_frame.pack(fill=tk.BOTH, expand=True)
 
             # Agregar atributo para tracking del estado de highlight
             group_card._is_highlighted = False
 
             # Labels de información
-            name_label = tk.Label(group_card,
+            name_label = tk.Label(content_frame,
                                 text=group_info['name'],
                                 font=("Segoe UI", 10, "bold"),
                                 bg=bg_color,
                                 fg=theme['fg'],
-                                width=int(17),
-                                justify=tk.LEFT,
                                 anchor='w')
             name_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-            count_label = tk.Label(group_card,
+            count_label = tk.Label(content_frame,
                                 text=f"Items: {len(group_info['items'])}",
                                 bg=bg_color,
                                 fg=theme['fg'])
-            count_label.pack(side=tk.LEFT, padx=5, pady=2)
+            count_label.pack(side=tk.LEFT, padx=5, pady=5)
 
             # Frame para los iconos
-            icons_frame = tk.Frame(group_card,
-                                bg=bg_color)
+            icons_frame = tk.Frame(content_frame, bg=bg_color)
             icons_frame.pack(side=tk.RIGHT, padx=3)
 
-            # Crear los botones de iconos
+            # Botones con dimensiones consistentes
+            button_config = {
+                'font': ('Segoe UI', 10),
+                'bd': 0,
+                'highlightthickness': 0,
+                'padx': 4,
+                'bg': bg_color,
+                'fg': theme['fg']
+            }
+
             edit_button = tk.Button(icons_frame,
                                 text="✏️",
                                 command=lambda gid=group_id: self.edit_group(gid),
-                                font=('Segoe UI', 10),
-                                bd=0,
-                                highlightthickness=0,
-                                padx=4,
-                                bg=bg_color,
-                                fg=theme['fg'])
+                                **button_config)
             edit_button.pack(side=tk.LEFT)
 
             delete_button = tk.Button(icons_frame,
                                     text="❌",
                                     command=lambda gid=group_id: self.delete_group(gid),
-                                    font=('Segoe UI', 10),
-                                    bd=0,
-                                    highlightthickness=0,
-                                    padx=4,
-                                    bg=bg_color,
-                                    fg=theme['fg'])
+                                    **button_config)
             delete_button.pack(side=tk.LEFT)
 
             # Nuevas funciones de hover mejoradas
-            def create_hover_handlers(card, name_lbl, count_lbl, icons_frm):
+            def create_hover_handlers(card, content_frm, name_lbl, count_lbl, icons_frm):
                 def on_enter(e):
                     # Solo aplicar hover si no hay selección por teclado activa
                     nav = self.clipboard_manager.navigation.current_strategy
                     if nav.last_keyboard_selection is None:
                         card.configure(bg=highlight_color)
+                        content_frm.configure(bg=highlight_color)
                         name_lbl.configure(bg=highlight_color)
                         count_lbl.configure(bg=highlight_color)
                         icons_frm.configure(bg=highlight_color)
@@ -309,6 +318,7 @@ class GroupManager:
                     nav = self.clipboard_manager.navigation.current_strategy
                     if nav.last_keyboard_selection is None:
                         card.configure(bg=bg_color)
+                        content_frm.configure(bg=bg_color)
                         name_lbl.configure(bg=bg_color)
                         count_lbl.configure(bg=bg_color)
                         icons_frm.configure(bg=bg_color)
@@ -336,11 +346,11 @@ class GroupManager:
 
             # Crear y vincular los manejadores de hover
             enter_handler, leave_handler = create_hover_handlers(
-                group_card, name_label, count_label, icons_frame
+                group_card, content_frame, name_label, count_label, icons_frame
             )
 
             # Vincular eventos hover para la card y sus componentes principales
-            for widget in [group_card, name_label, count_label, icons_frame]:
+            for widget in [group_card, content_frame, name_label, count_label, icons_frame]:
                 widget.bind('<Enter>', enter_handler)
                 widget.bind('<Leave>', leave_handler)
 
@@ -357,6 +367,11 @@ class GroupManager:
                         lambda e, gid=group_id: self.show_group_content(gid))
             count_label.bind("<Button-1>",
                             lambda e, gid=group_id: self.show_group_content(gid))
+
+        # Actualizar la región de scroll
+        if hasattr(self, 'canvas'):
+            self.canvas.update_idletasks()
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def save_groups(self):
         pinned_items = {k: v for k, v in self.clipboard_manager.clipboard_items.items() if v['pinned']}

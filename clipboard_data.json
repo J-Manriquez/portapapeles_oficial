@@ -59,33 +59,6 @@
                 }
             ]
         },
-        "2e3e31bb-dc1e-4878-95bc-f4cde89e366b": {
-            "name": "hola",
-            "items": [
-                {
-                    "id": "b613aa01-13ba-419e-9ef2-ceef812653b4",
-                    "text": {
-                        "text": "close_settings_window",
-                        "formatted": {
-                            "font": "Consolas, 'Courier New', monospace",
-                            "size": null,
-                            "color": null,
-                            "bold": false,
-                            "italic": false,
-                            "rtf": null,
-                            "html": true,
-                            "underline": null,
-                            "strikethrough": null,
-                            "superscript": null,
-                            "subscript": null,
-                            "background_color": null,
-                            "alignment": null
-                        }
-                    },
-                    "name": ""
-                }
-            ]
-        },
         "f77c906c-9508-4d50-ace1-4075d7258f1b": {
             "name": "xas",
             "items": []
@@ -139,7 +112,7 @@
     },
     "settings": {
         "height": 400,
-        "width": 300,
+        "width": 700,
         "hotkey": "z",
         "back_key": "backspace",
         "groups_key": "g",
