@@ -112,6 +112,7 @@
         "hotkey": "z",
         "back_key": "backspace",
         "groups_key": "g",
-        "new_group_key": "n"
+        "new_group_key": "n",
+        "max_items": 4
     }
 }

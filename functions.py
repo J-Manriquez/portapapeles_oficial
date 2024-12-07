@@ -168,29 +168,21 @@ class Functions:
         # Resetear estados de navegación
         self.manager.navigation.current_strategy.last_keyboard_selection = None
 
-        # Eliminar tarjetas obsoletas
-        existing_cards = {child.item_id: child for child in self.manager.cards_frame.winfo_children() if hasattr(child, 'item_id')}
+        # Limpiar todas las tarjetas existentes
+        for widget in self.manager.cards_frame.winfo_children():
+            widget.destroy()
 
-        for item_id in list(existing_cards.keys()):
-            if item_id not in self.manager.clipboard_items:
-                existing_cards[item_id].destroy()
-                del existing_cards[item_id]
-
-        # Actualizar o crear nuevas tarjetas
+        # Crear nuevas tarjetas en el orden actual del diccionario
         for index, (item_id, item_data) in enumerate(self.manager.clipboard_items.items()):
-            if item_id in existing_cards:
-                card = existing_cards[item_id]
-                self.update_card(card, item_data)
-            else:
-                card = self.create_card(item_id, item_data, index)
-                card.item_id = item_id
-
+            card = self.create_card(item_id, item_data, index)
+            card.item_id = item_id
             card.pack(fill=tk.X, padx=2, pady=2)
 
         # Actualizar la región de desplazamiento
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
         self.recalculate_card_heights()
+
         # Asegurarse de que el scroll esté en la parte superior después de actualizar
         self.manager.canvas.yview_moveto(0)
 
@@ -281,11 +273,21 @@ class Functions:
         elif not isinstance(new_item['text'], dict):
             new_item['text'] = {'text': str(new_item['text']), 'formatted': {}}
 
-        self.manager.clipboard_items[new_id] = new_item
-        if len(self.manager.clipboard_items) > 20:
-            unpinned_items = [k for k, v in self.manager.clipboard_items.items() if not v['pinned']]
+        # Crear un nuevo diccionario ordenado con el nuevo item al principio
+        new_items = {new_id: new_item}
+        new_items.update(self.manager.clipboard_items)
+        self.manager.clipboard_items = new_items
+
+        # Verificar límite usando el valor de configuración
+        max_items = self.manager.settings.get('max_items', 20)
+        while len(self.manager.clipboard_items) > max_items:
+            # Encontrar el último item no fijado
+            unpinned_items = [(k, v) for k, v in self.manager.clipboard_items.items() if not v['pinned']]
             if unpinned_items:
-                del self.manager.clipboard_items[unpinned_items[-1]]
+                del self.manager.clipboard_items[unpinned_items[-1][0]]
+            else:
+                break  # Si no hay items sin fijar, salir del bucle
+
         self.refresh_cards()
         self.manager.group_manager.save_groups()
 

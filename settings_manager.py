@@ -85,6 +85,14 @@ class SettingsManager:
             canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
             # Crear cards de configuración
+            subtitle = tk.Label(self.settings_frame, text="Límite de elementos",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Máximo de elementos: ", str(self.settings.get('max_items', 20)))
+
             subtitle = tk.Label(self.settings_frame, text="Tecla de activación",
                             font=('Segoe UI', 10, 'bold'),
                             bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
@@ -191,6 +199,16 @@ class SettingsManager:
                 if new_width > 0:
                     self.settings['width'] = new_width
                     self.clipboard_manager.window_width = new_width
+
+            elif setting_name == "Máximo de elementos: ":
+                try:
+                    new_max = int(new_value)
+                    if new_max > 0:
+                        self.settings['max_items'] = new_max
+                        self.clipboard_manager.settings['max_items'] = new_max
+                except ValueError:
+                    # Si no es un número válido, mantener el valor anterior
+                    new_value = current_value
 
             elif setting_name == "Tecla Retroceso: ":
                 self.settings['back_key'] = new_value

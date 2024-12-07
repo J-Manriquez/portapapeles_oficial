@@ -12,6 +12,7 @@ class DataManager:
                     'back_key': 'backspace',
                     'groups_key': 'g',
                     'new_group_key': 'n',
+                    'max_items': 20,
                 }
 
     def save_data(self, groups, pinned_items, settings):
@@ -40,6 +41,7 @@ class DataManager:
             'back_key': 'backspace',
             'groups_key': 'g',
             'new_group_key': 'n',
+            'max_items': 20,
         })
 
         # Combinar configuraciones guardadas con valores predeterminados
