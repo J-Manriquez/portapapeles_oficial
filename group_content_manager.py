@@ -131,7 +131,7 @@ class GroupContentManager:
             self.scrollbar = ttk.Scrollbar(self.content_window,
                                         orient="vertical",
                                         command=self.canvas.yview)
-            self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            # self.scrollbar.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
             self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
