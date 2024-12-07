@@ -4,7 +4,10 @@ import os
 
 class DataManager:
     def __init__(self, file_path='clipboard_data.json'):
-        self.file_path = file_path
+        self.file_path = file_path or os.path.join(
+            os.path.expanduser('~'),
+            'clipboard_data.json'
+        )
         self.default_settings = {
                     'height': 400,
                     'width': 295,

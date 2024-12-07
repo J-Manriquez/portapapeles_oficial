@@ -12,6 +12,7 @@ class SettingsManager:
         self.clipboard_manager = clipboard_manager
         self.settings_window = None
         self.settings = None
+        self.file_path_var = tk.StringVar()  # Para almacenar la ruta del archivo
 
     def initialize_settings(self):
         # Llama a este método después de que ClipboardManager haya inicializado completamente
@@ -85,6 +86,66 @@ class SettingsManager:
             canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
             # Crear cards de configuración
+            exit_frame = tk.Frame(self.settings_frame,
+                                bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            exit_frame.pack(fill=tk.X, padx=0, pady=(4, 4))
+
+            exit_button = tk.Button(
+                exit_frame,
+                text="⚡ Cerrar aplicación",
+                command=self.clipboard_manager.functions.exit_app,
+                font=('Segoe UI', 10, 'bold'),
+                bg=self.clipboard_manager.theme_manager.colors['dark']['exit_button_bg'],
+                fg=self.clipboard_manager.theme_manager.colors['dark']['exit_button_fg'],
+                bd=0,
+                relief=tk.FLAT,
+                padx=10,
+                pady=8
+            )
+            exit_button.pack(fill=tk.X, padx=4)
+
+            # Agregar sección para la ubicación del archivo
+            subtitle = tk.Label(
+                self.settings_frame,
+                text="Ubicación del archivo de datos",
+                font=('Segoe UI', 10, 'bold'),
+                bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                anchor='w'
+            )
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+
+            file_location_frame = tk.Frame(
+                self.settings_frame,
+                bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg']
+            )
+            file_location_frame.pack(fill=tk.X, padx=4, pady=2)
+
+            # Mostrar ruta actual
+            self.file_path_var.set(self.clipboard_manager.data_manager.file_path)
+            path_label = tk.Label(
+                file_location_frame,
+                textvariable=self.file_path_var,
+                bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
+                fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                anchor='w',
+                padx=5,
+                pady=5,
+                wraplength=250  # Para que el texto largo se ajuste
+            )
+            path_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            change_path_button = tk.Button(
+                file_location_frame,
+                text="📂",
+                command=self.change_file_location,
+                font=('Segoe UI', 10),
+                bd=0,
+                bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
+                fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg']
+            )
+            change_path_button.pack(side=tk.RIGHT, padx=2, pady=2)
+
             subtitle = tk.Label(self.settings_frame, text="Límite de elementos",
                             font=('Segoe UI', 10, 'bold'),
                             bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
@@ -147,6 +208,38 @@ class SettingsManager:
             self.settings_window.lift()
             self.settings_window.attributes('-topmost', True)
             self.settings_window.after_idle(self.settings_window.attributes, '-topmost', False)
+
+    def change_file_location(self):
+        """Permite al usuario seleccionar una nueva ubicación para el archivo de datos"""
+        from tkinter import filedialog
+        import os
+
+        # Obtener el directorio inicial (el actual del archivo)
+        initial_dir = os.path.dirname(self.clipboard_manager.data_manager.file_path)
+
+        # Abrir diálogo para seleccionar directorio
+        new_directory = filedialog.askdirectory(
+            initialdir=initial_dir,
+            title="Seleccionar ubicación para el archivo de datos"
+        )
+
+        if new_directory:
+            # Construir la nueva ruta completa
+            new_file_path = os.path.join(new_directory, 'clipboard_data.json')
+
+            # Actualizar la ruta en el DataManager
+            self.clipboard_manager.data_manager.file_path = new_file_path
+
+            # Actualizar la etiqueta en la interfaz
+            self.file_path_var.set(new_file_path)
+
+            # Guardar los datos en la nueva ubicación
+            groups, pinned_items, settings = self.clipboard_manager.data_manager.load_data()
+            self.clipboard_manager.data_manager.save_data(groups, pinned_items, settings)
+
+            # Actualizar la configuración para que use la nueva ruta la próxima vez
+            self.settings['data_file_path'] = new_file_path
+            self.save_settings()
 
     def create_setting_card(self, setting_name, default_value):
         card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])

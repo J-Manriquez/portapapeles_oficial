@@ -16,7 +16,9 @@ class ThemeManager:
                 'listbox_fg': '#ffffff',
                 'active_bg': '#4E4E4E',  # Añadido
                 'active_fg': '#FFFFFF',  # Añadido
-                'card_bg': '#333333'
+                'card_bg': '#333333',
+                'exit_button_bg': '#8B0000',  # Rojo oscuro
+                'exit_button_fg': '#ffffff',
             },
             'light': {
                 'bg': '#f0f0f0',
@@ -27,7 +29,9 @@ class ThemeManager:
                 'listbox_fg': '#000000',
                 'active_bg': '#D0D0D0',  # Añadido
                 'active_fg': '#000000',  # Añadido
-                'card_bg': '#ffffff'
+                'card_bg': '#ffffff',
+                'exit_button_bg': '#FF6B6B',  # Rojo claro
+                'exit_button_fg': '#000000',
             }
         }
 
@@ -38,12 +42,12 @@ class ThemeManager:
 
     def apply_theme(self):
         theme = self.colors['dark'] if self.manager.is_dark_mode else self.colors['light']
-        
+
         self.manager.root.configure(bg=theme['bg'])
         self.manager.main_frame.configure(style='Main.TFrame')
         self.manager.title_frame.configure(bg=theme['bg'])
         self.manager.title_label.configure(bg=theme['bg'], fg=theme['fg'])
-        
+
         self.manager.clear_button.configure(
             bg=theme['button_bg'],
             fg=theme['button_fg'],
@@ -56,7 +60,7 @@ class ThemeManager:
             activebackground=theme['button_bg'],
             activeforeground=theme['button_fg']
         )
-        
+
         self.manager.close_button.configure(
             bg=theme['button_bg'],
             fg=theme['button_fg'],
@@ -87,9 +91,9 @@ class ThemeManager:
 
         self.manager.canvas.configure(bg=theme['bg'])
         self.manager.cards_frame.configure(bg=theme['bg'])
-        
+
         self.manager.functions.refresh_cards()
 
-        style = ttk.Style()  
-        style.theme_use('clam')  
+        style = ttk.Style()
+        style.theme_use('clam')
         style.configure('Main.TFrame', background=theme['bg'])
