@@ -170,6 +170,22 @@ class SettingsManager:
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Tecla Retroceso: ", self.settings['back_key'])
 
+            subtitle = tk.Label(self.settings_frame, text="Tecla para reiniciar aplicación",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Teclas Alt + Reiniciar: ", self.settings.get('restart_key', 'r'))
+
+            subtitle = tk.Label(self.settings_frame, text="Tecla para cerrar aplicación",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_setting_card("Teclas Alt + Cerrar App: ", self.settings.get('exit_key', 'q'))
+
             # Tecla para mostrar grupos
             subtitle = tk.Label(self.settings_frame, text="Tecla para mostrar grupos",
                             font=('Segoe UI', 10, 'bold'),
@@ -319,6 +335,26 @@ class SettingsManager:
                     f"alt+{old_hotkey}",
                     f"alt+{new_value}",
                     self.clipboard_manager.key_handler.toggle_window
+                )
+
+            elif setting_name == "Teclas Alt + Reiniciar: ":
+                old_key = self.settings.get('restart_key', 'r')
+                self.settings['restart_key'] = new_value
+                # Actualizar el atajo de reinicio
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_key}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.restart_app
+                )
+
+            elif setting_name == "Teclas Alt + Cerrar App: ":
+                old_key = self.settings.get('exit_key', 'e')
+                self.settings['exit_key'] = new_value
+                # Actualizar el atajo de cierre
+                self.clipboard_manager.key_handler.global_hotkeys.update_hotkey(
+                    f"alt+{old_key}",
+                    f"alt+{new_value}",
+                    self.clipboard_manager.exit_app
                 )
 
             elif setting_name == "Teclas Alt + Grupos: ":

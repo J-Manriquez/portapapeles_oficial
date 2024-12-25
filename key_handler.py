@@ -72,6 +72,12 @@ class KeyHandler:
             new_group_key = f"alt+{self.manager.settings.get('new_group_key', 'n')}"
             self.global_hotkeys.register_hotkey(new_group_key, self.show_new_group_dialog)
 
+            restart_key = f"alt+{self.manager.settings.get('restart_key', 'r')}"
+            self.global_hotkeys.register_hotkey(restart_key, self.manager.restart_app)
+
+            exit_key = f"alt+{self.manager.settings.get('exit_key', 'q')}"
+            self.global_hotkeys.register_hotkey(exit_key, self.manager.exit_app)
+
             # logger.debug(f"Additional hotkeys registered: {groups_key}, {new_group_key}")
         except Exception as e:
             logger.error(f"Error setting up additional hotkeys:{e}")

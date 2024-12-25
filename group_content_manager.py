@@ -56,6 +56,10 @@ class GroupContentManager:
         if hasattr(self, 'content_window') and self.content_window:
             self.content_window.destroy()
 
+        # Obtener el tema actual
+        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
+        theme = self.theme_manager.colors[current_theme]
+
         # Siempre crear una nueva ventana
         if self.content_window is not None:
             self.content_window.destroy()
@@ -75,18 +79,18 @@ class GroupContentManager:
 
             # Configurar apariencia de la ventana
             self.content_window.overrideredirect(True)
-            self.content_window.configure(bg=self.theme_manager.colors['dark']['bg'])
+            self.content_window.configure(bg=theme['bg'])
             self.content_window.attributes('-topmost', True)
 
             # Barra de título personalizada
-            title_frame = tk.Frame(self.content_window, bg=self.theme_manager.colors['dark']['bg'])
+            title_frame = tk.Frame(self.content_window, bg=theme['bg'])
             title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
 
             title_label = tk.Label(title_frame,
                                 text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}",
                                 font=('Segoe UI', 10, 'bold'),
-                                bg=self.theme_manager.colors['dark']['bg'],
-                                fg=self.theme_manager.colors['dark']['fg'])
+                                bg=theme['bg'],
+                                fg=theme['fg'])
             title_label.pack(side=tk.LEFT, padx=5, pady=5)
 
             close_button = tk.Button(title_frame,
@@ -94,8 +98,8 @@ class GroupContentManager:
                                 command=lambda: self.close_content_window(group_id),
                                 font=('Segoe UI', 10, 'bold'),
                                 bd=0, padx=10, width=5, height=2,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
+                                bg=theme['button_bg'],
+                                fg=theme['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
             # Agregar atributo para tracking del estado de highlight
@@ -109,6 +113,8 @@ class GroupContentManager:
                     close_button._mouse_over = True
                     close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
                         'dark' if self.manager.is_dark_mode else 'light']['normal'])
+                if not hasattr(close_button, '_is_highlighted') or not close_button._is_highlighted:
+                    close_button.configure(bg=theme['hover_bg'], fg=theme['hover_fg'])
                 else:
                     nav.last_keyboard_selection = None
                     nav._clear_all_highlights()
@@ -118,13 +124,15 @@ class GroupContentManager:
                 nav = self.manager.navigation.current_strategy
                 if nav.last_keyboard_selection is None and not close_button._is_highlighted:
                     close_button.configure(bg=self.theme_manager.colors['dark']['button_bg'])
+                if not hasattr(close_button, '_is_highlighted') or not close_button._is_highlighted:
+                    close_button.configure(bg=theme['button_bg'], fg=theme['button_fg'])
 
             close_button.bind('<Enter>', on_close_button_enter)
             close_button.bind('<Leave>', on_close_button_leave)
 
             # Canvas y scroll para los items
             self.canvas = tk.Canvas(self.content_window,
-                                bg=self.theme_manager.colors['dark']['bg'],
+                                bg=theme['bg'],
                                 highlightthickness=0)
             self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -137,7 +145,7 @@ class GroupContentManager:
 
             # Frame para los items
             self.items_frame = tk.Frame(self.canvas,
-                                    bg=self.theme_manager.colors['dark']['bg'])
+                                    bg=theme['bg'])
             self.canvas_window = self.canvas.create_window((0, 0),
                                                         window=self.items_frame,
                                                         anchor='nw',
@@ -244,14 +252,23 @@ class GroupContentManager:
 
     def refresh_group_content(self, group_id):
         # Limpiar el frame de items existente
+        # Obtener el tema actual
+        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
+        theme = self.theme_manager.colors[current_theme]
+
+        # Actualizar colores de la ventana y frames principales
+        if hasattr(self, 'content_window') and self.content_window:
+            self.content_window.configure(bg=theme['bg'])
+        if hasattr(self, 'canvas'):
+            self.canvas.configure(bg=theme['bg'])
+        if hasattr(self, 'items_frame'):
+            self.items_frame.configure(bg=theme['bg'])
+
         for widget in self.items_frame.winfo_children():
             widget.destroy()
 
         window_width = self.settings_manager.settings['width']
         window_height = self.settings_manager.settings['height'] - 40  # Ajuste para la barra de título
-
-        current_theme = 'dark'  # Puedes cambiar esto si soportas modo claro/oscuro
-        theme = self.theme_manager.colors[current_theme]
 
         for item in self.manager.group_manager.groups[group_id]['items']:
             card_width = window_width - 4  # Ajuste mínimo para el padding
@@ -259,7 +276,7 @@ class GroupContentManager:
 
             bg_color = theme['card_bg']
 
-            card_container = tk.Frame(self.items_frame, width=card_width, height=card_height, bg=bg_color)
+            card_container = tk.Frame(self.items_frame, width=card_width, height=card_height, bg=theme['card_bg'])
             card_container.pack(fill=tk.X, padx=6, pady=(4,0))
             card_container.pack_propagate(False)  # Evita que el contenido afecte el tamaño del contenedor
 
@@ -276,8 +293,8 @@ class GroupContentManager:
                     text_frame,
                     text=f"{item_name}:",
                     font=("Segoe UI", 10, "bold"),
-                    bg=bg_color,
-                    fg=theme['fg'],
+                    bg=theme['card_bg'],
+                    fg=theme['button_fg'],
                     justify=tk.LEFT,
                     anchor='w',
                     width=int(24)
@@ -291,25 +308,34 @@ class GroupContentManager:
                 font=("Segoe UI", 10),
                 justify=tk.LEFT,
                 anchor='w',
-                bg=bg_color,
-                fg=theme['fg'],
+                bg=theme['card_bg'],
+                fg=theme['button_fg'],
                 width=int(24)
             )
             text_label.pack(padx=6, pady=(0,4), fill=tk.X, expand=True, side=tk.TOP)
 
-            icons_frame = tk.Frame(card_container, bg=bg_color)
+            icons_frame = tk.Frame(card_container, bg=theme['card_bg'])
             icons_frame.pack(side=tk.RIGHT, padx=3)
+
+            icon_config = {
+                'font': ('Segoe UI', 10),
+                'bd': 0,
+                'highlightthickness': 0,
+                'padx': 4,
+                'bg': theme['card_bg'],
+                'fg': theme['fg'],  # Color del texto según el tema
+                'activebackground': theme['hover_bg'],
+                'activeforeground': theme['hover_fg']
+            }
 
             edit_button = tk.Button(icons_frame, text="✏️",
                                     command=lambda i=item['id']: self.edit_group_item(group_id, i),
-                                    font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
-                                    bg=bg_color, fg=theme['fg'])
+                                    **icon_config)
             edit_button.pack(side=tk.LEFT)
 
             delete_button = tk.Button(icons_frame, text="❌",
                                     command=lambda i=item['id']: self.remove_item_from_group(group_id, i, self.items_frame),
-                                    font=('Segoe UI', 10), bd=0, highlightthickness=0,padx=4,
-                                    bg=bg_color, fg=theme['fg'])
+                                    **icon_config)
             delete_button.pack(side=tk.LEFT)
 
             # Obtener colores del tema actual
@@ -353,7 +379,7 @@ class GroupContentManager:
                             name_lbl.configure(bg=bg_color)
                         for btn in icons_frm.winfo_children():
                             if not hasattr(btn, '_mouse_over') or not btn._mouse_over:
-                                btn.configure(bg=bg_color)
+                                btn.configure(bg=bg_color, fg=theme['fg'])
 
                 return on_enter, on_leave
 
@@ -442,28 +468,37 @@ class GroupContentManager:
         x = self.manager.window_x
         y = self.manager.window_y
 
+        MIN_WIDTH = 300  # Minimum width in pixels
+        MAX_WIDTH = 2000  # Maximum width in pixels
+        CHAR_WIDTH = 5.7   # Estimated average character width in pixels
+        PADDING = 40     # Padding for window borders
+
         if isinstance(item['text'], dict):
             text = item['text'].get('text', '')
-            original_format = item['text'].get('formatted', {})
         else:
             text = str(item['text'])
-            original_format = {}
+
+        max_line_width = max(len(line) for line in text.split('\n'))
+        initial_width = min(max(MIN_WIDTH, (max_line_width * CHAR_WIDTH) + PADDING), MAX_WIDTH)
 
         text_lines = text.count('\n') + 1
         initial_height = min(150 + (text_lines * 20), 600)
 
-        dialog.geometry(f"300x{initial_height}+{x}+{y}")
+        dialog.geometry(f"{int(initial_width)}x{initial_height}+{x}+{y}")
 
-        dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
+        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
+        theme = self.theme_manager.colors[current_theme]
+
+        dialog.configure(bg=theme['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
 
-        title_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
+        title_frame = tk.Frame(dialog, bg=theme['bg'])
         title_frame.pack(fill=tk.X, padx=4, pady=(4, 0))
 
         title_label = tk.Label(title_frame, text="Editar Item", font=('Segoe UI', 10, 'bold'),
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
+                            bg=theme['bg'],
+                            fg=theme['fg'])
         title_label.pack(side=tk.LEFT, padx=0)
 
         def close_edit_dialog():
@@ -478,32 +513,34 @@ class GroupContentManager:
 
         close_button = tk.Button(title_frame, text="❌", command=close_edit_dialog,
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
+                                bg=theme['card_bg'],
+                                fg=theme['button_fg'],
+                                activebackground=theme['hover_bg'],
+                                activeforeground=theme['hover_fg'])
         close_button.pack(side=tk.RIGHT)
-        content_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
+        content_frame = tk.Frame(dialog, bg=theme['bg'])
         content_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=0)
 
         name_label = tk.Label(content_frame, text="Nombre del item:",
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
+                            bg=theme['bg'],
+                            fg=theme['fg'])
         name_label.pack(anchor='w', pady=(0, 5))
 
-        name_entry = tk.Entry(content_frame, bg=self.theme_manager.colors['dark']['button_bg'],
-                            fg=self.theme_manager.colors['dark']['fg'],
-                            insertbackground=self.theme_manager.colors['dark']['fg'],
+        name_entry = tk.Entry(content_frame, bg=theme['button_bg'],
+                            fg=theme['fg'],
+                            insertbackground=theme['fg'],
                             font=('Segoe UI', 10))
         name_entry.insert(0, item.get('name', ''))
         name_entry.pack(fill=tk.X, pady=(0, 5))
 
         text_label = tk.Label(content_frame, text="Texto del item:",
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
+                            bg=theme['bg'],
+                            fg=theme['fg'])
         text_label.pack(anchor='w', pady=(0, 5))
 
-        text_entry = tk.Text(content_frame, height=3, bg=self.theme_manager.colors['dark']['button_bg'],
-                            fg=self.theme_manager.colors['dark']['fg'],
-                            insertbackground=self.theme_manager.colors['dark']['fg'],
+        text_entry = tk.Text(content_frame, height=3, bg=theme['button_bg'],
+                            fg=theme['fg'],
+                            insertbackground=theme['fg'],
                             font=('Segoe UI', 10))
         text_entry.insert(tk.END, text)
         text_entry.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
@@ -529,8 +566,8 @@ class GroupContentManager:
                     self.content_window.focus_force()
 
         save_button = tk.Button(content_frame, text="Guardar", command=save_item,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'],
+                                bg=theme['button_bg'],
+                                fg=theme['button_fg'],
                                 relief=tk.FLAT, bd=0, padx=4, pady=8)
         save_button.pack(fill=tk.X, pady=(0, 5))
 
@@ -549,20 +586,29 @@ class GroupContentManager:
         title_frame.bind('<Button-1>', start_move)
         title_frame.bind('<B1-Motion>', on_move)
 
-        # Función para ajustar dinámicamente la altura de la ventana
-        def adjust_dialog_height(event=None):
-            content = text_entry.get("1.0", tk.END)
-            lines = content.count('\n') + 1
-            new_height = min(150 + (lines * 20), 600)
-            dialog.geometry(f"300x{new_height}")
-
-        text_entry.bind("<KeyRelease>", adjust_dialog_height)
-
         # Agregar vinculación de tecla para el diálogo
         dialog.bind('<Key>', self.manager.key_handler.handle_key_press)
 
         dialog.focus_set()
         name_entry.focus()
+
+        # Función para ajustar dinámicamente la altura de la ventana
+        def adjust_dialog_size(event=None):
+            content = text_entry.get("1.0", tk.END)
+
+            # Calculate height
+            lines = content.count('\n') + 1
+            new_height = min(150 + (lines * 20), 600)
+
+            # Calculate width
+            max_line_width = max(len(line) for line in content.split('\n'))
+            new_width = min(max(MIN_WIDTH, (max_line_width * CHAR_WIDTH) + PADDING), MAX_WIDTH)
+
+            # Update geometry
+            dialog.geometry(f"{new_width}x{new_height+10}")
+
+        # Update the binding to use the new function
+        text_entry.bind("<KeyRelease>", adjust_dialog_size)
 
         def after_dialog_shown():
             dialog.focus_force()
@@ -575,4 +621,4 @@ class GroupContentManager:
         # Dar tiempo a que el diálogo se muestre completamente
         dialog.after(100, after_dialog_shown)
 
-        adjust_dialog_height()
+        adjust_dialog_size()

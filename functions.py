@@ -98,7 +98,7 @@ class Functions:
         def on_leave(event):
             if card_container.winfo_exists():
                 card_container.configure(bg=bg_color)
-                text_frame.configure(bg=bg_color)
+                # text_frame.configure(bg=bg_color)
                 text_label.configure(bg=bg_color)
                 icons_frame.configure(bg=bg_color)
                 for btn in [arrow_button, pin_button, delete_button]:
@@ -458,23 +458,26 @@ class Functions:
 
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-        dialog.configure(bg=self.manager.theme_manager.colors['dark']['bg'])
+        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
+        theme = self.manager.theme_manager.colors[current_theme]
+
+        dialog.configure(bg=theme['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
 
         # Barra de título personalizada
-        title_frame = tk.Frame(dialog, bg=dialog.cget('bg'))
+        title_frame = tk.Frame(dialog, bg=theme['bg'])
         title_frame.pack(fill=tk.X, padx=5, pady=(0, 4))
         title_label = tk.Label(title_frame, text="Seleccionar Grupo", font=('Segoe UI', 10, 'bold'),
-                            bg=dialog.cget('bg'), fg=self.manager.theme_manager.colors['dark']['fg'])
+                            bg=theme['bg'], fg=theme['fg'])
         title_label.pack(side=tk.LEFT, padx=5)
 
         # Configurar efecto hover para el botón de cerrar
         def create_close_button_hover():
             close_button = tk.Button(title_frame, text="❌", command=lambda: self.close_dialog(dialog),
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
-                                bg=self.manager.theme_manager.colors['dark']['button_bg'],
-                                fg=self.manager.theme_manager.colors['dark']['button_fg'])
+                                bg=theme['card_bg'],
+                                fg=theme['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
             def on_enter(e):
@@ -482,7 +485,7 @@ class Functions:
                     'dark' if self.manager.is_dark_mode else 'light']['normal'])
 
             def on_leave(e):
-                close_button.configure(bg=self.manager.theme_manager.colors['dark']['button_bg'])
+                close_button.configure(bg=theme['card_bg'], fg=theme['button_fg'])
 
             close_button.bind('<Enter>', on_enter)
             close_button.bind('<Leave>', on_leave)
@@ -490,26 +493,25 @@ class Functions:
         create_close_button_hover()
 
         # Canvas para scroll y contenedor de grupos
-        canvas = tk.Canvas(dialog, bg=dialog.cget('bg'), bd=0, highlightthickness=0)
+        canvas = tk.Canvas(dialog, bg=theme['bg'], bd=0, highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=0)
         # Scrollbar
         scrollbar = ttk.Scrollbar(dialog, orient=tk.VERTICAL, command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
         # Frame contenedor dentro del canvas para el scroll
-        content_frame = tk.Frame(canvas, bg=dialog.cget('bg'))
+        content_frame = tk.Frame(canvas, bg=theme['bg'])
         canvas_window = canvas.create_window((0, 0), window=content_frame, anchor='nw', width=295)
 
         # Mostrar mensaje cuando no hay grupos
         if not self.manager.group_manager.groups:
             message_frame = tk.Frame(content_frame,
-                                bg=self.manager.theme_manager.colors['dark']['card_bg'])
+                                bg=theme['bg'], fg=theme['fg'])
             message_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=20)
 
             message_label = tk.Label(message_frame,
                                 text='No hay grupos creados.\nCrea un nuevo grupo en la pantalla de grupos.',
                                 font=('Segoe UI', 10),
-                                bg=self.manager.theme_manager.colors['dark']['card_bg'],
-                                fg=self.manager.theme_manager.colors['dark']['fg'],
+                                bg=theme['bg'], fg=theme['fg'],
                                 justify=tk.CENTER)
             message_label.pack(expand=True)
         else:
@@ -517,10 +519,10 @@ class Functions:
             for group_id, group_info in self.manager.group_manager.groups.items():
                 group_button = tk.Button(content_frame, text=group_info['name'],
                                     command=lambda gid=group_id: self.add_to_group(item_id, gid, dialog),
-                                    bg=self.manager.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.manager.theme_manager.colors['dark']['button_fg'],
-                                    activebackground=self.manager.theme_manager.colors['dark']['active_bg'],
-                                    activeforeground=self.manager.theme_manager.colors['dark']['active_fg'],
+                                    bg=theme['card_bg'],
+                                    fg=theme['button_fg'],
+                                    activebackground=theme['hover_bg'],
+                                    activeforeground=theme['hover_fg'],
                                     bd=0, padx=10, pady=5, width=30, anchor='w')
                 group_button.pack(fill=tk.X, pady=2)
 
@@ -531,7 +533,7 @@ class Functions:
                             'dark' if self.manager.is_dark_mode else 'light']['normal'])
 
                     def on_leave(e):
-                        button.configure(bg=self.manager.theme_manager.colors['dark']['button_bg'])
+                        button.configure(bg=theme['card_bg'], fg=theme['button_fg'])
 
                     button.bind('<Enter>', on_enter)
                     button.bind('<Leave>', on_leave)

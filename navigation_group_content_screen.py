@@ -268,41 +268,59 @@ class GroupContentScreenNavigation:
 
     def _highlight_card(self, card: tk.Frame, color: str) -> None:
         """Resalta una tarjeta específica y sus elementos"""
+        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
+        theme = self.manager.theme_manager.colors[current_theme]
+        text_color = theme['fg']  # Color del texto según el tema
         card.configure(bg=color)
         for child in card.winfo_children():
             if isinstance(child, tk.Frame):
                 child.configure(bg=color)
                 for subchild in child.winfo_children():
                     if isinstance(subchild, tk.Label):
-                        subchild.configure(bg=color)
+                        subchild.configure(bg=color, fg=text_color)
                     elif isinstance(subchild, tk.Button):
                         # Solo cambiar el color de los botones si estamos en modo tarjeta
                         if self.state['current_selection']['type'] == GroupContentElement.CONTENT_CARDS.value:
-                            subchild.configure(bg=color)
+                            subchild.configure(bg=color,
+                        fg=text_color,
+                        activebackground=theme['hover_bg'],
+                        activeforeground=theme['hover_fg'])
             elif isinstance(child, tk.Label):
-                child.configure(bg=color)
+                child.configure(bg=color, fg=text_color)
             elif isinstance(child, tk.Button):
                 # Solo cambiar el color de los botones si estamos en modo tarjeta
                 if self.state['current_selection']['type'] == GroupContentElement.CONTENT_CARDS.value:
-                    child.configure(bg=color)
+                    child.configure(bg=color,
+                        fg=text_color,
+                        activebackground=theme['hover_bg'],
+                        activeforeground=theme['hover_fg'])
 
     def _reset_card_colors(self, card: tk.Frame, base_color: str, button_color: str) -> None:
         """Resetea los colores de una tarjeta específica y sus elementos"""
+        current_theme = 'dark' if self.manager.is_dark_mode else 'light'
+        theme = self.manager.theme_manager.colors[current_theme]
+        text_color = theme['fg']  # Color del texto según el tema
         card.configure(bg=base_color)
         for child in card.winfo_children():
             if isinstance(child, tk.Frame):
                 child.configure(bg=base_color)
                 for subchild in child.winfo_children():
                     if isinstance(subchild, tk.Label):
-                        subchild.configure(bg=base_color)
+                        subchild.configure(bg=base_color, fg=text_color)
                     elif isinstance(subchild, tk.Button):
                         if not hasattr(subchild, '_mouse_over') or not subchild._mouse_over:
-                            subchild.configure(bg=button_color)
+                            subchild.configure(bg=button_color,
+                        fg=text_color,
+                        activebackground=theme['hover_bg'],
+                        activeforeground=theme['hover_fg'])
             elif isinstance(child, tk.Label):
-                child.configure(bg=base_color)
+                child.configure(bg=base_color, fg=text_color)
             elif isinstance(child, tk.Button):
                 if not hasattr(child, '_mouse_over') or not child._mouse_over:
-                    child.configure(bg=button_color)
+                    child.configure(bg=button_color,
+                        fg=text_color,
+                        activebackground=theme['hover_bg'],
+                        activeforeground=theme['hover_fg'])
 
     def _activate_top_button(self, index: int) -> None:
         """Activa el botón superior (cerrar)"""

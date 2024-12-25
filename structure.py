@@ -1,5 +1,6 @@
 # structure.py
 
+import os
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -41,6 +42,10 @@ class ClipboardManager:
             'back_key': 'backspace',
             'groups_key': 'g',
             'new_group_key': 'n',
+            'max_items': 20,
+            'restart_key': 'r',
+            'exit_key': 'e',
+            'is_dark_mode': True,
             **settings  # Esto sobreescribirá los valores por defecto si existen en settings
         }
 
@@ -48,6 +53,11 @@ class ClipboardManager:
         self.settings = {**self.default_settings, **settings}
         self.settings_manager = SettingsManager(self.root, self)
         self.settings_manager.initialize_settings()
+
+        if 'restart_key' not in self.settings:
+            self.settings['restart_key'] = 'r'
+        if 'exit_key' not in self.settings:
+            self.settings['exit_key'] = 'e'
 
         self.window_width = settings['width']
         self.window_height = settings['height']
@@ -81,7 +91,8 @@ class ClipboardManager:
         self.current_clipboard = ""
         self.selected_index = None
         self.current_selection = {'type': 'button', 'index': 0}
-        self.is_dark_mode = True
+        self.is_dark_mode = self.settings.get('is_dark_mode', True)
+
 
         self.paste_with_format = False
 
@@ -206,37 +217,33 @@ class ClipboardManager:
         self.close_button = tk.Button(buttons_frame, text="❌", command=lambda: self.key_handler.hide_window(), font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
         self.close_button.pack(side=tk.LEFT)
 
-        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['bg'])
         main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
 
+        # Configurar los botones principales con los colores del tema actual
+        theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
+        button_config = {
+            'font': ('Segoe UI', 10),
+            'bg': theme['button_bg'],
+            'fg': theme['button_fg'],
+            'activebackground': theme['button_bg'],
+            'activeforeground': theme['button_fg'],
+            'relief': tk.FLAT,
+            'bd': 0,
+            'highlightthickness': 1,
+            'pady': 8
+        }
+
         self.button1 = tk.Button(main_buttons_frame, text="Grupos",
-                                 command=self.show_groups, font=('Segoe UI', 10),
-                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8)
+                                command=self.show_groups, **button_config)
         self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
         self.button2 = tk.Button(main_buttons_frame, text="Sin formato",
-                                 command=self.functions.toggle_paste_format, font=('Segoe UI', 10),
-                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8)
+                                command=self.functions.toggle_paste_format, **button_config)
         self.button2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
         self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo",
-                                 command=self.functions.clear_history, font=('Segoe UI', 10),
-                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
-                                 relief=tk.FLAT,
-                                 bd=0,
-                                 highlightthickness=1,
-                                 pady=8)
+                                command=self.functions.clear_history, **button_config)
         self.button3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
@@ -342,10 +349,6 @@ class ClipboardManager:
             self.key_handler.toggle_window
         )
 
-        # Otros atajos globales que quieras añadir
-        # self.key_handler.global_hotkeys.register_hotkey('alt+q', self.functions.exit_app)
-        # etc...
-
     def handle_keyboard_event(self, event):
         """Maneja los eventos de teclado según la pantalla actual"""
         if self.is_visible:
@@ -436,9 +439,7 @@ class ClipboardManager:
         elif len(args) == 2 and isinstance(args[0], str):
             self.canvas.yview_scroll(int(args[1]), args[0])
 
-    def exit_app(self):
-        self.root.quit()
-        sys.exit()
+
 
     def setup_button_bindings(self) -> None:
         """Configura los enlaces de botones para clic y Enter"""
@@ -478,3 +479,13 @@ class ClipboardManager:
             'index': index
         }
         self.navigation.current_strategy.activate_selected()
+
+    def restart_app(self):
+        """Reinicia la aplicación"""
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
+
+    def exit_app(self):
+        """Cierra completamente la aplicación"""
+        self.root.quit()
+        sys.exit()

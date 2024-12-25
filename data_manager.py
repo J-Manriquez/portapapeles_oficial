@@ -16,6 +16,9 @@ class DataManager:
                     'groups_key': 'g',
                     'new_group_key': 'n',
                     'max_items': 20,
+                    'restart_key': 'r',
+                    'exit_key': 'e',
+                    'is_dark_mode': True,
                 }
 
     def save_data(self, groups, pinned_items, settings):
@@ -45,6 +48,9 @@ class DataManager:
             'groups_key': 'g',
             'new_group_key': 'n',
             'max_items': 20,
+            'restart_key': 'r',
+            'exit_key': 'e',
+            'is_dark_mode': True,
         })
 
         # Combinar configuraciones guardadas con valores predeterminados
