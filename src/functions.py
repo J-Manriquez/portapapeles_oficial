@@ -98,7 +98,7 @@ class Functions:
         def on_leave(event):
             if card_container.winfo_exists():
                 card_container.configure(bg=bg_color)
-                # text_frame.configure(bg=bg_color)
+                text_frame.configure(bg=bg_color)
                 text_label.configure(bg=bg_color)
                 icons_frame.configure(bg=bg_color)
                 for btn in [arrow_button, pin_button, delete_button]:

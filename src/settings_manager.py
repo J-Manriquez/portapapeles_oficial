@@ -1,5 +1,5 @@
 # settings_manager.py
-
+from tkinter import filedialog, messagebox
 import json
 import os
 import sys
@@ -230,35 +230,37 @@ class SettingsManager:
 
     def change_file_location(self):
         """Permite al usuario seleccionar una nueva ubicación para el archivo de datos"""
-        from tkinter import filedialog
-        import os
+        try:
+            # Obtener el directorio inicial (el actual del archivo)
+            initial_dir = os.path.dirname(self.clipboard_manager.data_manager.file_path)
 
-        # Obtener el directorio inicial (el actual del archivo)
-        initial_dir = os.path.dirname(self.clipboard_manager.data_manager.file_path)
+            # Abrir diálogo para seleccionar directorio
+            new_directory = filedialog.askdirectory(
+                initialdir=initial_dir,
+                title="Seleccionar ubicación para el archivo de datos"
+            )
 
-        # Abrir diálogo para seleccionar directorio
-        new_directory = filedialog.askdirectory(
-            initialdir=initial_dir,
-            title="Seleccionar ubicación para el archivo de datos"
-        )
+            if new_directory:
+                # Construir la nueva ruta completa
+                new_file_path = os.path.join(new_directory, 'clipboard_data.json')
 
-        if new_directory:
-            # Construir la nueva ruta completa
-            new_file_path = os.path.join(new_directory, 'clipboard_data.json')
+                # Actualizar la ruta en el DataManager
+                self.clipboard_manager.data_manager.update_file_path(new_file_path)
 
-            # Actualizar la ruta en el DataManager
-            self.clipboard_manager.data_manager.file_path = new_file_path
+                # Actualizar la etiqueta en la interfaz
+                self.file_path_var.set(new_file_path)
 
-            # Actualizar la etiqueta en la interfaz
-            self.file_path_var.set(new_file_path)
+                # Guardar los datos en la nueva ubicación
+                groups, pinned_items, settings = self.clipboard_manager.data_manager.load_data()
+                self.clipboard_manager.data_manager.save_data(groups, pinned_items, settings)
 
-            # Guardar los datos en la nueva ubicación
-            groups, pinned_items, settings = self.clipboard_manager.data_manager.load_data()
-            self.clipboard_manager.data_manager.save_data(groups, pinned_items, settings)
-
-            # Actualizar la configuración para que use la nueva ruta la próxima vez
-            self.settings['data_file_path'] = new_file_path
-            self.save_settings()
+                # Reiniciar la aplicación para aplicar los cambios
+                self.restart_app()
+        except Exception as e:
+            messagebox.showerror(
+                "Error",
+                f"No se pudo cambiar la ubicación del archivo:\n{str(e)}"
+            )
 
     def create_setting_card(self, setting_name, default_value):
         current_theme = 'dark' if self.clipboard_manager.is_dark_mode else 'light'

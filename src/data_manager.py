@@ -1,35 +1,87 @@
-
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DataManager:
-    def __init__(self, file_path='clipboard_data.json'):
-        self.file_path = file_path or os.path.join(
-            os.path.expanduser('~'),
-            'clipboard_data.json'
-        )
+    def __init__(self, file_path=None):
+        # Obtener la ruta del directorio AppData
+        appdata_path = os.path.join(os.environ['APPDATA'], 'ClipboardManager')
+
+        # Crear el directorio si no existe
+        if not os.path.exists(appdata_path):
+            try:
+                os.makedirs(appdata_path)
+            except Exception as e:
+                logger.error(f"Error creating directory: {e}")
+
+        # Si no se proporciona una ruta, usar la ruta por defecto en AppData
+        self.file_path = file_path or os.path.join(appdata_path, 'clipboard_data.json')
+
+        # Guardar la ruta en un archivo de configuración
+        self.config_path = os.path.join(appdata_path, 'config.json')
+
+        # Cargar la ruta guardada si existe
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    saved_path = config.get('file_path')
+                    if saved_path and os.path.exists(saved_path):
+                        self.file_path = saved_path
+            except Exception as e:
+                logger.error(f"Error loading config: {e}")
+
         self.default_settings = {
-                    'height': 400,
-                    'width': 295,
-                    'hotkey': 'v',
-                    'back_key': 'backspace',
-                    'groups_key': 'g',
-                    'new_group_key': 'n',
-                    'max_items': 20,
-                    'restart_key': 'r',
-                    'exit_key': 'e',
-                    'is_dark_mode': True,
-                }
+            'height': 400,
+            'width': 295,
+            'hotkey': 'v',
+            'back_key': 'backspace',
+            'groups_key': 'g',
+            'new_group_key': 'n',
+            'max_items': 20,
+            'restart_key': 'r',
+            'exit_key': 'e',
+            'is_dark_mode': True,
+        }
+
+        # Crear el archivo si no existe
+        if not os.path.exists(self.file_path):
+            self.save_data({}, {}, self.default_settings)
 
     def save_data(self, groups, pinned_items, settings):
-        data = {
-            'groups': groups,
-            'pinned_items': self.encode_pinned_items(pinned_items),
-            'settings': settings
-        }
-        with open(self.file_path, 'w') as f:
-            json.dump(data, f, indent=4)
-        print(f"All data saved to {self.file_path}")
+        try:
+            data = {
+                'groups': groups,
+                'pinned_items': self.encode_pinned_items(pinned_items),
+                'settings': settings
+            }
+
+            # Asegurarse de que el directorio existe
+            os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+
+            # Guardar los datos
+            with open(self.file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+
+            # Guardar la ruta en el archivo de configuración
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump({'file_path': self.file_path}, f, indent=4, ensure_ascii=False)
+
+            logger.info(f"Data saved to {self.file_path}")
+        except Exception as e:
+            logger.error(f"Error saving data: {e}")
+
+    def update_file_path(self, new_path):
+        """Actualiza la ruta del archivo y guarda la configuración"""
+        self.file_path = new_path
+        try:
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump({'file_path': self.file_path}, f, indent=4, ensure_ascii=False)
+            logger.info(f"File path updated to {new_path}")
+        except Exception as e:
+            logger.error(f"Error updating file path: {e}")
 
     def load_data(self):
         if not os.path.exists(self.file_path):

@@ -71,7 +71,7 @@ class ClipboardManager:
         self.root.attributes('-topmost', True)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)  # Manejar el cierre de la ventana
 
-
+        # Iniciar minimizado
         self.root.withdraw()
         self.is_visible = False
 
@@ -199,16 +199,19 @@ class ClipboardManager:
         self.main_frame = ttk.Frame(self.root, style='Main.TFrame')
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        current_theme = 'dark' if self.is_dark_mode else 'light'
+        theme = self.theme_manager.colors[current_theme]
+
+        self.title_frame = tk.Frame(self.main_frame, bg=theme['bg'])
         self.title_frame.pack(fill=tk.X, padx=3, pady=(0,6))
 
         self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark']['bg'], fg=self.theme_manager.colors['dark']['fg'])
         self.title_label.pack(side=tk.LEFT, padx=5)
 
-        buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark']['bg'])
+        buttons_frame = tk.Frame(self.title_frame, bg=theme['bg'])
         buttons_frame.pack(side=tk.RIGHT, padx=4)
 
-        self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
+        self.theme_button = tk.Button(buttons_frame, text="🌙", command=lambda: self.theme_manager.toggle_theme(), font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
         self.theme_button.pack(side=tk.LEFT)
 
         self.clear_button = tk.Button(buttons_frame, text="    🖥️", command=self.show_settings, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
@@ -249,7 +252,7 @@ class ClipboardManager:
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+        self.cards_frame = tk.Frame(self.canvas, bg=theme['bg'])
         self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
 
         self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
@@ -449,11 +452,11 @@ class ClipboardManager:
         self.button3.bind('<Button-1>', lambda e: self.activate_button('main_buttons', 2))
 
         # Botones superiores
-        self.theme_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 0))
+        self.theme_button.bind('<Button-1>', lambda e: (self.activate_button('top_buttons', 0), self.theme_manager.toggle_theme()))
         self.clear_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 1))
         self.close_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 2))
 
-         # Obtener colores del tema
+        # Obtener colores del tema
         theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
 
         def create_hover_effect(button):
@@ -471,7 +474,6 @@ class ClipboardManager:
         # Aplicar efectos hover a los botones de la barra de título
         for button in [self.theme_button, self.clear_button, self.close_button]:
             create_hover_effect(button)
-
     def activate_button(self, button_type: str, index: int) -> None:
         """Activa un botón específico"""
         self.navigation.current_strategy.state['current_selection'] = {
@@ -487,5 +489,12 @@ class ClipboardManager:
 
     def exit_app(self):
         """Cierra completamente la aplicación"""
+        # Limpiar antes de salir
+        if hasattr(self, 'tray_icon'):
+            self.tray_icon.stop()
         self.root.quit()
         sys.exit()
+
+
+
+
