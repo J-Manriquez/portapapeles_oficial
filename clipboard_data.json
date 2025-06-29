@@ -58,6 +58,10 @@
                     }
                 }
             ]
+        },
+        "5709e282-75b1-4a43-87b1-698512b5dfa0": {
+            "name": "holi",
+            "items": []
         }
     },
     "pinned_items": {
@@ -107,12 +111,12 @@
         }
     },
     "settings": {
-        "height": 400,
-        "width": 700,
+        "height": 500,
+        "width": 400,
         "hotkey": "z",
         "back_key": "backspace",
         "groups_key": "g",
         "new_group_key": "n",
-        "max_items": 4
+        "max_items": 50
     }
 }

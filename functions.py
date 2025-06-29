@@ -40,11 +40,19 @@ class Functions:
         theme = self.manager.theme_manager.colors['dark' if is_dark else 'light']
         bg_color = theme['card_bg']
 
-        # Usar los mismos colores de highlight que la navegación
-        highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
-            'dark' if is_dark else 'light']['normal']
-        icon_highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
-            'dark' if is_dark else 'light']['icon']
+        # Usar los mismos colores de highlight que la navegación si está disponible
+        if (hasattr(self.manager, 'navigation') and 
+            hasattr(self.manager.navigation, 'current_strategy') and 
+            self.manager.navigation.current_strategy is not None and
+            hasattr(self.manager.navigation.current_strategy, 'state')):
+            highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+                'dark' if is_dark else 'light']['normal']
+            icon_highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
+                'dark' if is_dark else 'light']['icon']
+        else:
+            # Usar colores por defecto del tema
+            highlight_color = theme.get('highlight_bg', theme['button_bg'])
+            icon_highlight_color = theme.get('highlight_fg', theme['button_fg'])
 
         card_container = tk.Frame(self.manager.cards_frame, width=card_width, height=card_height, bg=bg_color)
         card_container.pack(fill=tk.BOTH, padx=2, pady=2)
@@ -87,22 +95,38 @@ class Functions:
 
         # Funciones de hover
         def on_enter(event):
-            if card_container.winfo_exists():
-                card_container.configure(bg=highlight_color)
-                text_frame.configure(bg=highlight_color)
-                text_label.configure(bg=highlight_color)
-                icons_frame.configure(bg=highlight_color)
-                for btn in [arrow_button, pin_button, delete_button]:
-                    btn.configure(bg=highlight_color)
+            try:
+                if card_container.winfo_exists():
+                    card_container.configure(bg=highlight_color)
+                    if text_frame.winfo_exists():
+                        text_frame.configure(bg=highlight_color)
+                    if text_label.winfo_exists():
+                        text_label.configure(bg=highlight_color)
+                    if icons_frame.winfo_exists():
+                        icons_frame.configure(bg=highlight_color)
+                    for btn in [arrow_button, pin_button, delete_button]:
+                        if btn.winfo_exists():
+                            btn.configure(bg=highlight_color)
+            except tk.TclError:
+                # Widget ya no existe, ignorar
+                pass
 
         def on_leave(event):
-            if card_container.winfo_exists():
-                card_container.configure(bg=bg_color)
-                text_frame.configure(bg=bg_color)
-                text_label.configure(bg=bg_color)
-                icons_frame.configure(bg=bg_color)
-                for btn in [arrow_button, pin_button, delete_button]:
-                    btn.configure(bg=bg_color)
+            try:
+                if card_container.winfo_exists():
+                    card_container.configure(bg=bg_color)
+                    if text_frame.winfo_exists():
+                        text_frame.configure(bg=bg_color)
+                    if text_label.winfo_exists():
+                        text_label.configure(bg=bg_color)
+                    if icons_frame.winfo_exists():
+                        icons_frame.configure(bg=bg_color)
+                    for btn in [arrow_button, pin_button, delete_button]:
+                        if btn.winfo_exists():
+                            btn.configure(bg=bg_color)
+            except tk.TclError:
+                # Widget ya no existe, ignorar
+                pass
 
         # Funciones de hover para los iconos individuales
         def on_icon_enter(event, button):
@@ -169,8 +193,11 @@ class Functions:
             print("cards_frame no existe o ha sido destruido")
             return
 
-        # Resetear estados de navegación
-        self.manager.navigation.current_strategy.last_keyboard_selection = None
+        # Resetear estados de navegación si están disponibles
+        if (hasattr(self.manager, 'navigation') and 
+            hasattr(self.manager.navigation, 'current_strategy') and 
+            self.manager.navigation.current_strategy is not None):
+            self.manager.navigation.current_strategy.last_keyboard_selection = None
 
         # Limpiar todas las tarjetas existentes
         for widget in self.manager.cards_frame.winfo_children():
@@ -190,7 +217,11 @@ class Functions:
         # Asegurarse de que el scroll esté en la parte superior después de actualizar
         self.manager.canvas.yview_moveto(0)
 
-        self.manager.navigation.update_highlights()
+        # Actualizar highlights solo si la navegación está inicializada
+        if (hasattr(self.manager, 'navigation') and 
+            hasattr(self.manager.navigation, 'current_strategy') and 
+            self.manager.navigation.current_strategy is not None):
+            self.manager.navigation.update_highlights()
 
     def update_card(self, card, item_data):
         processed_text = process_text(item_data['text'], 3)
@@ -257,7 +288,16 @@ class Functions:
                 clipboard_content = self.get_clipboard_text()
                 if clipboard_content and clipboard_content != self.manager.current_clipboard:
                     self.manager.current_clipboard = clipboard_content
-                    if clipboard_content['text'] not in [item['text'].get('text', '') if isinstance(item['text'], dict) else item['text'] for item in self.manager.clipboard_items.values()]:
+                    # Verificar si el texto ya existe en los elementos guardados
+                    text_to_check = clipboard_content['text']
+                    existing_texts = []
+                    for item in self.manager.clipboard_items.values():
+                        if isinstance(item['text'], dict):
+                            existing_texts.append(item['text'].get('text', ''))
+                        else:
+                            existing_texts.append(str(item['text']))
+                    
+                    if text_to_check not in existing_texts:
                         new_id = str(uuid.uuid4())
                         new_item = {
                             'text': clipboard_content,
@@ -292,8 +332,141 @@ class Functions:
             else:
                 break  # Si no hay items sin fijar, salir del bucle
 
-        self.refresh_cards()
+        # Usar inserción eficiente en lugar de refresh completo
+        self.insert_new_card_efficiently(new_id, new_item)
         self.manager.group_manager.save_groups()
+
+    def insert_new_card_efficiently(self, new_id, new_item):
+        """Inserta una nueva card de manera eficiente sin recargar todas las cards"""
+        try:
+            # Verificar que cards_frame existe
+            if not hasattr(self.manager, 'cards_frame') or self.manager.cards_frame is None:
+                # Si no existe cards_frame, usar refresh_cards como fallback
+                self.refresh_cards()
+                return
+
+            # Verificar que navigation está inicializado
+            if (not hasattr(self.manager, 'navigation') or 
+                self.manager.navigation is None or 
+                not hasattr(self.manager.navigation, 'current_strategy') or 
+                self.manager.navigation.current_strategy is None):
+                # Si navigation no está inicializado, usar refresh_cards como fallback
+                self.refresh_cards()
+                return
+
+            # Crear la nueva card en la parte superior
+            card_frame = self.create_card(new_id, new_item, 0)
+            
+            # Mover la nueva card al principio de la lista
+            card_frame.pack_forget()
+            card_frame.pack(fill=tk.BOTH, padx=2, pady=2, before=self.manager.cards_frame.winfo_children()[0] if self.manager.cards_frame.winfo_children() else None)
+            
+            # Aplicar efecto de entrada suave
+            self.apply_smooth_entry_effect(card_frame)
+            
+            # Actualizar la región de scroll
+            self.manager.root.after(50, self.update_scroll_region)
+            
+            # Actualizar highlights si navigation está disponible
+            if (hasattr(self.manager, 'navigation') and 
+                self.manager.navigation and 
+                hasattr(self.manager.navigation, 'current_strategy') and 
+                self.manager.navigation.current_strategy):
+                self.manager.root.after(100, self.manager.navigation.update_highlights)
+                
+        except Exception as e:
+            print(f"Error en insert_new_card_efficiently: {e}")
+            # En caso de error, usar refresh_cards como fallback
+            self.refresh_cards()
+
+    def apply_smooth_entry_effect(self, card_frame):
+        """Aplica un efecto suave de entrada a una nueva card"""
+        try:
+            # Efecto de fade-in y scale suave
+            original_bg = card_frame.cget('bg')
+            
+            # Iniciar con transparencia simulada (color más claro)
+            light_bg = self.lighten_color(original_bg, 0.3)
+            card_frame.configure(bg=light_bg)
+            
+            # Animar hacia el color original
+            steps = 10
+            
+            def animate_fade(step):
+                if step < steps:
+                    # Interpolar entre el color claro y el original
+                    alpha = step / steps
+                    interpolated_color = self.interpolate_color(light_bg, original_bg, alpha)
+                    try:
+                        card_frame.configure(bg=interpolated_color)
+                        # También aplicar a los elementos hijos
+                        for child in card_frame.winfo_children():
+                            if hasattr(child, 'configure'):
+                                child.configure(bg=interpolated_color)
+                    except tk.TclError:
+                        pass
+                    self.manager.root.after(30, lambda: animate_fade(step + 1))
+                else:
+                    try:
+                        card_frame.configure(bg=original_bg)
+                        # Restaurar colores originales de los hijos
+                        for child in card_frame.winfo_children():
+                            if hasattr(child, 'configure'):
+                                child.configure(bg=original_bg)
+                    except tk.TclError:
+                        pass
+                        
+            animate_fade(0)
+        except Exception as e:
+            print(f"Error en apply_smooth_entry_effect: {e}")
+
+    def lighten_color(self, color, factor):
+        """Aclara un color por un factor dado"""
+        try:
+            # Convertir color hex a RGB
+            if color.startswith('#'):
+                color = color[1:]
+            r = int(color[0:2], 16)
+            g = int(color[2:4], 16)
+            b = int(color[4:6], 16)
+            
+            # Aclarar cada componente
+            r = min(255, int(r + (255 - r) * factor))
+            g = min(255, int(g + (255 - g) * factor))
+            b = min(255, int(b + (255 - b) * factor))
+            
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except:
+            return color  # Retornar color original si hay error
+
+    def interpolate_color(self, color1, color2, alpha):
+        """Interpola entre dos colores"""
+        try:
+            # Convertir colores hex a RGB
+            def hex_to_rgb(color):
+                if color.startswith('#'):
+                    color = color[1:]
+                return tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+            
+            rgb1 = hex_to_rgb(color1)
+            rgb2 = hex_to_rgb(color2)
+            
+            # Interpolar cada componente
+            r = int(rgb1[0] + (rgb2[0] - rgb1[0]) * alpha)
+            g = int(rgb1[1] + (rgb2[1] - rgb1[1]) * alpha)
+            b = int(rgb1[2] + (rgb2[2] - rgb1[2]) * alpha)
+            
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except:
+            return color2  # Retornar color final si hay error
+
+    def update_scroll_region(self):
+        """Actualiza la región de scroll después de añadir una nueva card"""
+        try:
+            if hasattr(self.manager, 'canvas') and self.manager.canvas:
+                self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
+        except Exception as e:
+            print(f"Error en update_scroll_region: {e}")
 
     # @measure_time
     def get_clipboard_text(self):
@@ -320,13 +493,17 @@ class Functions:
 
             win32clipboard.CloseClipboard()
 
-            if text:
+            if text and text.strip():  # Verificar que el texto no esté vacío
                 if format_info:
                     return {'text': text, 'formatted': format_info}
                 else:
-                    return text  # Retorna solo el texto si no hay información de formato
+                    return {'text': text, 'formatted': {}}  # Siempre retornar formato consistente
             return None
         except Exception as e:
+            try:
+                win32clipboard.CloseClipboard()
+            except:
+                pass  # Ignorar errores al cerrar si ya está cerrado
             print(f"Error al obtener texto del portapapeles: {e}")
             return None
 

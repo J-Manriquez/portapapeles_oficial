@@ -5,6 +5,7 @@ from navigation_group_content_screen import GroupContentScreenNavigation
 from navigation_main_screen import MainScreenNavigation
 from navigation_groups_screen import GroupsScreenNavigation
 from navigation_select_group_screen import SelectGroupScreenNavigation
+from navigation_settings_screen import SettingsScreenNavigation
 
 logger = logging.getLogger(__name__)
 
@@ -21,33 +22,28 @@ class Navigation:
     def __init__(self, manager):
         self.manager = manager
         self.strategies = {}
-        self._initialize_strategies()
         self.current_strategy = None
-        self.navigation_state = {"enabled": True}
-
-        self.strategies: Dict[ScreenType, Any] = {
-            ScreenType.MAIN: MainScreenNavigation(manager),
-            ScreenType.GROUPS: GroupsScreenNavigation(manager),
-            ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(manager),
-            ScreenType.GROUP_CONTENT: GroupContentScreenNavigation(manager),
-        }
-        self.current_strategy = self.strategies[ScreenType.MAIN]
         self.current_screen = ScreenType.MAIN
+        self.navigation_state = {"enabled": True}
         # logger.debug("Navigation initialized")
-
-    def _initialize_strategies(self):
-        """Inicializa las estrategias de navegación con manejo de errores"""
+        
+    def initialize_strategies(self):
+        """Inicializa las estrategias después de que la GUI esté lista"""
         try:
             self.strategies = {
                 ScreenType.MAIN: MainScreenNavigation(self.manager),
                 ScreenType.GROUPS: GroupsScreenNavigation(self.manager),
                 ScreenType.SELECT_GROUP: SelectGroupScreenNavigation(self.manager),
                 ScreenType.GROUP_CONTENT: GroupContentScreenNavigation(self.manager),
+                ScreenType.SETTINGS: SettingsScreenNavigation(self.manager),
             }
-            self.set_strategy("main")
+            self.current_strategy = self.strategies[ScreenType.MAIN]
+            logger.debug("Navigation strategies initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing navigation strategies: {e}")
             raise
+
+
 
     def clean_current_strategy(self):
         """Limpia el estado de la estrategia actual antes de cambiar"""
@@ -57,29 +53,37 @@ class Navigation:
             self.current_strategy = None
 
     def set_strategy(self, screen_type: str) -> None:
+        """Establece la estrategia de navegación para la pantalla especificada"""
         try:
-            self.clean_current_strategy()  # Limpiar estrategia actual
+            # Verificar que las estrategias estén inicializadas
+            if not hasattr(self, 'strategies') or not self.strategies:
+                logger.error("Navigation strategies not initialized")
+                return
+                
+            # Limpiar estrategia actual
+            self.clean_current_strategy()
 
+            # Mapear string a enum
             screen_mapping = {
-                "main": ScreenType.MAIN,
-                "groups": ScreenType.GROUPS,
-                "select_group": ScreenType.SELECT_GROUP,
-                "settings": ScreenType.SETTINGS,
-                "group_content": ScreenType.GROUP_CONTENT,
+                'main': ScreenType.MAIN,
+                'groups': ScreenType.GROUPS,
+                'select_group': ScreenType.SELECT_GROUP,
+                'group_content': ScreenType.GROUP_CONTENT,
+                'settings': ScreenType.SETTINGS
             }
 
-            if screen_type not in screen_mapping:
-                raise ValueError(f"Invalid screen type: {screen_type}")
-
-            screen_enum = screen_mapping[screen_type]
-            if screen_enum in self.strategies:
-                self.current_screen = screen_enum
+            screen_enum = screen_mapping.get(screen_type.lower())
+            if screen_enum and screen_enum in self.strategies:
                 self.current_strategy = self.strategies[screen_enum]
+                self.current_screen = screen_enum
+
                 self._configure_screen_navigation(screen_enum)
 
                 # Asegurar que se actualice el foco y los highlights
-                self.current_strategy.initialize_focus()
-                self.current_strategy.update_highlights()
+                if self.current_strategy and hasattr(self.current_strategy, 'initialize_focus'):
+                    self.current_strategy.initialize_focus()
+                if self.current_strategy and hasattr(self.current_strategy, 'update_highlights'):
+                    self.current_strategy.update_highlights()
 
                 # logger.debug(f"Navigation strategy set to: {screen_type}")
             else:
@@ -91,9 +95,21 @@ class Navigation:
     def _fallback_to_main_strategy(self):
         """Sistema de recuperación para casos de error"""
         try:
+            # Evitar recursión infinita
+            if not hasattr(self, 'strategies') or not self.strategies:
+                logger.critical("Navigation strategies not initialized, cannot fallback")
+                return
+                
+            if ScreenType.MAIN not in self.strategies:
+                logger.critical("Main strategy not available for fallback")
+                return
+                
             logger.warning("Falling back to main navigation strategy")
-            self.current_strategy = self.strategies["main"]
-            self.manager.show_main_screen()
+            self.current_strategy = self.strategies[ScreenType.MAIN]
+            self.current_screen = ScreenType.MAIN
+            
+            if hasattr(self.manager, 'show_main_screen'):
+                self.manager.show_main_screen()
         except Exception as e:
             logger.critical(f"Critical error in navigation fallback: {e}")
 

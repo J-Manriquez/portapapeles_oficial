@@ -120,9 +120,12 @@ class ClipboardManager:
 
         self.create_gui()
         self.setup_button_bindings()
-        self.load_saved_data()
-
+        
+        # Inicializar navigation antes de cargar datos
         self.navigation = Navigation(self)
+        self.navigation.initialize_strategies()
+        
+        self.load_saved_data()
 
         self.theme_manager.apply_theme()
 
