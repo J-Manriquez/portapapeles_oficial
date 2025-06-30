@@ -61,8 +61,10 @@ class MainScreenKeyConfig(ScreenKeyConfig):
         event = type('Event', (), {'keysym': direction.capitalize()})()
 
         # Actualizar el estado de selección en el manager
-        current_selection = self.manager.navigation.current_strategy.state['current_selection']
-        self.manager.current_selection = current_selection
+        nav = self.manager.navigation.current_strategy
+        if nav and hasattr(nav, 'state') and 'current_selection' in nav.state:
+            current_selection = nav.state['current_selection']
+            self.manager.current_selection = current_selection
 
         if direction in ['up', 'down']:
             self.manager.navigation.navigate_vertical(event)

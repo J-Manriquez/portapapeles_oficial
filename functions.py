@@ -164,19 +164,25 @@ class Functions:
 
     def activate_card(self, index: int) -> None:
         """Activa una tarjeta específica"""
-        self.manager.navigation.current_strategy.state['current_selection'] = {
-            'type': 'cards',
-            'index': index
-        }
-        self.manager.navigation.current_strategy.activate_selected()
+        nav = self.manager.navigation.current_strategy
+        if nav and hasattr(nav, 'state'):
+            nav.state['current_selection'] = {
+                'type': 'cards',
+                'index': index
+            }
+            if hasattr(nav, 'activate_selected'):
+                nav.activate_selected()
 
     def activate_card_icon(self, card_index: int, icon_index: int) -> None:
         """Activa un icono específico de una tarjeta"""
-        self.manager.navigation.current_strategy.state['current_selection'] = {
-            'type': 'icons',
-            'index': card_index * 3 + icon_index
-        }
-        self.manager.navigation.current_strategy.activate_selected()
+        nav = self.manager.navigation.current_strategy
+        if nav and hasattr(nav, 'state'):
+            nav.state['current_selection'] = {
+                'type': 'icons',
+                'index': card_index * 3 + icon_index
+            }
+            if hasattr(nav, 'activate_selected'):
+                nav.activate_selected()
 
     def calculate_card_height(self, text_data):
         if isinstance(text_data, dict):
@@ -655,8 +661,13 @@ class Functions:
             close_button.pack(side=tk.RIGHT)
 
             def on_enter(e):
-                close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
-                    'dark' if self.manager.is_dark_mode else 'light']['normal'])
+                nav = self.manager.navigation.current_strategy
+                if nav and hasattr(nav, 'state') and 'highlight_colors' in nav.state:
+                    close_button.configure(bg=nav.state['highlight_colors'][
+                        'dark' if self.manager.is_dark_mode else 'light']['normal'])
+                else:
+                    # Fallback color
+                    close_button.configure(bg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['hover_bg'])
 
             def on_leave(e):
                 close_button.configure(bg=self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['button_bg'])

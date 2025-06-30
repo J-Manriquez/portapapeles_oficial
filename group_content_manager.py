@@ -105,18 +105,23 @@ class GroupContentManager:
             # Configurar efecto hover para el botón de cerrar
             def on_close_button_enter(event):
                 nav = self.manager.navigation.current_strategy
-                if nav.last_keyboard_selection is None:
+                if nav and nav.last_keyboard_selection is None:
                     close_button._mouse_over = True
-                    close_button.configure(bg=self.manager.navigation.current_strategy.state['highlight_colors'][
-                        'dark' if self.manager.is_dark_mode else 'light']['normal'])
-                else:
+                    if hasattr(nav, 'state') and 'highlight_colors' in nav.state:
+                        close_button.configure(bg=nav.state['highlight_colors'][
+                            'dark' if self.manager.is_dark_mode else 'light']['normal'])
+                    else:
+                        # Fallback color
+                        close_button.configure(bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['hover_bg'])
+                elif nav:
                     nav.last_keyboard_selection = None
-                    nav._clear_all_highlights()
+                    if hasattr(nav, '_clear_all_highlights'):
+                        nav._clear_all_highlights()
 
             def on_close_button_leave(event):
                 close_button._mouse_over = False
                 nav = self.manager.navigation.current_strategy
-                if nav.last_keyboard_selection is None and not close_button._is_highlighted:
+                if nav and nav.last_keyboard_selection is None and not close_button._is_highlighted:
                     close_button.configure(bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['button_bg'])
 
             close_button.bind('<Enter>', on_close_button_enter)
@@ -205,7 +210,7 @@ class GroupContentManager:
         # Asegurarse de que el foco y la navegación estén correctamente configurados
         self.content_window.after(200, lambda: self.manager.navigation.current_strategy.initialize_focus())
 
-        logger.debug(f"Grupo content window shown for group {group_id}")
+        # logger.debug(f"Grupo content window shown for group {group_id}")
 
     def _initialize_content_view(self):
         """Inicializa la vista de contenido después de mostrar la ventana"""
@@ -318,10 +323,14 @@ class GroupContentManager:
             bg_color = theme['card_bg']
 
             # Usar los mismos colores de highlight que la navegación
-            highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
-                'dark' if is_dark else 'light']['normal']
-            icon_highlight_color = self.manager.navigation.current_strategy.state['highlight_colors'][
-                'dark' if is_dark else 'light']['icon']
+            nav = self.manager.navigation.current_strategy
+            if nav and hasattr(nav, 'state') and 'highlight_colors' in nav.state:
+                highlight_color = nav.state['highlight_colors']['dark' if is_dark else 'light']['normal']
+                icon_highlight_color = nav.state['highlight_colors']['dark' if is_dark else 'light']['icon']
+            else:
+                # Colores de respaldo
+                highlight_color = theme['card_bg']
+                icon_highlight_color = theme['card_bg']
 
             # Modificar las funciones de hover
             def create_hover_handlers(card, text_frm, text_lbl, icons_frm, name_lbl=None):

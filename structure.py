@@ -477,8 +477,10 @@ class ClipboardManager:
 
     def activate_button(self, button_type: str, index: int) -> None:
         """Activa un botón específico"""
-        self.navigation.current_strategy.state['current_selection'] = {
-            'type': button_type,
-            'index': index
-        }
-        self.navigation.current_strategy.activate_selected()
+        nav = self.navigation.current_strategy
+        if nav and hasattr(nav, 'state') and hasattr(nav, 'activate_selected'):
+            nav.state['current_selection'] = {
+                'type': button_type,
+                'index': index
+            }
+            nav.activate_selected()

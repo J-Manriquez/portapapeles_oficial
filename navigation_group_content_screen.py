@@ -54,7 +54,7 @@ class GroupContentScreenNavigation:
         self.navigation_state['enabled'] = True
         self.update_highlights()
         self.ensure_visible()
-        logger.debug(f"Group content focus initialized: {self.state['current_selection']}")
+        # logger.debug(f"Group content focus initialized: {self.state['current_selection']}")
 
     def navigate_vertical(self, event) -> None:
         direction = 1 if event.keysym == 'Down' else -1
@@ -132,13 +132,13 @@ class GroupContentScreenNavigation:
         elif current_type == GroupContentElement.ICONS.value:
             self._activate_icon(current_index)
 
-        logger.debug(f"Activated {current_type} at index {current_index}")
+        # logger.debug(f"Activated {current_type} at index {current_index}")
 
     def update_highlights(self) -> None:
         """Actualiza los destacados visuales"""
         self._clear_all_highlights()
         self._highlight_current_selection()
-        logger.debug("Highlights updated")
+        # logger.debug("Highlights updated")
 
     def _clear_all_highlights(self) -> None:
         """Limpia todos los destacados visuales"""

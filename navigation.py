@@ -38,7 +38,7 @@ class Navigation:
                 ScreenType.SETTINGS: SettingsScreenNavigation(self.manager),
             }
             self.current_strategy = self.strategies[ScreenType.MAIN]
-            logger.debug("Navigation strategies initialized successfully")
+            # logger.debug("Navigation strategies initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing navigation strategies: {e}")
             raise
@@ -198,12 +198,14 @@ class Navigation:
     def activate_selected(self, event=None) -> None:
         """Activa el elemento seleccionado actualmente"""
         # logger.debug("Activating selected item")
-        self.current_strategy.activate_selected(event)
+        if self.current_strategy and hasattr(self.current_strategy, 'activate_selected'):
+            self.current_strategy.activate_selected(event)
 
     def update_highlights(self) -> None:
         """Actualiza los destacados visuales"""
         # logger.debug("Updating highlights")
-        self.current_strategy.update_highlights()
+        if self.current_strategy and hasattr(self.current_strategy, 'update_highlights'):
+            self.current_strategy.update_highlights()
 
     def initialize_focus(self) -> None:
         """Inicializa el foco en la pantalla actual"""

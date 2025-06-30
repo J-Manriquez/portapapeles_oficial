@@ -1,10 +1,11 @@
 import logging
 from typing import Optional, Callable, Dict
 from enum import Enum
+from navigation_strategies import NavigationStrategy
 
 logger = logging.getLogger(__name__)
 
-class SettingsScreenNavigation:
+class SettingsScreenNavigation(NavigationStrategy):
     """Clase de navegación para la pantalla de configuración"""
     
     def __init__(self, manager):
@@ -43,7 +44,7 @@ class SettingsScreenNavigation:
         except Exception as e:
             logger.error(f"Error in settings horizontal navigation: {e}")
     
-    def activate_selected(self):
+    def activate_selected(self, event=None):
         """Activa el elemento seleccionado en settings"""
         try:
             # Implementar activación si es necesario
