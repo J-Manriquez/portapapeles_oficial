@@ -50,45 +50,45 @@ class GroupManager:
             self.groups_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
             self.groups_window.overrideredirect(True)
-            self.groups_window.configure(bg=self.theme_manager.colors['dark']['bg'])
+            self.groups_window.configure(bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'])
             self.groups_window.attributes('-topmost', True)
             self.master.bind("<Destroy>", self.on_main_window_close)
 
             # Barra de título personalizada
-            title_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark']['bg'])
+            title_frame = tk.Frame(self.groups_window, bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'])
             title_frame.pack(fill=tk.X, padx=2, pady=(0, 0))
 
             title_label = tk.Label(title_frame, text="Grupos", font=('Segoe UI', 10, 'bold'),
-                                bg=self.theme_manager.colors['dark']['bg'],
-                                fg=self.theme_manager.colors['dark']['fg'])
+                                bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'],
+                            fg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['fg'])
             title_label.pack(side=tk.LEFT, padx=5)
 
             # Botones en la barra de título
-            buttons_frame = tk.Frame(title_frame, bg=self.theme_manager.colors['dark']['bg'])
+            buttons_frame = tk.Frame(title_frame, bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'])
             buttons_frame.pack(side=tk.RIGHT, padx=4)
 
             self.add_button = tk.Button(buttons_frame, text="➕", command=self.add_group,
                                 font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
+                                bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['button_bg'],
+                                fg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['button_fg'])
             self.add_button.pack(side=tk.LEFT)
 
             self.close_button = tk.Button(buttons_frame, text="❌", command=self.close_groups_window,
                                     font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
-                                    bg=self.theme_manager.colors['dark']['button_bg'],
-                                    fg=self.theme_manager.colors['dark']['button_fg'])
+                                    bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['button_bg'],
+                                fg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['button_fg'])
             self.close_button.pack(side=tk.LEFT)
 
             # Configurar efectos hover para los botones de la barra de título
             def create_hover_effect(button):
                 highlight_color = self.clipboard_manager.navigation.current_strategy.state['highlight_colors'][
-                    'dark' if self.clipboard_manager.is_dark_mode else 'light']['normal']
+                    'dark' if self.theme_manager.is_dark_mode else 'light']['normal']
 
                 def on_enter(e):
                     button.configure(bg=highlight_color)
 
                 def on_leave(e):
-                    button.configure(bg=self.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['button_bg'])
+                    button.configure(bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['button_bg'])
 
                 button.bind('<Enter>', on_enter)
                 button.bind('<Leave>', on_leave)
@@ -98,7 +98,7 @@ class GroupManager:
             create_hover_effect(self.close_button)
 
             # Canvas para scroll y contenedor de grupos
-            self.canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
+            self.canvas = tk.Canvas(self.groups_window, bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'], bd=0, highlightthickness=0)
             self.canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
             # Scrollbar
@@ -106,21 +106,21 @@ class GroupManager:
             self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
             # Frame contenedor dentro del canvas para el scroll
-            self.groups_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+            self.groups_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'])
             canvas_window = self.canvas.create_window((0, 0), window=self.groups_frame, anchor='nw')
 
             # Si no hay grupos, mostrar mensaje
             if not self.groups:
                 # Crear el mensaje cuando no hay grupos
                 message_frame = tk.Frame(self.groups_frame,
-                                    bg=self.theme_manager.colors['dark']['bg'])
+                                    bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'])
                 message_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=20)
 
                 message_label = tk.Label(message_frame,
                                     text='No hay grupos creados.\nCrea un nuevo grupo dando click en "+"',
                                     font=('Segoe UI', 10),
-                                    bg=self.theme_manager.colors['dark']['bg'],
-                                    fg=self.theme_manager.colors['dark']['fg'],
+                                    bg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['bg'],
+                            fg=self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']['fg'],
                                     justify=tk.CENTER)
                 message_label.pack(expand=True)
 
@@ -208,21 +208,22 @@ class GroupManager:
 
         # Si no hay grupos, mostrar el mensaje
         if not self.groups:
+            current_theme = self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']
             message_frame = tk.Frame(self.groups_frame,
-                                bg=self.theme_manager.colors['dark']['card_bg'])
+                                bg=current_theme['card_bg'])
             message_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=20)
 
             message_label = tk.Label(message_frame,
                                 text='No hay grupos creados.\nCrea un nuevo grupo dando click en "+"',
                                 font=('Segoe UI', 10),
-                                bg=self.theme_manager.colors['dark']['card_bg'],
-                                fg=self.theme_manager.colors['dark']['fg'],
+                                bg=current_theme['card_bg'],
+                                fg=current_theme['fg'],
                                 justify=tk.CENTER)
             message_label.pack(expand=True)
             return
 
         # Obtener colores del tema actual
-        is_dark = self.clipboard_manager.is_dark_mode
+        is_dark = self.theme_manager.is_dark_mode
         theme = self.theme_manager.colors['dark' if is_dark else 'light']
         bg_color = theme['card_bg']
 
@@ -436,7 +437,9 @@ class GroupManager:
 
         dialog.geometry(f"200x114+{x}+{y}")
 
-        dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
+        # Obtener colores del tema actual
+        current_theme = self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']
+        dialog.configure(bg=current_theme['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
 
@@ -495,11 +498,14 @@ class GroupManager:
                 self.show_groups_window()
                 self.refresh_groups()
 
+        # Obtener colores del tema actual
+        current_theme = self.theme_manager.colors['dark' if self.theme_manager.is_dark_mode else 'light']
+        
         save_button = tk.Button(content_frame, text="Guardar", command=save_group,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'],
-                                activebackground=self.theme_manager.colors['dark'].get('active_bg', '#4E4E4E'),
-                                activeforeground=self.theme_manager.colors['dark'].get('active_fg', '#FFFFFF'),
+                                bg=current_theme['button_bg'],
+                                fg=current_theme['button_fg'],
+                                activebackground=current_theme.get('active_bg', '#4E4E4E'),
+                                activeforeground=current_theme.get('active_fg', '#FFFFFF'),
                                 relief=tk.FLAT, bd=0, padx=4, pady=6)
         save_button.pack(fill=tk.X, pady=(0, 0))
 

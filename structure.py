@@ -191,13 +191,13 @@ class ClipboardManager:
         self.main_frame = ttk.Frame(self.root, style='Main.TFrame')
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        self.title_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['bg'])
         self.title_frame.pack(fill=tk.X, padx=3, pady=(0,6))
 
-        self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark']['bg'], fg=self.theme_manager.colors['dark']['fg'])
+        self.title_label = tk.Label(self.title_frame, text="Portapapeles", font=('Segoe UI', 10, 'bold'), bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['bg'], fg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['fg'])
         self.title_label.pack(side=tk.LEFT, padx=5)
 
-        buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark']['bg'])
+        buttons_frame = tk.Frame(self.title_frame, bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['bg'])
         buttons_frame.pack(side=tk.RIGHT, padx=4)
 
         self.theme_button = tk.Button(buttons_frame, text="🌙", command=self.theme_manager.toggle_theme, font=('Segoe UI', 10), bd=0, padx=10, width=5, height=2)
@@ -209,13 +209,13 @@ class ClipboardManager:
         self.close_button = tk.Button(buttons_frame, text="❌", command=lambda: self.key_handler.hide_window(), font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2)
         self.close_button.pack(side=tk.LEFT)
 
-        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark']['bg'])
+        main_buttons_frame = tk.Frame(self.main_frame, bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['bg'])
         main_buttons_frame.pack(fill=tk.X, padx=6, pady=0)
 
         self.button1 = tk.Button(main_buttons_frame, text="Grupos",
                                  command=self.show_groups, font=('Segoe UI', 10),
-                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_bg'],
+                            fg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_fg'],
                                  relief=tk.FLAT,
                                  bd=0,
                                  highlightthickness=1,
@@ -224,8 +224,8 @@ class ClipboardManager:
 
         self.button2 = tk.Button(main_buttons_frame, text="Sin formato",
                                  command=self.functions.toggle_paste_format, font=('Segoe UI', 10),
-                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_bg'],
+                            fg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_fg'],
                                  relief=tk.FLAT,
                                  bd=0,
                                  highlightthickness=1,
@@ -234,8 +234,8 @@ class ClipboardManager:
 
         self.button3 = tk.Button(main_buttons_frame, text="Borrar Todo",
                                  command=self.functions.clear_history, font=('Segoe UI', 10),
-                                 bg=self.theme_manager.colors['dark']['button_bg'],
-                                 fg=self.theme_manager.colors['dark']['button_fg'],
+                                 bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_bg'],
+                            fg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_fg'],
                                  relief=tk.FLAT,
                                  bd=0,
                                  highlightthickness=1,
@@ -245,7 +245,7 @@ class ClipboardManager:
         self.canvas = tk.Canvas(self.main_frame, bd=0, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark']['bg'])
+        self.cards_frame = tk.Frame(self.canvas, bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['bg'])
         self.canvas_window = self.canvas.create_window((0, 0), window=self.cards_frame, anchor='nw')
 
         self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.canvas.yview)
@@ -455,14 +455,15 @@ class ClipboardManager:
         self.clear_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 1))
         self.close_button.bind('<Button-1>', lambda e: self.activate_button('top_buttons', 2))
 
-         # Obtener colores del tema
-        theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
-
         def create_hover_effect(button):
             def on_enter(e):
-                button.configure(bg=theme['active_bg'], fg=theme['active_fg'])
+                # Obtener colores del tema actual dinámicamente
+                current_theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
+                button.configure(bg=current_theme['active_bg'], fg=current_theme['active_fg'])
             def on_leave(e):
-                button.configure(bg=theme['button_bg'], fg=theme['button_fg'])
+                # Obtener colores del tema actual dinámicamente
+                current_theme = self.theme_manager.colors['dark' if self.is_dark_mode else 'light']
+                button.configure(bg=current_theme['button_bg'], fg=current_theme['button_fg'])
             button.bind('<Enter>', on_enter)
             button.bind('<Leave>', on_leave)
 

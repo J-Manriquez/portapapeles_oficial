@@ -61,7 +61,20 @@
         },
         "5709e282-75b1-4a43-87b1-698512b5dfa0": {
             "name": "holi",
-            "items": []
+            "items": [
+                {
+                    "id": "4d668d53-a598-4e2a-96cb-08f22249639e",
+                    "text": {
+                        "text": "lif isinstance(subchild, tk.Button):\r\n                        subchild.configure(bg=base_color)  # Los iconos de las cards usan el color base\r\n            elif isinstance(child, tk.Label):",
+                        "formatted": {
+                            "html": true,
+                            "font": "'JetBrains Mono', Consolas, 'Courier New', monospace",
+                            "bold": false,
+                            "italic": false
+                        }
+                    }
+                }
+            ]
         }
     },
     "pinned_items": {

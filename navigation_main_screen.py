@@ -126,8 +126,14 @@ class MainScreenNavigation:
         return {
             'current_selection': {'type': 'main_buttons', 'index': 0},
             'highlight_colors': {
-                'dark': {'normal': '#444444', 'icon': '#666666'},
-                'light': {'normal': '#cccccc', 'icon': '#aaaaaa'}
+                'dark': {
+                    'normal': self.manager.theme_manager.colors['dark']['hover_bg'], 
+                    'icon': self.manager.theme_manager.colors['dark']['icon_hover_bg']
+                },
+                'light': {
+                    'normal': self.manager.theme_manager.colors['light']['hover_bg'], 
+                    'icon': self.manager.theme_manager.colors['light']['icon_hover_bg']
+                }
             }
         }
 
@@ -532,6 +538,7 @@ class MainScreenNavigation:
         theme = self.manager.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
         base_color = theme['card_bg']
         button_color = theme['button_bg']
+        main_button_color = theme['main_button_bg']
 
         # Limpiar botones superiores
         top_buttons = [
@@ -549,7 +556,7 @@ class MainScreenNavigation:
             self.manager.button3
         ]
         for button in main_buttons:
-            button.configure(bg=button_color)
+            button.configure(bg=main_button_color)
 
         # Limpiar tarjetas y sus iconos
         for card in self.manager.cards_frame.winfo_children():
@@ -565,11 +572,11 @@ class MainScreenNavigation:
                     if isinstance(subchild, tk.Label):
                         subchild.configure(bg=base_color)
                     elif isinstance(subchild, tk.Button):
-                        subchild.configure(bg=button_color)
+                        subchild.configure(bg=base_color)  # Los iconos de las cards usan el color base
             elif isinstance(child, tk.Label):
                 child.configure(bg=base_color)
             elif isinstance(child, tk.Button):
-                child.configure(bg=button_color)
+                child.configure(bg=base_color)  # Los iconos de las cards usan el color base
 
 
 

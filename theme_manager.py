@@ -8,28 +8,38 @@ class ThemeManager:
         self.manager = manager
         self.colors = {
             'dark': {
-                'bg': '#1e1e1e',
-                'fg': '#ffffff',
-                'button_bg': '#333333',
+                # 4 tonos de negro frío para tema oscuro
+                'bg': '#0f0f0f',              # Fondo principal - negro más intenso
+                'fg': '#ffffff',              # Texto - blanco puro
+                'button_bg': '#1a1a1a',       # Botones superiores y principales - negro menos intenso
                 'button_fg': '#ffffff',
-                'listbox_bg': '#2d2d2d',
+                'main_button_bg': '#1a1a1a',  # Botones principales (grupos, formato, borrar)
+                'main_button_fg': '#ffffff',
+                'card_bg': '#1a1a1a',         # Cards - mismo tono que botones
+                'hover_bg': '#2a2a2a',        # Hover simple (30% más claro)
+                'icon_hover_bg': '#3a3a3a',   # Hover sobre hover (50% más claro)
+                'listbox_bg': '#1a1a1a',
                 'listbox_fg': '#ffffff',
-                'active_bg': '#4E4E4E',  # Añadido
-                'active_fg': '#FFFFFF',  # Añadido
-                'card_bg': '#333333',
+                'active_bg': '#2a2a2a',
+                'active_fg': '#ffffff',
                 'exit_button_bg': '#8B0000',  # Rojo oscuro
                 'exit_button_fg': '#ffffff',
             },
             'light': {
-                'bg': '#f0f0f0',
-                'fg': '#000000',
-                'button_bg': '#e0e0e0',
+                # 4 tonos de blanco para tema claro
+                'bg': '#f5f5f5',              # Fondo principal - blanco con contraste
+                'fg': '#000000',              # Texto - negro puro
+                'button_bg': '#ffffff',       # Botones superiores y principales - blanco brillante
                 'button_fg': '#000000',
+                'main_button_bg': '#ffffff',  # Botones principales (grupos, formato, borrar)
+                'main_button_fg': '#000000',
+                'card_bg': '#ffffff',         # Cards - blanco brillante
+                'hover_bg': '#e6e6e6',        # Hover simple (30% más oscuro)
+                'icon_hover_bg': '#cccccc',   # Hover sobre hover (50% más oscuro)
                 'listbox_bg': '#ffffff',
                 'listbox_fg': '#000000',
-                'active_bg': '#D0D0D0',  # Añadido
-                'active_fg': '#000000',  # Añadido
-                'card_bg': '#ffffff',
+                'active_bg': '#e6e6e6',
+                'active_fg': '#000000',
                 'exit_button_bg': '#FF6B6B',  # Rojo claro
                 'exit_button_fg': '#000000',
             }
@@ -69,24 +79,24 @@ class ThemeManager:
         )
 
         self.manager.button1.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
+            bg=theme['main_button_bg'],
+            fg=theme['main_button_fg'],
+            activebackground=theme['main_button_bg'],
+            activeforeground=theme['main_button_fg']
         )
 
         self.manager.button2.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
+            bg=theme['main_button_bg'],
+            fg=theme['main_button_fg'],
+            activebackground=theme['main_button_bg'],
+            activeforeground=theme['main_button_fg']
         )
 
         self.manager.button3.configure(
-            bg=theme['button_bg'],
-            fg=theme['button_fg'],
-            activebackground=theme['button_bg'],
-            activeforeground=theme['button_fg']
+            bg=theme['main_button_bg'],
+            fg=theme['main_button_fg'],
+            activebackground=theme['main_button_bg'],
+            activeforeground=theme['main_button_fg']
         )
 
         self.manager.canvas.configure(bg=theme['bg'])

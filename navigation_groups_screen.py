@@ -31,8 +31,14 @@ class GroupsScreenNavigation:
         return {
             'current_selection': {'type': 'group_cards', 'index': 0},
             'highlight_colors': {
-                'dark': {'normal': '#444444', 'icon': '#666666'},
-                'light': {'normal': '#cccccc', 'icon': '#aaaaaa'}
+                'dark': {
+                    'normal': self.manager.theme_manager.colors['dark']['hover_bg'], 
+                    'icon': self.manager.theme_manager.colors['dark']['icon_hover_bg']
+                },
+                'light': {
+                    'normal': self.manager.theme_manager.colors['light']['hover_bg'], 
+                    'icon': self.manager.theme_manager.colors['light']['icon_hover_bg']
+                }
             }
         }
 

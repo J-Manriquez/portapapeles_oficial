@@ -24,7 +24,7 @@ class GroupsScreenKeyConfig(ScreenKeyConfig):
         self.actions = {}
         self.highlight_colors = {
             'dark': {'normal': '#444444', 'icon': '#666666'},
-            'light': {'normal': '#cccccc', 'icon': '#aaaaaa'}
+            'light': {'normal': '#d0d0d0', 'icon': '#b0b0b0'}
         }
         self.setup_keys()
         # logger.debug("GroupsScreenKeyConfig initialized")

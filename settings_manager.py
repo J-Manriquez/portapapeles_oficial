@@ -37,26 +37,26 @@ class SettingsManager:
             self.settings_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
             self.settings_window.overrideredirect(True)
-            self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            self.settings_window.configure(bg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['bg'])
             self.settings_window.attributes('-topmost', True)
 
             # Barra de título personalizada
-            title_frame = tk.Frame(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            title_frame = tk.Frame(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['bg'])
             title_frame.pack(fill=tk.X, padx=6, pady=(0, 0))
 
             title_label = tk.Label(title_frame, text="Configuraciones", font=('Segoe UI', 10, 'bold'),
-                                   bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                                   fg=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+                                   bg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['bg'],
+                            fg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['fg'])
             title_label.pack(side=tk.LEFT, padx=5)
 
             close_button = tk.Button(title_frame, text="❌", command=self.close_settings_window,
                                      font=('Segoe UI', 10, 'bold'), bd=0, padx=10, width=5, height=2,
-                                     bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                                     fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+                                     bg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['button_bg'],
+                        fg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
             # Canvas para scroll y contenedor de configuraciones
-            canvas = tk.Canvas(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'], bd=0, highlightthickness=0)
+            canvas = tk.Canvas(self.settings_window, bg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['bg'], bd=0, highlightthickness=0)
             canvas.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
             # Scrollbar oculto
@@ -64,7 +64,7 @@ class SettingsManager:
             canvas.configure(yscrollcommand=scrollbar.set)
 
             # Frame contenedor dentro del canvas para el scroll
-            self.settings_frame = tk.Frame(canvas, bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
+            self.settings_frame = tk.Frame(canvas, bg=self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']['bg'])
             canvas_window = canvas.create_window((0, 0), window=self.settings_frame, anchor='nw', width=295)
 
             # Ajustar el ancho del frame contenedor al canvas
@@ -90,13 +90,14 @@ class SettingsManager:
                                 bg=self.clipboard_manager.theme_manager.colors['dark']['bg'])
             exit_frame.pack(fill=tk.X, padx=0, pady=(4, 4))
 
+            current_theme = self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']
             exit_button = tk.Button(
                 exit_frame,
                 text="⚡ Cerrar aplicación",
                 command=self.clipboard_manager.functions.exit_app,
                 font=('Segoe UI', 10, 'bold'),
-                bg=self.clipboard_manager.theme_manager.colors['dark']['exit_button_bg'],
-                fg=self.clipboard_manager.theme_manager.colors['dark']['exit_button_fg'],
+                bg=current_theme['exit_button_bg'],
+                fg=current_theme['exit_button_fg'],
                 bd=0,
                 relief=tk.FLAT,
                 padx=10,
@@ -109,15 +110,15 @@ class SettingsManager:
                 self.settings_frame,
                 text="Ubicación del archivo de datos",
                 font=('Segoe UI', 10, 'bold'),
-                bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                bg=current_theme['bg'],
+                fg=current_theme['fg'],
                 anchor='w'
             )
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
 
             file_location_frame = tk.Frame(
                 self.settings_frame,
-                bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg']
+                bg=current_theme['card_bg']
             )
             file_location_frame.pack(fill=tk.X, padx=4, pady=2)
 
@@ -126,8 +127,8 @@ class SettingsManager:
             path_label = tk.Label(
                 file_location_frame,
                 textvariable=self.file_path_var,
-                bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
-                fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                bg=current_theme['card_bg'],
+                fg=current_theme['fg'],
                 anchor='w',
                 padx=5,
                 pady=5,
@@ -141,31 +142,31 @@ class SettingsManager:
                 command=self.change_file_location,
                 font=('Segoe UI', 10),
                 bd=0,
-                bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg']
+                bg=current_theme['button_bg'],
+                fg=current_theme['button_fg']
             )
             change_path_button.pack(side=tk.RIGHT, padx=2, pady=2)
 
             subtitle = tk.Label(self.settings_frame, text="Límite de elementos",
                             font=('Segoe UI', 10, 'bold'),
-                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'],
                             anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Máximo de elementos: ", str(self.settings.get('max_items', 20)))
 
             subtitle = tk.Label(self.settings_frame, text="Tecla de activación",
                             font=('Segoe UI', 10, 'bold'),
-                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'],
                             anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Teclas Alt + Activacion: ", self.settings['hotkey'])
 
             subtitle = tk.Label(self.settings_frame, text="Tecla de retroceso",
                             font=('Segoe UI', 10, 'bold'),
-                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'],
                             anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Tecla Retroceso: ", self.settings['back_key'])
@@ -173,8 +174,8 @@ class SettingsManager:
             # Tecla para mostrar grupos
             subtitle = tk.Label(self.settings_frame, text="Tecla para mostrar grupos",
                             font=('Segoe UI', 10, 'bold'),
-                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'],
                             anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Teclas Alt + Grupos: ", self.settings.get('groups_key', 'g'))
@@ -182,16 +183,16 @@ class SettingsManager:
             # Tecla para nuevo grupo
             subtitle = tk.Label(self.settings_frame, text="Tecla para nuevo grupo",
                             font=('Segoe UI', 10, 'bold'),
-                            bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'],
                             anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Teclas Alt + Nuevo Grupo: ", self.settings.get('new_group_key', 'n'))
 
             subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app",
                         font=('Segoe UI', 10, 'bold'),
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        bg=current_theme['bg'],
+                        fg=current_theme['fg'],
                         anchor='w')
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Alto", str(self.settings['height']))
@@ -242,31 +243,33 @@ class SettingsManager:
             self.save_settings()
 
     def create_setting_card(self, setting_name, default_value):
-        card = tk.Frame(self.settings_frame, bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'])
+        current_theme = self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']
+        card = tk.Frame(self.settings_frame, bg=current_theme['card_bg'])
         card.pack(fill=tk.X, padx=4, pady=2)
 
         # Modificar para mostrar el texto correcto según el tipo de configuración
         display_text = f"{setting_name} {default_value}"
 
         label = tk.Label(card, text=display_text,
-                        bg=self.clipboard_manager.theme_manager.colors['dark']['card_bg'],
-                        fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
+                        bg=current_theme['card_bg'],
+                        fg=current_theme['fg'],
                         anchor='w', padx=5, pady=5)
         label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         edit_button = tk.Button(card, text="✏️",
                                 command=lambda: self.toggle_edit_mode(card, label, edit_button, setting_name, default_value),
                                 font=('Segoe UI', 10), bd=0,
-                                bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                                fg=self.clipboard_manager.theme_manager.colors['dark']['button_fg'])
+                                bg=current_theme['button_bg'],
+                                fg=current_theme['button_fg'])
         edit_button.pack(side=tk.RIGHT, padx=2, pady=2)
 
     def toggle_edit_mode(self, card, label, button, setting_name, current_value):
         if button['text'] == "✏️":
             # Cambiar a modo edición
-            entry = tk.Entry(card, bg=self.clipboard_manager.theme_manager.colors['dark']['button_bg'],
-                            fg=self.clipboard_manager.theme_manager.colors['dark']['fg'],
-                            insertbackground=self.clipboard_manager.theme_manager.colors['dark']['fg'])
+            current_theme = self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']
+            entry = tk.Entry(card, bg=current_theme['button_bg'],
+                            fg=current_theme['fg'],
+                            insertbackground=current_theme['fg'])
             entry.insert(0, current_value)
             entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
             label.pack_forget()

@@ -75,18 +75,18 @@ class GroupContentManager:
 
             # Configurar apariencia de la ventana
             self.content_window.overrideredirect(True)
-            self.content_window.configure(bg=self.theme_manager.colors['dark']['bg'])
+            self.content_window.configure(bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['bg'])
             self.content_window.attributes('-topmost', True)
 
             # Barra de título personalizada
-            title_frame = tk.Frame(self.content_window, bg=self.theme_manager.colors['dark']['bg'])
+            title_frame = tk.Frame(self.content_window, bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['bg'])
             title_frame.pack(fill=tk.X, padx=6, pady=(0,0))
 
             title_label = tk.Label(title_frame,
                                 text=f"Grupo: {self.manager.group_manager.groups[group_id]['name']}",
                                 font=('Segoe UI', 10, 'bold'),
-                                bg=self.theme_manager.colors['dark']['bg'],
-                                fg=self.theme_manager.colors['dark']['fg'])
+                                bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['bg'],
+                        fg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['fg'])
             title_label.pack(side=tk.LEFT, padx=5, pady=5)
 
             close_button = tk.Button(title_frame,
@@ -94,8 +94,8 @@ class GroupContentManager:
                                 command=lambda: self.close_content_window(group_id),
                                 font=('Segoe UI', 10, 'bold'),
                                 bd=0, padx=10, width=5, height=2,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
+                                bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['button_bg'],
+                        fg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['button_fg'])
             close_button.pack(side=tk.RIGHT)
 
             # Agregar atributo para tracking del estado de highlight
@@ -117,14 +117,14 @@ class GroupContentManager:
                 close_button._mouse_over = False
                 nav = self.manager.navigation.current_strategy
                 if nav.last_keyboard_selection is None and not close_button._is_highlighted:
-                    close_button.configure(bg=self.theme_manager.colors['dark']['button_bg'])
+                    close_button.configure(bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['button_bg'])
 
             close_button.bind('<Enter>', on_close_button_enter)
             close_button.bind('<Leave>', on_close_button_leave)
 
             # Canvas y scroll para los items
             self.canvas = tk.Canvas(self.content_window,
-                                bg=self.theme_manager.colors['dark']['bg'],
+                                bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['bg'],
                                 highlightthickness=0)
             self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -137,7 +137,7 @@ class GroupContentManager:
 
             # Frame para los items
             self.items_frame = tk.Frame(self.canvas,
-                                    bg=self.theme_manager.colors['dark']['bg'])
+                                    bg=self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']['bg'])
             self.canvas_window = self.canvas.create_window((0, 0),
                                                         window=self.items_frame,
                                                         anchor='nw',
@@ -454,16 +454,19 @@ class GroupContentManager:
 
         dialog.geometry(f"300x{initial_height}+{x}+{y}")
 
-        dialog.configure(bg=self.theme_manager.colors['dark']['bg'])
+        # Obtener colores del tema actual
+        current_theme = self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
+        
+        dialog.configure(bg=current_theme['bg'])
         dialog.overrideredirect(True)
         dialog.attributes('-topmost', True)
 
-        title_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
+        title_frame = tk.Frame(dialog, bg=current_theme['bg'])
         title_frame.pack(fill=tk.X, padx=4, pady=(4, 0))
 
         title_label = tk.Label(title_frame, text="Editar Item", font=('Segoe UI', 10, 'bold'),
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'])
         title_label.pack(side=tk.LEFT, padx=0)
 
         def close_edit_dialog():
@@ -478,32 +481,32 @@ class GroupContentManager:
 
         close_button = tk.Button(title_frame, text="❌", command=close_edit_dialog,
                                 font=('Segoe UI', 10, 'bold'), bd=0, padx=0,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'])
+                                bg=current_theme['button_bg'],
+                                fg=current_theme['button_fg'])
         close_button.pack(side=tk.RIGHT)
-        content_frame = tk.Frame(dialog, bg=self.theme_manager.colors['dark']['bg'])
+        content_frame = tk.Frame(dialog, bg=current_theme['bg'])
         content_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=0)
 
         name_label = tk.Label(content_frame, text="Nombre del item:",
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'])
         name_label.pack(anchor='w', pady=(0, 5))
 
-        name_entry = tk.Entry(content_frame, bg=self.theme_manager.colors['dark']['button_bg'],
-                            fg=self.theme_manager.colors['dark']['fg'],
-                            insertbackground=self.theme_manager.colors['dark']['fg'],
+        name_entry = tk.Entry(content_frame, bg=current_theme['button_bg'],
+                            fg=current_theme['fg'],
+                            insertbackground=current_theme['fg'],
                             font=('Segoe UI', 10))
         name_entry.insert(0, item.get('name', ''))
         name_entry.pack(fill=tk.X, pady=(0, 5))
 
         text_label = tk.Label(content_frame, text="Texto del item:",
-                            bg=self.theme_manager.colors['dark']['bg'],
-                            fg=self.theme_manager.colors['dark']['fg'])
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'])
         text_label.pack(anchor='w', pady=(0, 5))
 
-        text_entry = tk.Text(content_frame, height=3, bg=self.theme_manager.colors['dark']['button_bg'],
-                            fg=self.theme_manager.colors['dark']['fg'],
-                            insertbackground=self.theme_manager.colors['dark']['fg'],
+        text_entry = tk.Text(content_frame, height=3, bg=current_theme['button_bg'],
+                            fg=current_theme['fg'],
+                            insertbackground=current_theme['fg'],
                             font=('Segoe UI', 10))
         text_entry.insert(tk.END, text)
         text_entry.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
@@ -529,8 +532,8 @@ class GroupContentManager:
                     self.content_window.focus_force()
 
         save_button = tk.Button(content_frame, text="Guardar", command=save_item,
-                                bg=self.theme_manager.colors['dark']['button_bg'],
-                                fg=self.theme_manager.colors['dark']['button_fg'],
+                                bg=current_theme['button_bg'],
+                                fg=current_theme['button_fg'],
                                 relief=tk.FLAT, bd=0, padx=4, pady=8)
         save_button.pack(fill=tk.X, pady=(0, 5))
 
