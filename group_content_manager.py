@@ -427,6 +427,10 @@ class GroupContentManager:
 
     def edit_group_item(self, group_id, item_id):
         """Muestra el diálogo para editar un item del grupo"""
+        # Ocultar la ventana principal del portapapeles
+        if self.manager.root.winfo_viewable():
+            self.manager.root.withdraw()
+            
         # Ocultar la ventana de contenido del grupo temporalmente
         if self.content_window and self.content_window.winfo_exists():
             self.content_window.withdraw()
@@ -459,9 +463,11 @@ class GroupContentManager:
             original_format = {}
 
         text_lines = text.count('\n') + 1
-        initial_height = min(150 + (text_lines * 20), 600)
-
-        dialog.geometry(f"300x{initial_height}+{x}+{y}")
+        initial_height = min(200 + (text_lines * 20), 700)
+        
+        # Usar el mismo ancho que las otras pantallas
+        window_width = self.settings_manager.settings['width']
+        dialog.geometry(f"{window_width}x{initial_height}+{x}+{y}")
 
         # Obtener colores del tema actual
         current_theme = self.theme_manager.colors['dark' if self.manager.is_dark_mode else 'light']
@@ -566,22 +572,24 @@ class GroupContentManager:
             content = text_entry.get("1.0", tk.END)
             lines = content.count('\n') + 1
             new_height = min(150 + (lines * 20), 600)
-            dialog.geometry(f"300x{new_height}")
+            dialog.geometry(f"{window_width}x{new_height}")
 
         text_entry.bind("<KeyRelease>", adjust_dialog_height)
 
-        # Agregar vinculación de tecla para el diálogo
-        dialog.bind('<Key>', self.manager.key_handler.handle_key_press)
+        # No vincular el key_handler general para evitar interferencias
+        # que puedan mostrar la ventana principal
 
         dialog.focus_set()
         name_entry.focus()
 
         def after_dialog_shown():
+            # Asegurar que la ventana principal permanezca oculta
+            if self.manager.root.winfo_viewable():
+                self.manager.root.withdraw()
             dialog.focus_force()
             dialog.grab_set()
-            self.manager.navigation.set_strategy('edit_dialog')
-            if hasattr(self.manager, 'edit_dialog_keys'):
-                self.manager.edit_dialog_keys.activate()
+            # No establecer estrategia de navegación para evitar fallback
+            # que muestre la ventana principal
             name_entry.focus_set()
 
         # Dar tiempo a que el diálogo se muestre completamente

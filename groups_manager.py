@@ -448,7 +448,8 @@ class GroupManager:
         x = self.clipboard_manager.window_x
         y = self.clipboard_manager.window_y
 
-        dialog.geometry(f"200x114+{x}+{y}")
+        window_width = self.settings_manager.settings['width']
+        dialog.geometry(f"{window_width}x145+{x}+{y}")
 
         # Obtener colores del tema actual
         current_theme = self.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']
