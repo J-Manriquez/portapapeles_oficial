@@ -13,6 +13,9 @@ import tkinter as tk
 
 from typing import Dict, Callable, Optional
 
+# Definir CF_HTML ya que no está en win32con
+CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
+
 logger = logging.getLogger(__name__)
 
 class GlobalHotkeyManager:
@@ -445,10 +448,29 @@ class KeyHandler:
                 format_info = {}
 
             if self.manager.paste_with_format and format_info:
-                formatted_content = self.apply_format_to_text(text, format_info)
                 win32clipboard.OpenClipboard()
                 win32clipboard.EmptyClipboard()
-                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, formatted_content)
+                
+                # Poner el texto plano
+                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, text)
+                
+                # Si hay contenido RTF original, usarlo
+                if 'rtf_content' in format_info:
+                    win32clipboard.SetClipboardData(win32clipboard.RegisterClipboardFormat("Rich Text Format"), format_info['rtf_content'])
+                
+                # Si hay contenido HTML original, usarlo
+                elif 'html_content' in format_info:
+                    win32clipboard.SetClipboardData(CF_HTML, format_info['html_content'])
+                
+                # Fallback: recrear formato si solo tenemos información de formato
+                elif 'rtf' in format_info:
+                    rtf_content = self.apply_rtf_format(text, format_info)
+                    win32clipboard.SetClipboardData(win32clipboard.RegisterClipboardFormat("Rich Text Format"), rtf_content.encode('utf-8'))
+                
+                elif 'html' in format_info:
+                    html_content = self.apply_html_format(text, format_info)
+                    win32clipboard.SetClipboardData(win32clipboard.RegisterClipboardFormat("HTML Format"), html_content.encode('utf-8'))
+                
                 win32clipboard.CloseClipboard()
             else:
                 pyperclip.copy(text)

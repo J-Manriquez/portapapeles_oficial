@@ -515,14 +515,40 @@ class MainScreenNavigation:
                 child.configure(bg=color)
                 for subchild in child.winfo_children():
                     if isinstance(subchild, tk.Label):
-                        subchild.configure(bg=color)
+                        # Para el emoji de formato, manejar tanto texto como imagen
+                        if (hasattr(subchild, 'image') and subchild.image) or subchild.cget('text') == '🎨':
+                            # Si es una imagen, recrear con el nuevo color de fondo
+                            if hasattr(subchild, 'image') and subchild.image:
+                                new_emoji_image = self.manager.functions.create_colored_emoji_image("🎨", size=16, bg_color=color)
+                                if new_emoji_image:
+                                    subchild.configure(image=new_emoji_image, bg=color)
+                                    subchild.image = new_emoji_image
+                                else:
+                                    subchild.configure(bg=color)
+                            else:
+                                subchild.configure(bg=color)
+                        else:
+                            subchild.configure(bg=color)
                     elif isinstance(subchild, tk.Button):
                         # No cambiar el color de los botones aquí
                         # a menos que estemos en modo tarjeta
                         if self.state['current_selection']['type'] == MainScreenElement.CARDS.value:
                             subchild.configure(bg=color)
             elif isinstance(child, tk.Label):
-                child.configure(bg=color)
+                # Para el emoji de formato, manejar tanto texto como imagen
+                if (hasattr(child, 'image') and child.image) or child.cget('text') == '🎨':
+                    # Si es una imagen, recrear con el nuevo color de fondo
+                    if hasattr(child, 'image') and child.image:
+                        new_emoji_image = self.manager.functions.create_colored_emoji_image("🎨", size=16, bg_color=color)
+                        if new_emoji_image:
+                            child.configure(image=new_emoji_image, bg=color)
+                            child.image = new_emoji_image
+                        else:
+                            child.configure(bg=color)
+                    else:
+                        child.configure(bg=color)
+                else:
+                    child.configure(bg=color)
             elif isinstance(child, tk.Button):
                 if self.state['current_selection']['type'] == MainScreenElement.CARDS.value:
                     child.configure(bg=color)
@@ -572,11 +598,37 @@ class MainScreenNavigation:
                 child.configure(bg=base_color)
                 for subchild in child.winfo_children():
                     if isinstance(subchild, tk.Label):
-                        subchild.configure(bg=base_color)
+                        # Para el emoji de formato, manejar tanto texto como imagen
+                        if (hasattr(subchild, 'image') and subchild.image) or subchild.cget('text') == '🎨':
+                            # Si es una imagen, recrear con el color de fondo original
+                            if hasattr(subchild, 'image') and subchild.image:
+                                new_emoji_image = self.manager.functions.create_colored_emoji_image("🎨", size=16, bg_color=base_color)
+                                if new_emoji_image:
+                                    subchild.configure(image=new_emoji_image, bg=base_color)
+                                    subchild.image = new_emoji_image
+                                else:
+                                    subchild.configure(bg=base_color)
+                            else:
+                                subchild.configure(bg=base_color)
+                        else:
+                            subchild.configure(bg=base_color)
                     elif isinstance(subchild, tk.Button):
                         subchild.configure(bg=base_color)  # Los iconos de las cards usan el color base
             elif isinstance(child, tk.Label):
-                child.configure(bg=base_color)
+                # Para el emoji de formato, manejar tanto texto como imagen
+                if (hasattr(child, 'image') and child.image) or child.cget('text') == '🎨':
+                    # Si es una imagen, recrear con el color de fondo original
+                    if hasattr(child, 'image') and child.image:
+                        new_emoji_image = self.manager.functions.create_colored_emoji_image("🎨", size=16, bg_color=base_color)
+                        if new_emoji_image:
+                            child.configure(image=new_emoji_image, bg=base_color)
+                            child.image = new_emoji_image
+                        else:
+                            child.configure(bg=base_color)
+                    else:
+                        child.configure(bg=base_color)
+                else:
+                    child.configure(bg=base_color)
             elif isinstance(child, tk.Button):
                 child.configure(bg=base_color)  # Los iconos de las cards usan el color base
 

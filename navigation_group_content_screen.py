@@ -280,13 +280,21 @@ class GroupContentScreenNavigation:
                 child.configure(bg=color)
                 for subchild in child.winfo_children():
                     if isinstance(subchild, tk.Label):
-                        subchild.configure(bg=color)
+                        # Para el emoji de formato, solo cambiar el fondo
+                        if subchild.cget('text') == '🎨':
+                            subchild.configure(bg=color)
+                        else:
+                            subchild.configure(bg=color)
                     elif isinstance(subchild, tk.Button):
                         # Solo cambiar el color de los botones si estamos en modo tarjeta
                         if self.state['current_selection']['type'] == GroupContentElement.CONTENT_CARDS.value:
                             subchild.configure(bg=color)
             elif isinstance(child, tk.Label):
-                child.configure(bg=color)
+                # Para el emoji de formato, solo cambiar el fondo
+                if child.cget('text') == '🎨':
+                    child.configure(bg=color)
+                else:
+                    child.configure(bg=color)
             elif isinstance(child, tk.Button):
                 # Solo cambiar el color de los botones si estamos en modo tarjeta
                 if self.state['current_selection']['type'] == GroupContentElement.CONTENT_CARDS.value:
@@ -300,12 +308,20 @@ class GroupContentScreenNavigation:
                 child.configure(bg=base_color)
                 for subchild in child.winfo_children():
                     if isinstance(subchild, tk.Label):
-                        subchild.configure(bg=base_color)
+                        # Para el emoji de formato, solo cambiar el fondo
+                        if subchild.cget('text') == '🎨':
+                            subchild.configure(bg=base_color)
+                        else:
+                            subchild.configure(bg=base_color)
                     elif isinstance(subchild, tk.Button):
                         if not hasattr(subchild, '_mouse_over') or not subchild._mouse_over:
                             subchild.configure(bg=button_color)
             elif isinstance(child, tk.Label):
-                child.configure(bg=base_color)
+                # Para el emoji de formato, solo cambiar el fondo
+                if child.cget('text') == '🎨':
+                    child.configure(bg=base_color)
+                else:
+                    child.configure(bg=base_color)
             elif isinstance(child, tk.Button):
                 if not hasattr(child, '_mouse_over') or not child._mouse_over:
                     child.configure(bg=button_color)

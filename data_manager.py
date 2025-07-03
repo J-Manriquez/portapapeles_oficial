@@ -16,6 +16,7 @@ class DataManager:
                     'groups_key': 'g',
                     'new_group_key': 'n',
                     'max_items': 20,
+                    'show_format_icon': True,
                 }
 
     def save_data(self, groups, pinned_items, settings):
@@ -45,6 +46,7 @@ class DataManager:
             'groups_key': 'g',
             'new_group_key': 'n',
             'max_items': 20,
+            'show_format_icon': True,
         })
 
         # Combinar configuraciones guardadas con valores predeterminados

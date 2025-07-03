@@ -9,9 +9,17 @@ import win32clipboard # type: ignore
 import win32gui # type: ignore
 import time
 import sys
+import os
 from tkinter import ttk
 from bs4 import BeautifulSoup # type: ignore
 from utils import measure_time, process_text
+
+# Importaciones para emojis coloridos
+try:
+    from PIL import Image, ImageDraw, ImageFont, ImageTk
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 # Definir CF_HTML ya que no está en win32con
 CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
@@ -22,6 +30,71 @@ class Functions:
         self.min_card_height = 40  # Altura mínima en píxeles (2 líneas + 2*2 padding)
         self.max_card_height = 76  # Altura máxima en píxeles (4 líneas + 2*2 padding)
         self.line_height = 18  # Altura estimada de una línea de texto
+        self._emoji_cache = {}  # Cache para imágenes de emojis
+        
+    def create_colored_emoji_image(self, emoji_text, size=16, bg_color=None):
+        """Crea una imagen colorida del emoji usando PIL si está disponible"""
+        if not PIL_AVAILABLE:
+            return None
+            
+        # Crear clave de cache
+        cache_key = f"{emoji_text}_{size}_{bg_color}"
+        if cache_key in self._emoji_cache:
+            return self._emoji_cache[cache_key]
+            
+        try:
+            # Buscar la fuente de emoji de Windows
+            font_paths = [
+                "C:/Windows/Fonts/seguiemj.ttf",  # Windows 10/11
+                "C:/Windows/Fonts/segoe-ui-emoji.ttf",  # Alternativo
+                "seguiemj.ttf"  # En el directorio actual
+            ]
+            
+            font = None
+            for font_path in font_paths:
+                if os.path.exists(font_path):
+                    try:
+                        font = ImageFont.truetype(font_path, size)
+                        break
+                    except Exception:
+                        continue
+                        
+            if font is None:
+                # Fallback a fuente por defecto
+                font = ImageFont.load_default()
+                
+            # Crear imagen con transparencia
+            img_size = size + 4  # Añadir padding
+            if bg_color:
+                # Convertir color hex a RGB si es necesario
+                if isinstance(bg_color, str) and bg_color.startswith('#'):
+                    bg_color = tuple(int(bg_color[i:i+2], 16) for i in (1, 3, 5))
+                img = Image.new("RGBA", (img_size, img_size), bg_color + (255,))
+            else:
+                img = Image.new("RGBA", (img_size, img_size), (0, 0, 0, 0))
+                
+            draw = ImageDraw.Draw(img)
+            
+            # Dibujar el emoji con colores embebidos
+            draw.text(
+                (img_size/2, img_size/2), 
+                emoji_text, 
+                font=font, 
+                anchor="mm",
+                embedded_color=True  # Esto es clave para mostrar colores
+            )
+            
+            # Convertir a PhotoImage para Tkinter
+            photo_image = ImageTk.PhotoImage(img)
+            
+            # Guardar en cache
+            self._emoji_cache[cache_key] = photo_image
+            
+            return photo_image
+            
+        except Exception as e:
+            print(f"Error creando emoji colorido: {e}")
+            return None
 
 
     @measure_time
@@ -57,6 +130,24 @@ class Functions:
         card_container = tk.Frame(self.manager.cards_frame, width=card_width, height=card_height, bg=bg_color)
         card_container.pack(fill=tk.BOTH, padx=2, pady=2)
         card_container.pack_propagate(False)
+
+        # Añadir indicador de formato si el elemento tiene formato y está habilitado (lado izquierdo)
+        has_format = item_data.get('has_format', False)
+        show_format_icon = self.manager.settings.get('show_format_icon', True)
+        format_indicator = None
+        if has_format and show_format_icon:
+            # Intentar crear emoji colorido primero
+            emoji_image = self.create_colored_emoji_image("🎨", size=16, bg_color=bg_color)
+            
+            if emoji_image:
+                # Usar imagen colorida del emoji
+                format_indicator = tk.Label(card_container, image=emoji_image, bg=bg_color)
+                format_indicator.image = emoji_image  # Mantener referencia
+            else:
+                # Fallback al texto normal si PIL no está disponible
+                format_indicator = tk.Label(card_container, text="🎨", 
+                                          font=('Segoe UI Emoji', 10), bg=bg_color)
+            format_indicator.pack(side=tk.LEFT, padx=(2, 0))
 
         text_frame = tk.Frame(card_container, bg=bg_color)
         text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -104,6 +195,18 @@ class Functions:
                         text_label.configure(bg=highlight_color)
                     if icons_frame.winfo_exists():
                         icons_frame.configure(bg=highlight_color)
+                    # Incluir indicador de formato en hover si existe
+                    if format_indicator and format_indicator.winfo_exists():
+                        # Si es una imagen, recrear con el nuevo color de fondo
+                        if hasattr(format_indicator, 'image') and format_indicator.image:
+                            new_emoji_image = self.create_colored_emoji_image("🎨", size=16, bg_color=highlight_color)
+                            if new_emoji_image:
+                                format_indicator.configure(image=new_emoji_image, bg=highlight_color)
+                                format_indicator.image = new_emoji_image
+                            else:
+                                format_indicator.configure(bg=highlight_color)
+                        else:
+                            format_indicator.configure(bg=highlight_color)
                     for btn in [arrow_button, pin_button, delete_button]:
                         if btn.winfo_exists():
                             btn.configure(bg=highlight_color)
@@ -121,6 +224,18 @@ class Functions:
                         text_label.configure(bg=bg_color)
                     if icons_frame.winfo_exists():
                         icons_frame.configure(bg=bg_color)
+                    # Restaurar color del indicador de formato si existe
+                    if format_indicator and format_indicator.winfo_exists():
+                        # Si es una imagen, recrear con el color de fondo original
+                        if hasattr(format_indicator, 'image') and format_indicator.image:
+                            new_emoji_image = self.create_colored_emoji_image("🎨", size=16, bg_color=bg_color)
+                            if new_emoji_image:
+                                format_indicator.configure(image=new_emoji_image, bg=bg_color)
+                                format_indicator.image = new_emoji_image
+                            else:
+                                format_indicator.configure(bg=bg_color)
+                        else:
+                            format_indicator.configure(bg=bg_color)
                     for btn in [arrow_button, pin_button, delete_button]:
                         if btn.winfo_exists():
                             btn.configure(bg=bg_color)
@@ -142,7 +257,10 @@ class Functions:
                 button.configure(bg=parent_bg)
 
         # Vincular eventos hover para la card
-        for widget in [card_container, text_frame, text_label, icons_frame]:
+        widgets_to_bind = [card_container, text_frame, text_label, icons_frame]
+        if format_indicator:
+            widgets_to_bind.append(format_indicator)
+        for widget in widgets_to_bind:
             widget.bind('<Enter>', on_enter)
             widget.bind('<Leave>', on_leave)
 
@@ -249,9 +367,37 @@ class Functions:
             if isinstance(child, tk.Frame):
                 child.configure(bg=theme['card_bg'])
                 for subchild in child.winfo_children():
-                    if isinstance(subchild, (tk.Label, tk.Button)):
+                    if isinstance(subchild, tk.Label):
+                        # No aplicar color de texto al emoji de formato
+                        if hasattr(subchild, 'image') and subchild.image:
+                            # Es un emoji como imagen
+                            new_emoji_image = self.create_colored_emoji_image("🎨", size=16, bg_color=theme['card_bg'])
+                            if new_emoji_image:
+                                subchild.configure(image=new_emoji_image, bg=theme['card_bg'])
+                                subchild.image = new_emoji_image
+                            else:
+                                subchild.configure(bg=theme['card_bg'])
+                        elif subchild.cget('text') == '🎨':
+                            subchild.configure(bg=theme['card_bg'])
+                        else:
+                            subchild.configure(bg=theme['card_bg'], fg=theme['fg'])
+                    elif isinstance(subchild, tk.Button):
                         subchild.configure(bg=theme['card_bg'], fg=theme['fg'])
-            elif isinstance(child, (tk.Label, tk.Button)):
+            elif isinstance(child, tk.Label):
+                # No aplicar color de texto al emoji de formato
+                if hasattr(child, 'image') and child.image:
+                    # Es un emoji como imagen
+                    new_emoji_image = self.create_colored_emoji_image("🎨", size=16, bg_color=theme['card_bg'])
+                    if new_emoji_image:
+                        child.configure(image=new_emoji_image, bg=theme['card_bg'])
+                        child.image = new_emoji_image
+                    else:
+                        child.configure(bg=theme['card_bg'])
+                elif child.cget('text') == '🎨':
+                    child.configure(bg=theme['card_bg'])
+                else:
+                    child.configure(bg=theme['card_bg'], fg=theme['fg'])
+            elif isinstance(child, tk.Button):
                 child.configure(bg=theme['card_bg'], fg=theme['fg'])
 
     def toggle_pin(self, item_id):
@@ -305,9 +451,12 @@ class Functions:
                     
                     if text_to_check not in existing_texts:
                         new_id = str(uuid.uuid4())
+                        # Preservar siempre el formato completo cuando esté disponible
+                        has_format = clipboard_content.get('formatted', {}) and any(clipboard_content['formatted'].values())
                         new_item = {
-                            'text': clipboard_content,
+                            'text': clipboard_content,  # Mantener estructura completa con formato
                             'pinned': False,
+                            'has_format': has_format,  # Indicador de si tiene formato
                             'with_format': self.manager.paste_with_format
                         }
                         # Usar after para actualizar la GUI en el hilo principal
@@ -493,9 +642,11 @@ class Functions:
             if win32con.CF_RTF in formats:
                 rtf_data = win32clipboard.GetClipboardData(win32con.CF_RTF)
                 format_info = self.extract_format_info_from_rtf(rtf_data)
+                format_info['rtf_content'] = rtf_data  # Preservar contenido RTF original
             elif CF_HTML in formats:
                 html_data = win32clipboard.GetClipboardData(CF_HTML)
                 format_info = self.extract_format_info_from_html(html_data)
+                format_info['html_content'] = html_data  # Preservar contenido HTML original
 
             win32clipboard.CloseClipboard()
 
@@ -574,8 +725,10 @@ class Functions:
     @measure_time
     def toggle_paste_format(self):
         self.manager.paste_with_format = not self.manager.paste_with_format
-        new_text = "Con formato" if self.manager.paste_with_format else "Sin formato"
-        self.manager.button2.config(text=new_text)
+        # Mostrar estado actual con icono de refresh
+        status_text = "Con formato" if self.manager.paste_with_format else "Sin formato"
+        button_text = f"{status_text} 🔄"
+        self.manager.button2.config(text=button_text)
         self.manager.navigation.update_highlights()
 
     @measure_time

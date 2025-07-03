@@ -189,6 +189,15 @@ class SettingsManager:
             subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
             self.create_setting_card("Teclas Alt + Nuevo Grupo: ", self.settings.get('new_group_key', 'n'))
 
+            # Configuración del icono de formato
+            subtitle = tk.Label(self.settings_frame, text="Contenido con Formato",
+                            font=('Segoe UI', 10, 'bold'),
+                            bg=current_theme['bg'],
+                            fg=current_theme['fg'],
+                            anchor='w')
+            subtitle.pack(fill=tk.X, padx=4, pady=(10, 5), anchor='w')
+            self.create_toggle_setting("Mostra 🎨 en copiado formato", 'show_format_icon')
+
             subtitle = tk.Label(self.settings_frame, text="Dimensiones de la app",
                         font=('Segoe UI', 10, 'bold'),
                         bg=current_theme['bg'],
@@ -241,6 +250,63 @@ class SettingsManager:
             # Actualizar la configuración para que use la nueva ruta la próxima vez
             self.settings['data_file_path'] = new_file_path
             self.save_settings()
+
+    def create_toggle_setting(self, setting_name, setting_key):
+        current_theme = self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']
+        card = tk.Frame(self.settings_frame, bg=current_theme['card_bg'])
+        card.pack(fill=tk.X, padx=4, pady=2)
+
+        label = tk.Label(card, text=setting_name,
+                        bg=current_theme['card_bg'],
+                        fg=current_theme['fg'],
+                        anchor='w', padx=5, pady=5)
+        label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Variable para el estado del toggle
+        toggle_var = tk.BooleanVar(value=self.settings.get(setting_key, True))
+        
+        # Crear el switch/toggle button con colores apropiados
+        is_active = toggle_var.get()
+        button_text = "✓" if is_active else "✗"
+        button_bg = current_theme['success_bg'] if is_active else current_theme['error_bg']
+        button_fg = current_theme['success_fg'] if is_active else current_theme['error_fg']
+        
+        toggle_button = tk.Button(card, 
+                                text=button_text,
+                                command=lambda: self.toggle_setting(toggle_button, toggle_var, setting_key),
+                                font=('Segoe UI', 12, 'bold'), bd=0,
+                                bg=button_bg,
+                                fg=button_fg,
+                                activebackground=button_bg,
+                                activeforeground=button_fg)
+        toggle_button.pack(side=tk.RIGHT, padx=5, pady=2)
+
+    def toggle_setting(self, button, var, setting_key):
+        # Cambiar el estado
+        new_value = not var.get()
+        var.set(new_value)
+        
+        # Obtener colores del tema actual
+        current_theme = self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']
+        
+        # Actualizar el botón con colores apropiados
+        button_text = "✓" if new_value else "✗"
+        button_bg = current_theme['success_bg'] if new_value else current_theme['error_bg']
+        button_fg = current_theme['success_fg'] if new_value else current_theme['error_fg']
+        
+        button.configure(text=button_text, 
+                        bg=button_bg, 
+                        fg=button_fg,
+                        activebackground=button_bg,
+                        activeforeground=button_fg)
+        
+        # Guardar la configuración
+        self.settings[setting_key] = new_value
+        self.save_settings()
+        
+        # Actualizar la visualización en tiempo real si es necesario
+        if setting_key == 'show_format_icon':
+            self.clipboard_manager.refresh_current_screen()
 
     def create_setting_card(self, setting_name, default_value):
         current_theme = self.clipboard_manager.theme_manager.colors['dark' if self.clipboard_manager.is_dark_mode else 'light']

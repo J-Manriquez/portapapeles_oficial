@@ -24,6 +24,10 @@ class ThemeManager:
                 'active_fg': '#ffffff',
                 'exit_button_bg': '#8B0000',  # Rojo oscuro
                 'exit_button_fg': '#ffffff',
+                'success_bg': '#228B22',      # Verde oscuro
+                'success_fg': '#ffffff',
+                'error_bg': '#8B0000',        # Rojo oscuro
+                'error_fg': '#ffffff',
             },
             'light': {
                 # 4 tonos de blanco para tema claro
@@ -42,6 +46,10 @@ class ThemeManager:
                 'active_fg': '#000000',
                 'exit_button_bg': '#FF6B6B',  # Rojo claro
                 'exit_button_fg': '#000000',
+                'success_bg': '#32CD32',      # Verde claro
+                'success_fg': '#000000',
+                'error_bg': '#FF6B6B',        # Rojo claro
+                'error_fg': '#000000',
             }
         }
 

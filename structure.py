@@ -222,7 +222,9 @@ class ClipboardManager:
                                  pady=8)
         self.button1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1, pady=0)
 
-        self.button2 = tk.Button(main_buttons_frame, text="Sin formato",
+        # Inicializar botón con estado actual y icono de refresh
+        initial_text = "Con formato 🔄" if self.paste_with_format else "Sin formato 🔄"
+        self.button2 = tk.Button(main_buttons_frame, text=initial_text,
                                  command=self.functions.toggle_paste_format, font=('Segoe UI', 10),
                                  bg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_bg'],
                             fg=self.theme_manager.colors['dark' if self.is_dark_mode else 'light']['main_button_fg'],
@@ -288,6 +290,23 @@ class ClipboardManager:
 
         # Refrescar las tarjetas
         self.functions.refresh_cards()
+
+    def refresh_current_screen(self):
+        """Refresca la pantalla actual según el contexto"""
+        if hasattr(self, 'navigation') and self.navigation:
+            current_strategy = self.navigation.current_strategy
+            if hasattr(current_strategy, 'screen_name'):
+                if current_strategy.screen_name == 'main':
+                    self.functions.refresh_cards()
+                elif current_strategy.screen_name == 'groups':
+                    if hasattr(self, 'group_manager'):
+                        self.group_manager.refresh_groups()
+                elif current_strategy.screen_name == 'group_content':
+                    if hasattr(self, 'group_manager') and hasattr(self.group_manager, 'group_content_manager'):
+                        self.group_manager.group_content_manager.refresh_content()
+        else:
+            # Fallback: refrescar la pantalla principal
+            self.functions.refresh_cards()
 
     def setup_keyboard_system(self):
         """Inicializa y configura el sistema de teclas y navegación"""

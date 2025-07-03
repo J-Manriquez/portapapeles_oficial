@@ -78,6 +78,33 @@
         }
     },
     "pinned_items": {
+        "fa5699c4-67e9-442e-8a04-07bc5db27075": {
+            "text": {
+                "text": "hjbhlkm",
+                "format": {
+                    "font": "WordVisi_MSFontService, Calibri, sans-serif",
+                    "size": null,
+                    "color": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "bold": false,
+                    "italic": false,
+                    "rtf": null,
+                    "html": true,
+                    "underline": null,
+                    "strikethrough": null,
+                    "superscript": null,
+                    "subscript": null,
+                    "background_color": null,
+                    "alignment": null
+                }
+            },
+            "pinned": true,
+            "has_format": true,
+            "with_format": false
+        },
         "b613aa01-13ba-419e-9ef2-ceef812653b4": {
             "text": {
                 "text": "close_settings_window",
@@ -130,6 +157,7 @@
         "back_key": "backspace",
         "groups_key": "g",
         "new_group_key": "n",
-        "max_items": 50
+        "max_items": 50,
+        "show_format_icon": true
     }
 }
