@@ -391,19 +391,27 @@ class ClipboardManager:
         if hasattr(self, 'select_group_screen_keys'):
             self.select_group_screen_keys.deactivate()
 
-        # Mostrar y enfocar la ventana principal
-        self.root.deiconify()
-        self.root.lift()
-
-        def setup_main_screen():
-            self.root.focus_force()
+        # Preparar la pantalla completamente antes de mostrarla
+        def prepare_and_show_main_screen():
+            # Ocultar temporalmente la ventana para evitar parpadeos
+            self.root.withdraw()
+            
+            # Preparar todo el contenido
             self.refresh_main_screen()
             self.main_screen_keys.activate()
             self.navigation.initialize_focus()
             self.navigation.update_highlights()
+            
+            # Forzar actualización de todos los widgets
+            self.root.update_idletasks()
+            
+            # Ahora mostrar la ventana completamente preparada
+            self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
 
-        # Dar tiempo a que la ventana se muestre
-        self.root.after(100, setup_main_screen)
+        # Ejecutar la preparación inmediatamente
+        self.root.after_idle(prepare_and_show_main_screen)
 
     def load_saved_data(self):
         groups, pinned_items, _ = self.data_manager.load_data()

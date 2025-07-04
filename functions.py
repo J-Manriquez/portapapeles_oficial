@@ -10,16 +10,24 @@ import win32gui # type: ignore
 import time
 import sys
 import os
-from tkinter import ttk
+from tkinter import ttk, messagebox, simpledialog
 from bs4 import BeautifulSoup # type: ignore
 from utils import measure_time, process_text
+import pyperclip
+from datetime import datetime
+import json
+from typing import Optional, Dict, Any
+import logging
 
 # Importaciones para emojis coloridos
 try:
     from PIL import Image, ImageDraw, ImageFont, ImageTk
+
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 # Definir CF_HTML ya que no está en win32con
 CF_HTML = win32clipboard.RegisterClipboardFormat("HTML Format")
@@ -323,20 +331,46 @@ class Functions:
             self.manager.navigation.current_strategy is not None):
             self.manager.navigation.current_strategy.last_keyboard_selection = None
 
+        # Ocultar temporalmente el frame para evitar parpadeos durante la carga
+        # Verificar si el frame está empaquetado antes de obtener su información
+        try:
+            original_pack_info = self.manager.cards_frame.pack_info()
+            self.manager.cards_frame.pack_forget()
+            frame_was_packed = True
+        except tk.TclError:
+            # El frame no está empaquetado, no necesitamos ocultarlo
+            original_pack_info = None
+            frame_was_packed = False
+
         # Limpiar todas las tarjetas existentes
         for widget in self.manager.cards_frame.winfo_children():
             widget.destroy()
 
-        # Crear nuevas tarjetas en el orden actual del diccionario
+        # Crear todas las tarjetas de una vez sin mostrarlas
+        cards_to_pack = []
         for index, (item_id, item_data) in enumerate(self.manager.clipboard_items.items()):
             card = self.create_card(item_id, item_data, index)
             card.item_id = item_id
+            cards_to_pack.append(card)
+
+        # Empaquetar todas las tarjetas de una vez
+        for card in cards_to_pack:
             card.pack(fill=tk.X, padx=2, pady=2)
 
+        # Forzar actualización de geometría antes de mostrar
+        self.manager.cards_frame.update_idletasks()
+        
         # Actualizar la región de desplazamiento
         self.manager.canvas.update_idletasks()
         self.manager.canvas.configure(scrollregion=self.manager.canvas.bbox("all"))
         self.recalculate_card_heights()
+
+        # Restaurar la visibilidad del frame con todas las tarjetas ya cargadas
+        if frame_was_packed and original_pack_info:
+            self.manager.cards_frame.pack(**original_pack_info)
+        elif not frame_was_packed:
+            # Si no estaba empaquetado originalmente, empaquetarlo con configuración por defecto
+            self.manager.cards_frame.pack(fill=tk.BOTH, expand=True)
 
         # Asegurarse de que el scroll esté en la parte superior después de actualizar
         self.manager.canvas.yview_moveto(0)
@@ -535,43 +569,48 @@ class Functions:
             self.refresh_cards()
 
     def apply_smooth_entry_effect(self, card_frame):
-        """Aplica un efecto suave de entrada a una nueva card"""
+        """Aplica un efecto suave de entrada optimizado para una nueva card"""
         try:
-            # Efecto de fade-in y scale suave
+            # Solo aplicar efecto si la ventana está visible para evitar lags en carga inicial
+            if hasattr(self.manager, 'is_visible') and not self.manager.is_visible:
+                return
+                
+            # Efecto simplificado y más rápido
             original_bg = card_frame.cget('bg')
             
-            # Iniciar con transparencia simulada (color más claro)
-            light_bg = self.lighten_color(original_bg, 0.3)
-            card_frame.configure(bg=light_bg)
-            
-            # Animar hacia el color original
-            steps = 10
+            # Reducir pasos de animación para mejor rendimiento
+            steps = 5
+            delay = 20  # Reducir delay para animación más rápida
             
             def animate_fade(step):
-                if step < steps:
-                    # Interpolar entre el color claro y el original
+                if step < steps and (not hasattr(self.manager, 'is_visible') or self.manager.is_visible):
+                    # Interpolar de forma más eficiente
                     alpha = step / steps
-                    interpolated_color = self.interpolate_color(light_bg, original_bg, alpha)
                     try:
-                        card_frame.configure(bg=interpolated_color)
-                        # También aplicar a los elementos hijos
-                        for child in card_frame.winfo_children():
-                            if hasattr(child, 'configure'):
-                                child.configure(bg=interpolated_color)
-                    except tk.TclError:
-                        pass
-                    self.manager.root.after(30, lambda: animate_fade(step + 1))
+                        # Solo animar el frame principal, no todos los hijos
+                        if alpha < 1.0:
+                            light_bg = self.lighten_color(original_bg, 0.2 * (1 - alpha))
+                            card_frame.configure(bg=light_bg)
+                        else:
+                            card_frame.configure(bg=original_bg)
+                        
+                        # Programar el siguiente paso solo si es necesario
+                        if step < steps - 1:
+                            self.manager.root.after(delay, lambda: animate_fade(step + 1))
+                    except:
+                        # Si hay error, aplicar color final inmediatamente
+                        card_frame.configure(bg=original_bg)
                 else:
+                    # Asegurar color final
                     try:
                         card_frame.configure(bg=original_bg)
-                        # Restaurar colores originales de los hijos
-                        for child in card_frame.winfo_children():
-                            if hasattr(child, 'configure'):
-                                child.configure(bg=original_bg)
-                    except tk.TclError:
+                    except:
                         pass
-                        
-            animate_fade(0)
+            
+            # Iniciar la animación solo si la ventana está visible
+            if not hasattr(self.manager, 'is_visible') or self.manager.is_visible:
+                animate_fade(0)
+            
         except Exception as e:
             print(f"Error en apply_smooth_entry_effect: {e}")
 
@@ -744,20 +783,20 @@ class Functions:
 
     def show_select_group_screen(self, item_id):
         """Muestra la pantalla de selección de grupo"""
-        self.root.withdraw()  # Ocultar ventana principal
+        self.manager.root.withdraw()  # Ocultar ventana principal
 
         def after_dialog_shown():
-            if hasattr(self, 'select_group_dialog'):
-                self.select_group_dialog.focus_force()
-                self.navigation.set_strategy('select_group')
-                self.select_group_screen_keys.activate()
-                self.navigation.initialize_focus()
+            if hasattr(self.manager, 'select_group_dialog'):
+                self.manager.select_group_dialog.focus_force()
+                self.manager.navigation.set_strategy('select_group')
+                self.manager.select_group_screen_keys.activate()
+                self.manager.navigation.initialize_focus()
 
         # Mostrar el diálogo de selección de grupo
-        self.functions.on_arrow_click(item_id)
+        self.on_arrow_click(item_id)
 
         # Asegurar que el foco se mantenga después de mostrar la ventana
-        self.root.after(100, after_dialog_shown)
+        self.manager.root.after(100, after_dialog_shown)
 
     def on_arrow_click(self, item_id):
         self.select_group(item_id)

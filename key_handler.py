@@ -268,46 +268,125 @@ class KeyHandler:
         return any(windows_status)
 
     def show_window(self) -> None:
-        """Muestra la ventana principal si no hay otras ventanas abiertas"""
+        """Muestra la ventana principal con animación de deslizamiento desde abajo"""
         try:
             self.manager.previous_window = win32gui.GetForegroundWindow()
             self.original_cursor_pos = win32gui.GetCursorPos()
 
-            # Posicionar ventana
+            # Calcular posición final (donde está el mouse)
             mouse_x, mouse_y = pyautogui.position()
-            window_x = mouse_x - self.manager.window_width // 2
-            window_y = mouse_y - self.manager.window_height // 2
+            final_window_x = mouse_x - self.manager.window_width // 2
+            final_window_y = mouse_y - self.manager.window_height // 2
 
             # Ajustar a los límites de la pantalla
             screen_width, screen_height = pyautogui.size()
-            window_x = max(0, min(window_x, screen_width - self.manager.window_width))
-            window_y = max(0, min(window_y, screen_height - self.manager.window_height))
+            final_window_x = max(0, min(final_window_x, screen_width - self.manager.window_width))
+            final_window_y = max(0, min(final_window_y, screen_height - self.manager.window_height))
 
-            self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{window_x}+{window_y}")
-            self.manager.window_x = window_x
-            self.manager.window_y = window_y
+            # Posición inicial (abajo de la pantalla)
+            start_window_x = final_window_x
+            start_window_y = screen_height  # Comenzar desde abajo de la pantalla
 
-            # Mostrar la ventana principal
-            self.manager.root.deiconify()
-            self.manager.root.lift()
-            self.manager.root.focus_force()
-            self.manager.root.attributes('-topmost', True)
-            self.manager.is_visible = True
+            self.manager.window_x = final_window_x
+            self.manager.window_y = final_window_y
 
-            # Asegurar que estamos en la navegación principal
-            self.manager.navigation.set_strategy('main')
-            self.manager.main_screen_keys.activate()
-            self.manager.navigation.initialize_focus()
+            # Preparar completamente la ventana antes de mostrarla
+            def prepare_and_show_window():
+                # Asegurar que estamos en la navegación principal
+                self.manager.navigation.set_strategy('main')
+                self.manager.main_screen_keys.activate()
+                
+                # Reinicializar los estados de hover
+                if hasattr(self.manager.navigation, 'current_strategy') and self.manager.navigation.current_strategy:
+                    self.manager.navigation.current_strategy.last_keyboard_selection = None
+                self._reset_hover_states()
 
-            # Reinicializar los estados de hover
-            self.manager.navigation.current_strategy.last_keyboard_selection = None
-            self._reset_hover_states()
+                # Refrescar la vista principal (esto ya incluye la carga optimizada)
+                self.manager.functions.refresh_cards()
+                
+                # Inicializar navegación y foco
+                self.manager.navigation.initialize_focus()
+                
+                # Posicionar la ventana en la posición final desde el inicio
+                self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{final_window_x}+{start_window_y}")
+                
+                # Mostrar la ventana
+                self.manager.root.deiconify()
+                self.manager.root.lift()
+                self.manager.root.attributes('-topmost', True)
+                self.manager.is_visible = True
+                
+                # Forzar actualización completa de la interfaz
+                self.manager.root.update_idletasks()
+                self.manager.root.update()
+                
+                # Añadir pausa antes de iniciar la animación
+                self.manager.root.after(50, lambda: self._animate_slide_up(start_window_y, final_window_y, final_window_x))
 
-            # Refrescar la vista principal
-            self.manager.functions.refresh_cards()
+            # Ejecutar la preparación inmediatamente
+            self.manager.root.after_idle(prepare_and_show_window)
 
         except Exception as e:
             logger.error(f"Error showing main window: {e}")
+
+    def _animate_slide_up(self, start_y: int, final_y: int, window_x: int) -> None:
+        """Anima el deslizamiento de la ventana desde abajo hasta la posición final"""
+        try:
+            # Configuración de la animación
+            animation_duration = 300  # milisegundos
+            animation_steps = 20
+            step_delay = animation_duration // animation_steps
+            
+            # Calcular la distancia total
+            total_distance = start_y - final_y
+            
+            def animate_step(current_step: int):
+                if current_step <= animation_steps:
+                    # Calcular progreso con easing (suavizado)
+                    progress = current_step / animation_steps
+                    # Aplicar easing out (desaceleración al final)
+                    eased_progress = 1 - (1 - progress) ** 3
+                    
+                    # Calcular posición actual
+                    current_y = int(start_y - (total_distance * eased_progress))
+                    
+                    # Actualizar posición de la ventana
+                    try:
+                        self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{window_x}+{current_y}")
+                        
+                        # Programar siguiente paso
+                        if current_step < animation_steps:
+                            self.manager.root.after(step_delay, lambda: animate_step(current_step + 1))
+                        else:
+                            # Animación completada
+                            self._finish_window_animation()
+                    except tk.TclError:
+                        # Si hay error, terminar animación
+                        self._finish_window_animation()
+                else:
+                    self._finish_window_animation()
+            
+            # Iniciar animación
+            animate_step(0)
+            
+        except Exception as e:
+            logger.error(f"Error in slide animation: {e}")
+            self._finish_window_animation()
+    
+    def _finish_window_animation(self) -> None:
+        """Finaliza la animación y configura el estado final de la ventana"""
+        try:
+            # Asegurar posición final correcta
+            self.manager.root.geometry(f"{self.manager.window_width}x{self.manager.window_height}+{self.manager.window_x}+{self.manager.window_y}")
+            
+            # Configurar foco final
+            self.manager.root.focus_force()
+            
+            # Remover topmost después de un momento
+            self.manager.root.after(100, lambda: self.manager.root.attributes('-topmost', False))
+            
+        except Exception as e:
+            logger.error(f"Error finishing window animation: {e}")
 
     def _reset_hover_states(self):
         """Resetea todos los estados de hover de los elementos"""

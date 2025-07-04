@@ -300,13 +300,23 @@ class MainScreenNavigation:
                                 btn._mouse_over = False
 
     def update_highlights(self) -> None:
-        """Actualiza los destacados visuales"""
-        # print("Updating highlights")  # Debug
+        """Actualiza los destacados visuales de forma optimizada"""
+        # Evitar actualizaciones innecesarias si no hay cambios
+        current_selection = self.state['current_selection']
+        if (hasattr(self, '_last_highlight_state') and 
+            self._last_highlight_state == current_selection):
+            return
+            
+        # Guardar el estado actual para futuras comparaciones
+        self._last_highlight_state = current_selection.copy()
+        
+        # Realizar actualización visual optimizada
         self._clear_all_highlights()
         self._reset_mouse_over_states()
         self._highlight_current_selection()
+        
+        # Actualización más eficiente sin delays innecesarios
         self.manager.root.update_idletasks()
-        self.manager.root.after(10, self.manager.root.update)
 
     def handle_specific_keys(self, event) -> None:
         """Maneja teclas específicas de la pantalla principal"""
